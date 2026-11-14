@@ -16,6 +16,7 @@ from .crew import CrewConfig
 from .environment import EnvironmentProfile
 from .faults import FaultsConfig
 from .layout import LayoutConfig
+from .monitor import MODULE_TEMPLATE, MonitorConfig
 
 
 class ExportConfig(BaseModel):
@@ -48,6 +49,7 @@ class ScenarioFile(BaseModel):
     layout: str | list[str]  # one file, or several merged in order (modules, sensors, actuators in separate files)
     crew: str
     faults: str | None = None
+    monitor: str | None = None  # detectors + playbooks; None = no monitoring system
     agent: AgentSpec | None = None
     export: ExportConfig = ExportConfig()
 
@@ -60,6 +62,7 @@ class Scenario(BaseModel):
     layout: LayoutConfig
     crew: CrewConfig
     faults: FaultsConfig
+    monitor: MonitorConfig = MonitorConfig()
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -101,6 +104,7 @@ def load_scenario(path: str | Path) -> Scenario:
         layout=layout,
         crew=crew,
         faults=FaultsConfig.model_validate(_read_yaml(base / sf.faults)) if sf.faults else FaultsConfig(),
+        monitor=MonitorConfig.model_validate(_read_yaml(base / sf.monitor)) if sf.monitor else MonitorConfig(),
     )
     validate_references(scenario)
     return scenario
@@ -142,3 +146,38 @@ def validate_references(sc: Scenario) -> None:
         missing = [t for t in f.targets if t not in known]
         if missing:
             raise ValueError(f"fault {f.id}: unknown targets {missing}")
+    _validate_monitor(sc, modules, actuators)
+    cr = sc.monitor.crew_response
+    if cr is not None:
+        profiles = {m.profile for m in sc.crew.members}
+        unknown = (set(cr.roles) | set(cr.succession)) - profiles
+        if unknown:
+            raise ValueError(f"monitor.crew_response: no crew member with profile {sorted(unknown)}")
+        if not any(m.return_vehicle for m in sc.layout.modules):
+            raise ValueError("monitor.crew_response needs a module with return_vehicle: true")
+
+
+def _validate_monitor(sc: Scenario, modules: set[str], actuators: set[str]) -> None:
+    npcs = {m.id for m in sc.crew.members}
+    ids = [d.id for d in sc.monitor.detectors]
+    dups = {i for i in ids if ids.count(i) > 1}
+    if dups:
+        raise ValueError(f"monitor: duplicate detector ids {sorted(dups)}")
+    for d in sc.monitor.detectors:
+        known = modules | npcs | {"all_modules", "all_npcs"}
+        missing = [t for t in d.targets if t not in known]
+        if missing:
+            raise ValueError(f"detector {d.id}: unknown targets {missing}")
+    for pb in sc.monitor.playbooks:
+        for a in pb.actions:
+            if MODULE_TEMPLATE in a.target:
+                continue  # resolved when the emergency happens
+            if a.do in ("ventilation", "extinguish") and a.target not in modules:
+                raise ValueError(f"playbook {pb.emergency}: unknown module {a.target}")
+            if a.do == "actuator" and a.target not in actuators:
+                raise ValueError(f"playbook {pb.emergency}: unknown actuator {a.target}")
+            if a.do == "hatch":
+                ends = a.target.split(":")
+                known = {(h.a, h.b) for h in sc.layout.hatches} | {(h.b, h.a) for h in sc.layout.hatches}
+                if len(ends) != 2 or tuple(ends) not in known:
+                    raise ValueError(f"playbook {pb.emergency}: no hatch {a.target!r} (use a:b)")

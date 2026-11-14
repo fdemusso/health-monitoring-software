@@ -10,4 +10,5 @@ environment_overrides:
 layout: [../base_layout.yaml, ../sensors_placeholder.yaml, ../actuators_placeholder.yaml]
 crew: ../crew.yaml
 faults: slow_leak_faults.yaml
+monitor: ../monitor_placeholder.yaml
 export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

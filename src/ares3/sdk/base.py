@@ -14,7 +14,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from .context import StepContext
-from .types import Command, ModuleFlow, ModuleState, NPCState, Observation, VitalsUpdate
+from .types import Command, ModuleFlow, ModuleState, NPCState, Observation, Signal, VitalsUpdate
 
 
 class EmptyParams(BaseModel):
@@ -96,3 +96,22 @@ class BaseAgent(Component):
 
     @abstractmethod
     def decide(self, ctx: StepContext, observations: list[Observation]) -> list[Command]: ...
+
+
+class BaseDetector(Component):
+    """One piece of the monitor: turns the sensed observations into evidence of an emergency.
+
+    Reads ``observations`` (sensed) and its own history, never the true state. Stateful (windows, trends):
+    keep it in ``self`` and clear it in ``reset``. ``metric`` and ``targets`` come from the YAML spec;
+    ``targets`` is already expanded to module ids. Return no signal when all is well: the classifier
+    handles confirmation and clearing.
+    """
+
+    def __init__(self, id: str, params: BaseModel, rng: np.random.Generator, *, metric: str | None,
+                 targets: list[str]) -> None:
+        super().__init__(id, params, rng)
+        self.metric = metric
+        self.targets = targets
+
+    @abstractmethod
+    def detect(self, ctx: StepContext, observations: list[Observation]) -> list[Signal]: ...

@@ -1,0 +1,124 @@
+# PLACEHOLDER - awaiting the team (and Mario for the final sensor set). Monitoring system: detectors -> classifier -> playbooks.
+# Rules refer to METRICS on modules, never to sensor ids, so changing the sensor set does not touch this file.
+# Model: ISS emergency response (NASA SpaceOps 2023): immediate reversible safing is `auto`; heavier steps are `confirm`
+# (any crew member or the UI can approve; on timeout `execute` for life-saving steps, `discard` otherwise).
+# Thresholds are ESTIMATES unless a source is given.
+classifier: {confirm_s: 5, clear_s: 60}
+
+detectors:
+  # slow leak: pressure under the limit. Fast leak: dP/dt over a window, plus TRes (time to 490 mmHg, the ISS minimum).
+  - id: depress_rate
+    kind: "ares3.plugins.monitor.detectors:PressureDrop"
+    emergency: depressurization
+    metric: P
+    params: {window_s: 10, min_drop_kpa_s: 0.05, tres_floor_kpa: 65.3}   # 65.3 kPa = 490 mmHg [ISS TRes]
+  # High CO2 is an equipment problem (scrubber), not a toxic spill. Same limit AND same meaning as the profile alarm
+  # `ppco2_1h` (NASA-STD-3001 [V2 6004], [S6]): max 3 mmHg as a 1-hour MEAN. Keep both in sync with the environment profile.
+  - id: ppco2_mean_1h
+    kind: "ares3.plugins.monitor.detectors:Threshold"
+    emergency: equipment
+    severity: warning
+    metric: ppCO2
+    params: {max: 3.0, window_s: 3600}
+  # Fire (ISS: smoke detectors + combustion-product analyser). Thresholds are ESTIMATES until Mario fixes the sensors.
+  - id: smoke
+    kind: "ares3.plugins.monitor.detectors:Threshold"
+    emergency: fire
+    metric: smoke
+    params: {max: 0.5, window_s: 0}   # mg/m3 of particulates
+  - id: combustion_co
+    kind: "ares3.plugins.monitor.detectors:Threshold"
+    emergency: fire
+    metric: CO
+    params: {max: 25.0, window_s: 0}   # ppm
+
+  # A crew member in trouble, seen through the wearables. The monitor reads sensed values only. The causes are listed from the
+  # most specific to the least: SpCO (COHb, co-oximetry) sees carbon monoxide that the pulse oximeter (spo2) cannot.
+  # Thresholds are ESTIMATES (resting COHb ~0.4 %; SpO2 < 90 % is the usual hypoxaemia cut-off); confirm with the bioengineer.
+  - id: cohb_critical
+    kind: "ares3.plugins.monitor.detectors:NpcThreshold"
+    emergency: medical
+    targets: [all_npcs]
+    metric: cohb_pct
+    cause: co_poisoning
+    params: {max: 15.0}
+    confirm_s: 30
+    clear_s: 900   # a poisoning does not resolve in a minute: no flicker around the threshold
+  - id: cohb_raised
+    kind: "ares3.plugins.monitor.detectors:NpcThreshold"
+    emergency: medical
+    severity: warning
+    targets: [all_npcs]
+    metric: cohb_pct
+    cause: co_poisoning
+    params: {max: 5.0}
+    confirm_s: 30
+    clear_s: 900
+  - id: low_spo2
+    kind: "ares3.plugins.monitor.detectors:NpcThreshold"
+    emergency: medical
+    targets: [all_npcs]
+    metric: spo2
+    cause: hypoxia
+    params: {min: 90.0}
+    confirm_s: 15
+    clear_s: 300
+  - id: high_core_temp
+    kind: "ares3.plugins.monitor.detectors:NpcThreshold"
+    emergency: medical
+    severity: warning
+    targets: [all_npcs]
+    metric: core_temp_c
+    cause: fever_or_heat
+    params: {max: 38.5}
+    confirm_s: 60
+    clear_s: 600
+  - id: impaired
+    kind: "ares3.plugins.monitor.detectors:NpcThreshold"
+    emergency: medical
+    targets: [all_npcs]
+    metric: health_state
+    params: {max: 1.5}   # health state >= 2 (impaired): something is wrong, cause unknown
+    confirm_s: 3
+    clear_s: 300
+
+# NPC reaction: ISS Warn -> Gather -> Work. Roles/succession by crew PROFILE. Timings are ESTIMATES.
+crew_response:
+  roles: {commander: incident_commander, engineer: systems, medic: medical, botanist: sensing}
+  succession: [commander, engineer, botanist, medic]   # who takes command if the commander is incapacitated (OUR proposal)
+  gather_on: [depressurization, fire, toxic]
+  react_delay_s: [2, 6]
+  asleep_extra_delay_s: 30
+  evacuate_tres_s: 120
+  stand_down_delay_s: 120
+  npc_approves_actions: false   # true: the acting commander approves pending steps once at the safe haven
+
+playbooks:
+  - emergency: depressurization
+    actions:
+      # ISS automatic safing: stop gas introduction so the crew can measure the leak rate
+      - {do: actuator, target: "press_{module}", command: "off", level: auto, reason: stop make-up gas to measure the leak}
+      - {do: actuator, target: "o2gen_{module}", command: "off", level: auto, reason: stop gas introduction}
+      - {do: announce, target: crew, command: depressurization, level: auto}
+      # heavy step: seal the leaking module from the hab. Never a hatch between the crew and the lifeboat.
+      - {do: hatch, target: "hab:{module}", command: close, level: confirm, confirm_timeout_s: 20, on_timeout: execute,
+         reversible: false, reason: isolate the leaking module}
+      - {do: hatch, target: "hab:lifeboat", command: open, level: confirm, confirm_timeout_s: 15, on_timeout: execute,
+         reason: open the escape vehicle}
+  - emergency: equipment
+    actions:
+      - {do: announce, target: crew, command: equipment_alert, level: auto}
+      - {do: actuator, target: "scrubber_{module}", command: "on", level: auto, reason: maximise CO2 removal}
+  # ISS fire response: attack oxygen (no airflow, no gas introduction) and heat; the crew then discharges the extinguisher.
+  - emergency: fire
+    actions:
+      - {do: ventilation, target: "{module}", command: "off", level: auto, reason: no airflow to the fire (no convection in microgravity)}
+      - {do: actuator, target: "o2gen_{module}", command: "off", level: auto, reason: stop oxygen generation}
+      - {do: actuator, target: "press_{module}", command: "off", level: auto, reason: stop gas introduction}
+      - {do: announce, target: crew, command: fire, level: auto}
+      - {do: extinguish, target: "{module}", command: discharge, level: confirm, confirm_timeout_s: 60, on_timeout: execute,
+         reversible: false, reason: the crew locates the source and discharges the extinguisher}
+  # a crew member in trouble: the medic goes to them (crew_response); the cause is in the emergency
+  - emergency: medical
+    actions:
+      - {do: announce, target: crew, command: medical_alert, level: auto}

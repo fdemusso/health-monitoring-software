@@ -13,6 +13,7 @@ LAYERS = {
     "core": {"schemas", "sdk"},
     "plugins": {"schemas", "sdk"},
     "export": {"schemas", "sdk", "core"},
+    "serve": {"schemas", "sdk", "core"},
 }
 LEAVES = {"ares3.core.constants", "ares3.core.rng", "ares3.core.clock"}
 

@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from ares3.core.constants import MMHG_PER_KPA, inspired_po2_mmhg, psat_kpa
+from ares3.schemas.monitor import ActionKind, ActionLevel, EmergencyKind, EmergencyState, OnTimeout, Severity
 
 
 class _Frozen(BaseModel):
@@ -34,6 +35,10 @@ class ModuleState(_Frozen):
     pressure_kpa: float
     gas: GasComposition
     heat_load_w: float  # heat released inside the module during this tick (crew, loads)
+    # combustion products (fire): CO as a mole fraction in ppm, smoke as particulate mass concentration
+    co_ppm: float = 0.0
+    smoke_mg_m3: float = 0.0
+    fans_on: bool = True  # ventilation; the ISS switches it off in a fire / depressurization
     occupants: tuple[str, ...] = ()
 
     @property
@@ -73,6 +78,9 @@ class NPCState(_Frozen):
     body_mass_kg: float | None = None
     # true vital signs, written by the PhysiologyModel: hr, hrv_rmssd, spo2, resp_rate, skin_temp_c, ...
     vitals: dict[str, float] = Field(default_factory=dict)
+    # emergency response (None outside an emergency): role in the crew and phase warn/gather/work/assist/evacuate/incapacitated
+    role: str | None = None
+    response_phase: str | None = None
     # persistent latent state of the model (fatigue, circadian drift, ...); opaque to the core
     latent: dict[str, float] = Field(default_factory=dict)
 
@@ -88,6 +96,77 @@ class AlarmEvent(_Frozen):
     source: str = ""
 
 
+class Signal(_Frozen):
+    """What a detector reports for one tick: evidence of an emergency, before the classifier debounces it."""
+
+    detector_id: str
+    emergency: EmergencyKind
+    module_id: str
+    severity: Severity
+    subject: str | None = None  # the crew member the evidence is about (medical emergencies); module_id is where they are
+    value: float | None = None  # the quantity that tripped the rule, for the log
+    tres_s: float | None = None  # time to reach the minimum safe pressure (depressurization only)
+    detail: str = ""
+
+
+class Emergency(_Frozen):
+    """An emergency known to the monitor; lives in the tick from ``suspected`` until ``cleared``."""
+
+    id: str
+    kind: EmergencyKind
+    module_id: str
+    severity: Severity
+    state: EmergencyState
+    t_open_s: float
+    t_update_s: float
+    detectors: tuple[str, ...] = ()
+    tres_s: float | None = None
+    detail: str = ""
+    subject: str | None = None  # crew member in trouble (medical emergencies)
+    cause: str | None = None  # what the sensors say is wrong, e.g. co_poisoning, hypoxia
+
+
+class Action(_Frozen):
+    """A concrete step the monitor takes or proposes. ``target`` is already resolved (no ``{module}``)."""
+
+    id: str
+    emergency_id: str
+    kind: ActionKind
+    target: str
+    command: str
+    value: float | None = None
+    level: ActionLevel = "auto"
+    reversible: bool = True
+    reason: str = ""
+
+
+class PendingAction(_Frozen):
+    """A ``confirm`` action waiting for a human. Visible to every crew member and to the UI; anyone can
+    approve it. At ``deadline_s`` it is executed or discarded according to ``on_timeout``."""
+
+    action: Action
+    t_proposed_s: float
+    deadline_s: float
+    on_timeout: OnTimeout = "discard"
+
+
+class MonitorEvent(_Frozen):
+    """One line of the monitor's log, for the UI and for the dataset of decisions."""
+
+    t_s: float
+    kind: Literal[
+        "emergency_opened", "emergency_confirmed", "emergency_cleared",
+        "action_executed", "action_proposed", "action_approved", "action_rejected",
+        "action_expired_executed", "action_expired_discarded", "action_blocked",
+        "crew_alerted", "crew_gathered", "crew_evacuating", "crew_assisting", "crew_command_passed",
+        "crew_stood_down", "crew_repairing", "crew_repaired",
+    ]
+    message: str
+    emergency_id: str | None = None
+    action_id: str | None = None
+    by: str | None = None  # crew member / UI user that approved or rejected; None = the system
+
+
 class SimulationTick(_Frozen):
     tick: int
     t_sim_s: float
@@ -99,6 +178,12 @@ class SimulationTick(_Frozen):
     hatches: tuple[HatchState, ...] = ()
     active_faults: tuple[str, ...] = ()
     alarms: tuple[AlarmEvent, ...] = ()
+    # TODO(dashboard): `emergencies`, `pending_actions`, `monitor_events` and NPCState `role` / `response_phase` must be mirrored by hand in
+    # dashboard/src/telemetry/types.ts (Python is the source of truth); until then the UI cannot show them.
+    # Same for ModuleState `co_ppm`, `smoke_mg_m3`, `fans_on`, Emergency `subject` / `cause`, and the vital `cohb_pct`.
+    emergencies: tuple[Emergency, ...] = ()
+    pending_actions: tuple[PendingAction, ...] = ()
+    monitor_events: tuple[MonitorEvent, ...] = ()  # events produced during this tick only
 
 
 class Observation(_Frozen):

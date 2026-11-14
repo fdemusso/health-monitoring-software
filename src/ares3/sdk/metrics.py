@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from .types import ModuleState, NPCState
 
-MODULE_METRICS = ("T", "RH", "ppCO2", "pO2", "PIO2", "P")
+MODULE_METRICS = ("T", "RH", "ppCO2", "pO2", "PIO2", "P", "CO", "smoke")
 
 
 def module_metric(m: ModuleState, metric: str) -> float:
-    """T [degC], RH [%], ppCO2 [mmHg], pO2 [kPa], PIO2 [mmHg], P [kPa]."""
+    """T [degC], RH [%], ppCO2 [mmHg], pO2 [kPa], PIO2 [mmHg], P [kPa], CO [ppm], smoke [mg/m3]."""
     if metric == "T":
         return m.temperature_c
     if metric == "RH":
@@ -21,6 +21,10 @@ def module_metric(m: ModuleState, metric: str) -> float:
         return m.pio2_mmhg
     if metric == "P":
         return m.pressure_kpa
+    if metric == "CO":
+        return m.co_ppm
+    if metric == "smoke":
+        return m.smoke_mg_m3
     raise KeyError(f"unknown module metric {metric!r}; known: {MODULE_METRICS}")
 
 

@@ -24,13 +24,19 @@ export interface ModuleState {
   heat_load_w: number;
   /** Ids of the astronauts currently in the module. */
   occupants: string[];
+  /** Carbon monoxide, ppm. */
+  co_ppm: number;
+  /** Smoke particulates, mg/m3. */
+  smoke_mg_m3: number;
+  /** Ventilation; the monitor switches it off in a fire. */
+  fans_on: boolean;
 }
 
 /**
  * Vital signs the engine may provide. The set is open: the bioengineer decides which exist, so any
  * key is allowed. These are the ones the placeholder model currently emits.
  */
-export type VitalName = 'hr' | 'hrv_rmssd' | 'spo2' | 'resp_rate' | 'skin_temp_c' | (string & {});
+export type VitalName = 'hr' | 'hrv_rmssd' | 'spo2' | 'resp_rate' | 'skin_temp_c' | 'cohb_pct' | (string & {});
 
 export interface NPCState {
   id: string;
@@ -47,6 +53,10 @@ export interface NPCState {
   height_cm?: number | null;
   body_mass_kg?: number | null;
   /** TRUE vital signs (ground truth), keyed by {@link VitalName}. */
+  /** Emergency role (incident_commander, systems, medical, sensing) or null outside an emergency. */
+  role?: string | null;
+  /** warn | gather | work | assist | evacuate | repair | incapacitated, or null outside an emergency. */
+  response_phase?: string | null;
   vitals: Record<VitalName, number>;
   /** Opaque persistent state of the physiology model. */
   latent: Record<string, number>;
@@ -93,4 +103,80 @@ export interface SimulationTick {
   /** Ids of the faults active in this tick. */
   active_faults: string[];
   alarms: AlarmEvent[];
+  /** Emergencies the monitor knows, from `suspected` until `cleared`. */
+  emergencies: Emergency[];
+  /** Steps waiting for a human: anyone may approve or reject. */
+  pending_actions: PendingAction[];
+  /** Monitor log lines produced since the previous tick the backend sent (frames can skip ticks; none is lost). */
+  monitor_events: MonitorEvent[];
+}
+
+export type EmergencyKind = 'depressurization' | 'fire' | 'toxic' | 'equipment' | 'medical';
+export type EmergencyState = 'suspected' | 'confirmed' | 'cleared';
+
+export interface Emergency {
+  id: string;
+  kind: EmergencyKind;
+  module_id: string;
+  severity: string;
+  state: EmergencyState;
+  t_open_s: number;
+  t_update_s: number;
+  detectors: string[];
+  /** Time to the minimum safe pressure, s (depressurization only). */
+  tres_s: number | null;
+  detail: string;
+  /** Crew member in trouble (medical emergencies). */
+  subject: string | null;
+  /** What the sensors say is wrong, e.g. `co_poisoning`. */
+  cause: string | null;
+}
+
+export interface Action {
+  id: string;
+  emergency_id: string;
+  kind: 'actuator' | 'hatch' | 'announce' | 'ventilation' | 'extinguish';
+  /** Already resolved: an actuator id, `a:b` for a hatch, a module id. */
+  target: string;
+  command: string;
+  value: number | null;
+  level: 'auto' | 'confirm';
+  reversible: boolean;
+  reason: string;
+}
+
+/** A step waiting for confirmation. At `deadline_s` (simulation time) it is run or dropped per `on_timeout`. */
+export interface PendingAction {
+  action: Action;
+  t_proposed_s: number;
+  deadline_s: number;
+  on_timeout: 'execute' | 'discard';
+}
+
+export interface MonitorEvent {
+  t_s: number;
+  kind:
+    | 'emergency_opened' | 'emergency_confirmed' | 'emergency_cleared'
+    | 'action_executed' | 'action_proposed' | 'action_approved' | 'action_rejected'
+    | 'action_expired_executed' | 'action_expired_discarded' | 'action_blocked'
+    | 'crew_alerted' | 'crew_gathered' | 'crew_evacuating' | 'crew_assisting' | 'crew_command_passed'
+    | 'crew_stood_down' | 'crew_repairing' | 'crew_repaired';
+  message: string;
+  emergency_id: string | null;
+  action_id: string | null;
+  /** Who approved or rejected; null = the system. */
+  by: string | null;
+}
+
+/** A fault/event as the backend accepts it (same shape as an entry of a scenario's faults file). */
+export interface FaultSpec {
+  id: string;
+  type: string;
+  targets: string[];
+  /** Ignored by inject_event: the event starts now. */
+  start_s?: number;
+  duration_s?: number | null;
+  params?: Record<string, number | string | boolean>;
+  anomaly_type?: string;
+  priority?: number;
 }

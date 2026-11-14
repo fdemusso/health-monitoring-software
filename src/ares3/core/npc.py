@@ -17,6 +17,7 @@ class NPC:
     latent: dict[str, float] = field(default_factory=dict)
     block: ActivityBlock | None = None
     rates: MetabolicRates | None = None
+    override: ActivityBlock | None = None  # emergency orders replace the schedule while set
 
     @classmethod
     def from_spec(cls, spec: CrewMember) -> NPC:
@@ -33,5 +34,5 @@ class NPC:
         return self.blocks[-1]  # tod_h == 24.0 can only come from float rounding
 
     def update(self, tod_h: float, catalog: dict[str, ActivityClass], ref_mass_kg: float) -> None:
-        self.block = self.block_at(tod_h)
+        self.block = self.override or self.block_at(tod_h)
         self.rates = rates_for(self.block, catalog, self.spec.body_mass_kg, ref_mass_kg)

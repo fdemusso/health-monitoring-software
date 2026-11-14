@@ -1,0 +1,11 @@
+# PLACEHOLDER - awaiting review by Mario (combustion model: yields, filtration) and the team. Lab fire at 13:00.
+# Defaults of the fire model: O2 consumed from heat_w at ~419 kJ per mol O2 (Huggett, 13.1 MJ/kg O2); the rest are ESTIMATES.
+faults:
+  - id: lab_fire
+    type: fire
+    targets: [lab]
+    start_s: 3600
+    duration_s: 1800
+    params: {"heat_w": 1000, "fuel_kj": 500, "smoke_mg_s": 2.0}
+    anomaly_type: fire
+    priority: 10

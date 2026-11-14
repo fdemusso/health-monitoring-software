@@ -18,6 +18,9 @@ from .constants import KELVIN, R_UNIV, SPECIES, psat_kpa
 
 CP_AIR_MOLAR = 29.1  # J/(mol K)
 RHO_CP_STP = 1200.0  # J/(m3 K) of air at 101.3 kPa (scaled with pressure)
+# Combustion products are removed by the air-revitalisation filters / catalytic oxidiser. ESTIMATES: first-order, owner Mario.
+CONTAMINANT_TAU_S = {"co_mol": 900.0, "smoke_mg": 300.0}
+FANS_OFF_DIFFUSION = 0.1  # with the fans off the modules only exchange air by slow diffusion. ESTIMATE
 
 
 @dataclass
@@ -28,6 +31,9 @@ class ModuleRT:
     heat_in_w: float = 0.0  # accumulated this tick, integrated by ``World.step``
     heat_load_w: float = 0.0  # reported in the snapshot
     occupants: list[str] = field(default_factory=list)
+    co_mol: float = 0.0  # carbon monoxide from combustion
+    smoke_mg: float = 0.0  # particulates from combustion
+    fans_on: bool = True
 
     @property
     def id(self) -> str:
@@ -95,6 +101,21 @@ class World:
     def add_heat(self, module_id: str, watts: float) -> None:
         self.modules[module_id].heat_in_w += watts
 
+    def add_contaminant(self, module_id: str, which: str, amount: float) -> None:
+        """``which``: ``co_mol`` or ``smoke_mg``. Not booked in the ledger (not a conserved species)."""
+        m = self.modules[module_id]
+        setattr(m, which, getattr(m, which) + amount)
+
+    def set_fans(self, module_id: str, on: bool) -> None:
+        self.modules[module_id].fans_on = on
+
+    def set_hatch(self, a: str, b: str, open_: bool) -> None:
+        for h in self.hatches:
+            if {h.a, h.b} == {a, b}:
+                h.open = open_
+                return
+        raise KeyError(f"no hatch {a}:{b}")
+
     def begin_tick(self) -> None:
         for m in self.modules.values():
             m.heat_in_w = 0.0
@@ -103,8 +124,14 @@ class World:
     # ---- physics ---------------------------------------------------------------------------
     def step(self, dt: float) -> None:
         self._diffuse(dt)
+        self._decay(dt)
         self._thermal(dt)
         self._condense()
+
+    def _decay(self, dt: float) -> None:
+        for m in self.modules.values():
+            for key, tau in CONTAMINANT_TAU_S.items():
+                setattr(m, key, getattr(m, key) * math.exp(-dt / tau))
 
     def _diffuse(self, dt: float) -> None:
         open_h = [h for h in self.hatches if h.open]
@@ -118,13 +145,18 @@ class World:
         for _ in range(nsub):
             for h in open_h:
                 a, b = self.modules[h.a], self.modules[h.b]
+                coeff = h.diffusion_coeff * (1.0 if a.fans_on and b.fans_on else FANS_OFF_DIFFUSION)
+                for key in CONTAMINANT_TAU_S:
+                    flux = coeff * (getattr(a, key) / a.spec.volume_m3 - getattr(b, key) / b.spec.volume_m3) * sub
+                    setattr(a, key, getattr(a, key) - flux)
+                    setattr(b, key, getattr(b, key) + flux)
                 for sp in SPECIES:
-                    flux = h.diffusion_coeff * (a.n[sp] / a.spec.volume_m3 - b.n[sp] / b.spec.volume_m3) * sub
+                    flux = coeff * (a.n[sp] / a.spec.volume_m3 - b.n[sp] / b.spec.volume_m3) * sub
                     a.n[sp] -= flux
                     b.n[sp] += flux
                 # heat carried by the exchanged air, weighted by the sub-step share of the tick
                 p_ratio = 0.5 * (a.pressure_kpa + b.pressure_kpa) / 101.3
-                w = h.diffusion_coeff * RHO_CP_STP * p_ratio * (a.temp_c - b.temp_c) * sub / dt
+                w = coeff * RHO_CP_STP * p_ratio * (a.temp_c - b.temp_c) * sub / dt
                 a.heat_in_w -= w
                 b.heat_in_w += w
 
@@ -154,6 +186,7 @@ class World:
             gas=GasComposition(**{sp: m.partial_kpa(sp) for sp in SPECIES}),
             heat_load_w=m.heat_load_w,
             occupants=tuple(m.occupants),
+            co_ppm=1e6 * m.co_mol / m.n_total, smoke_mg_m3=m.smoke_mg / m.spec.volume_m3, fans_on=m.fans_on,
         )
 
     def snapshot_hatches(self) -> tuple[HatchState, ...]:

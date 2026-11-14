@@ -27,9 +27,12 @@ MODULE_DEFAULTS: dict[str, tuple[float, float]] = {
     "pO2": (0.05, 10.0),
     "PIO2": (0.5, 10.0),
     "P": (0.05, 5.0),
+    "CO": (0.3, 20.0),  # ESTIMATE: electrochemical cell
+    "smoke": (0.02, 5.0),  # ESTIMATE: photoelectric particle sensor, mg/m3
 }
 # Wearable noise (std, unit of the vital). ESTIMATES: to be validated with the bioengineer.
-WEARABLE_NOISE: dict[str, float] = {"hr": 1.0, "hrv_rmssd": 2.0, "spo2": 0.5, "resp_rate": 0.5, "skin_temp_c": 0.1, "core_temp_c": 0.05}
+WEARABLE_NOISE: dict[str, float] = {"hr": 1.0, "hrv_rmssd": 2.0, "spo2": 0.5, "resp_rate": 0.5, "skin_temp_c": 0.1, "core_temp_c": 0.05,
+                                "cohb_pct": 0.3}  # cohb_pct (SpCO, co-oximetry): ESTIMATE
 
 
 class _SensorParams(BaseModel):

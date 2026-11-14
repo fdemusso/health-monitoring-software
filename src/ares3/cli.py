@@ -51,6 +51,28 @@ def _validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _serve(args: argparse.Namespace) -> int:
+    import asyncio
+
+    try:
+        import websockets  # noqa: F401
+
+        from ares3.serve.server import serve
+    except ImportError:
+        print("the WebSocket bridge needs the serve extra: uv sync --extra serve", file=sys.stderr)
+        return 2
+    from ares3.serve import Session
+
+    sc = load_scenario(args.scenario)
+    session = Session(sc, speed=args.speed, paused=args.paused, max_fps=args.fps)
+    print(f"serving {sc.file.name} on ws://{args.host}:{args.port} (speed {args.speed:g}x, Ctrl-C to stop)")
+    try:
+        asyncio.run(serve(session, args.host, args.port))
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="ares3", description="ARES 3 simulation engine")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -65,6 +87,14 @@ def main(argv: list[str] | None = None) -> int:
     v = sub.add_parser("validate", help="load a scenario and build every plugin without running")
     v.add_argument("scenario")
     v.set_defaults(fn=_validate)
+    s = sub.add_parser("serve", help="run a scenario live and stream ticks over a WebSocket (for the dashboard)")
+    s.add_argument("scenario")
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--speed", type=float, default=10.0, help="simulated seconds per real second")
+    s.add_argument("--fps", type=float, default=10.0, help="maximum frames per second sent to clients")
+    s.add_argument("--paused", action="store_true", help="start paused")
+    s.set_defaults(fn=_serve)
     args = p.parse_args(argv)
     return args.fn(args)
 

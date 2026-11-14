@@ -3,7 +3,10 @@
 Categories (``FaultSpec.category``):
 
 * sensor    - corrupts a sensor's *reading*: ``bias``, ``drift``, ``stuck``, ``dropout``, ``noise``
-* physical  - changes the module state: ``leak``, ``co2_source``, ``heat_source``
+* physical  - changes the module state: ``leak``, ``co2_source``, ``co_source`` (``mol_s`` of carbon monoxide),
+              ``heat_source``, ``fire``
+              (``fire`` params: ``heat_w``, optional ``o2_mol_s``, ``co2_mol_s``, ``co_mol_s``, ``smoke_mg_s``,
+              ``fuel_kj``, ``min_po2_kpa``, ``no_airflow_factor``; see ``Engine._fire``)
 * actuator  - ``actuator_offline`` disables an actuator
 * medical   - ``medical`` is passed to the physiology model of the targeted NPC through
               ``StepContext.faults_for(npc_id)``; its ``params`` are model specific
@@ -17,14 +20,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 FaultType = Literal[
     "bias", "drift", "stuck", "dropout", "noise",
-    "leak", "co2_source", "heat_source",
+    "leak", "co2_source", "co_source", "heat_source", "fire",
     "actuator_offline",
     "medical",
 ]
 
 _CATEGORY = {
     "bias": "sensor", "drift": "sensor", "stuck": "sensor", "dropout": "sensor", "noise": "sensor",
-    "leak": "physical", "co2_source": "physical", "heat_source": "physical",
+    "leak": "physical", "co2_source": "physical", "co_source": "physical", "heat_source": "physical", "fire": "physical",
     "actuator_offline": "actuator",
     "medical": "medical",
 }

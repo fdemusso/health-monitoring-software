@@ -14,9 +14,27 @@ from ares3.schemas.faults import FaultSpec
 
 class FaultInjector:
     def __init__(self, faults: list[FaultSpec], seed: int) -> None:
-        self.faults = faults
+        self.faults = list(faults)  # a copy: runtime injection must not edit the scenario
+        self._seed = seed
         self._rng = {f.id: derive(seed, "fault", f.id) for f in faults}
         self._stuck: dict[tuple[str, str], float] = {}  # (fault id, sensor id) -> frozen value
+
+    def add(self, fault: FaultSpec) -> None:
+        if any(f.id == fault.id for f in self.faults):
+            raise ValueError(f"fault id already in use: {fault.id}")
+        self.faults.append(fault)
+        self._rng[fault.id] = derive(self._seed, "fault", fault.id)
+
+    def stop(self, fault_id: str, t_s: float) -> None:
+        """End a fault at ``t_s`` (it stays in the list, so past rows keep their label)."""
+        for i, f in enumerate(self.faults):
+            if f.id == fault_id:
+                if t_s <= f.start_s:
+                    del self.faults[i]  # never became active
+                elif f.active_at(t_s):
+                    self.faults[i] = f.model_copy(update={"duration_s": t_s - f.start_s})
+                return
+        raise KeyError(fault_id)
 
     def active(self, t_s: float) -> list[FaultSpec]:
         return [f for f in self.faults if f.active_at(t_s)]

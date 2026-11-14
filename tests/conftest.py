@@ -16,3 +16,9 @@ def nominal() -> Scenario:
 @pytest.fixture
 def emergency() -> Scenario:
     return load_scenario(SCENARIOS / "emergency.yaml")
+
+
+@pytest.fixture
+def station() -> Scenario:
+    """The station (orbital_station profile, 101 kPa) with the monitoring system and no scheduled faults."""
+    return load_scenario(SCENARIOS / "events" / "debug_station.yaml")

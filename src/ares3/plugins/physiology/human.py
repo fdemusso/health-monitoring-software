@@ -18,6 +18,10 @@ On top of ``ProfileModel`` (baseline + medical episodes) this adds, all determin
 * MICROGRAVITY: small chronic hr rise and lower HRV [P18]; space motion sickness in the first days, with per-person
   severity drawn from the Shuttle distribution [P19] (``days_in_orbit`` sets the mission day at t=0; a medical fault
   with ``sms_severity`` / ``adaptation_day0`` forces an episode).
+* CARBON MONOXIDE: carboxyhaemoglobin (``cohb_pct``, the SpCO channel) follows the Coburn-Forster-Kane model from the
+  CO of the module (``plugins/physiology/toxicity.py``, sources [T1]-[T2]). COHb lowers the FUNCTIONAL oxygen
+  saturation, which enters the hypoxia dose (so health state) and the tachycardia term. The ``spo2`` vital is the
+  pulse-oximeter reading and does not see COHb. Added by the software team, to be reviewed by the bioengineer.
 * BEAT-TO-BEAT RR series (``rr_interval_ms``) with irregular rhythm for ``arrhythmia: af`` faults [P20]; ``rhythm`` 1 = AF.
 
 Not modelled: autonomic reflex or fainting without hypoxia, injury, bone and muscle loss, pharmacology.
@@ -31,6 +35,7 @@ from itertools import pairwise
 from ares3.sdk import ModuleState, NPCState, StepContext, VitalsUpdate, register
 
 from .profile import ProfileModel, ProfileParams
+from .toxicity import CFKPerson, alveolar_ventilation_stpd_ml_min, cohb_equilibrium, cohb_step, effective_pio2
 
 STATE_NAMES = ("ok", "symptomatic", "impaired", "unconscious", "dead")
 
@@ -163,6 +168,7 @@ class HumanModel(ProfileModel):
         super().__init__(*args, **kwargs)
         self._individualized = False
         self._sms_level = 0
+        self._cfk: CFKPerson | None = None
 
     # ---- individual parameters -----------------------------------------------------------------
     def _individualize(self, npc: NPCState) -> None:
@@ -185,6 +191,7 @@ class HumanModel(ProfileModel):
             upd["hrv_rest"] = max(15.0, hrv)
         self.params = p.model_copy(update=upd)
         self._sms_level = int(self.rng.choice(4, p=p.sms_probs))
+        self._cfk = CFKPerson.from_anthropometrics(sex, npc.body_mass_kg)
 
     # ---- targets / derived with the extra terms --------------------------------------------------
     def _targets(self, npc: NPCState, env: ModuleState, tod_h: float) -> dict[str, float]:
@@ -195,6 +202,10 @@ class HumanModel(ProfileModel):
         dehyd, fever = lat.get("dehyd_pct", 0.0), lat.get("fever_c", 0.0)
         hr_add = (p.hr_per_pct_dehyd * dehyd + p.hr_per_c * fever + lat.get("micro_k", 0.0) * p.micro_hr_delta
                   + p.sms_hr_per_level * lat.get("sms_eff", 0.0))
+        pio2_eff = lat.get("pio2_eff")  # carbon monoxide: functional hypoxia drives the heart like thin air would
+        if pio2_eff is not None and pio2_eff < env.pio2_mmhg:
+            extra = max(0.0, p.pio2_ref_mmhg - pio2_eff) - max(0.0, p.pio2_ref_mmhg - env.pio2_mmhg)
+            hr_add += min(p.hr_hypoxia_cap, p.hr_per_mmhg_pio2 * extra)
         rr_add = p.rr_per_pct_dehyd * dehyd + p.rr_per_c * fever + p.sms_rr_per_level * lat.get("sms_eff", 0.0)
         if npc.activity == "sleep":
             stage = int(lat.get("sleep_stage", 2))
@@ -219,12 +230,20 @@ class HumanModel(ProfileModel):
         return d
 
     # ---- health state ----------------------------------------------------------------------------
-    def _exposure(self, dt: float, env: ModuleState, lat: dict[str, float]) -> dict[str, float]:
+    def _va_ml_min(self, npc: NPCState, env: ModuleState) -> float:
+        """Alveolar ventilation (STPD) from the CO2 output; an unconscious / dead subject breathes less (gas_scale)."""
+        return alveolar_ventilation_stpd_ml_min(npc.vco2_l_min * npc.vitals.get("gas_scale", 1.0), env.pressure_kpa)
+
+    def _exposure(self, dt: float, env: ModuleState, lat: dict[str, float], npc: NPCState) -> dict[str, float]:
         p = self.params
         pio2 = env.pio2_mmhg
+        cohb = cohb_step(lat.get("cohb_pct", lat.get("cohb_rest", 0.4)), dt, co_ppm=env.co_ppm,
+                         pressure_kpa=env.pressure_kpa, pio2_mmhg=pio2, va_ml_min=self._va_ml_min(npc, env),
+                         person=self._cfk)
+        pio2_eff = effective_pio2(pio2, max(0.0, cohb - lat.get("cohb_rest", 0.0)))  # only the excess over the resting level
         ref = lat.get("pio2_ref", pio2)
         ref += (pio2 - ref) * (1.0 - math.exp(-dt / p.tau_pio2_ref_s))
-        tuc = tuc_hypoxia_s(pio2) * (p.rapid_decompression_factor if ref - pio2 > p.rapid_drop_mmhg else 1.0)
+        tuc = tuc_hypoxia_s(pio2_eff) * (p.rapid_decompression_factor if ref - pio2 > p.rapid_drop_mmhg else 1.0)
         rate = 1.0 / tuc + 1.0 / tloc_co2_s(env.ppco2_mmhg)  # per second
         core = lat.get("core_temp_c", 37.0)
         if core > p.heat_dose_core_c:
@@ -247,20 +266,23 @@ class HumanModel(ProfileModel):
             state = 1
         else:
             state = 0
-        return {"pio2_ref": ref, "dose": dose, "dead": dead, "health_state": float(state)}
+        return {"pio2_ref": ref, "dose": dose, "dead": dead, "health_state": float(state), "cohb_pct": cohb,
+                "pio2_eff": pio2_eff}
 
     # ---- model ------------------------------------------------------------------------------------
     def initial_vitals(self, npc: NPCState, env: ModuleState) -> VitalsUpdate:
         self._individualize(npc)
         upd = super().initial_vitals(npc, env)
         p = self.params
-        extra = {"pio2_ref": env.pio2_mmhg, "dose": 0.0, "dead": 0.0, "health_state": 0.0, "core_act": 0.0,
+        cohb_rest = cohb_equilibrium(co_ppm=env.co_ppm, pressure_kpa=env.pressure_kpa, pio2_mmhg=env.pio2_mmhg,
+                                     va_ml_min=self._va_ml_min(npc, env), person=self._cfk)
+        extra = {"cohb_rest": cohb_rest, "cohb_pct": cohb_rest, "pio2_ref": env.pio2_mmhg, "dose": 0.0, "dead": 0.0, "health_state": 0.0, "core_act": 0.0,
                  "fever_c": 0.0, "dehyd_pct": 0.0, "sleep_t0": -1.0, "sleep_stage": 0.0, "micro_k": 0.0,
                  "sms_eff": 0.0, "af_w": 0.0, "core_temp_c": p.core_temp_rest, "next_beat_t": 0.0,
                  "rr_ms": 60000.0 / upd.vitals["hr"]}
         vitals = {**upd.vitals, "health_state": 0.0, "gas_scale": 1.0, "core_temp_c": p.core_temp_rest,
                   "sleep_stage": 0.0, "dehydration_pct": 0.0, "nausea": 0.0, "rr_interval_ms": extra["rr_ms"],
-                  "rhythm": 0.0}
+                  "rhythm": 0.0, "cohb_pct": cohb_rest}
         return VitalsUpdate(vitals=vitals, latent={**upd.latent, **extra})
 
     def step(self, dt: float, npc: NPCState, env: ModuleState, ctx: StepContext) -> VitalsUpdate:
@@ -269,7 +291,7 @@ class HumanModel(ProfileModel):
         t, tod = ctx.tick.t_sim_s, ctx.tick.time_of_day_h
         faults = [f for f in ctx.faults_for(npc.id) if f.type == "medical"]
 
-        mine = self._exposure(dt, env, lat)
+        mine = self._exposure(dt, env, lat, npc)
         state = int(mine["health_state"])
         if mine["dead"]:
             return self._dead_step(dt, npc, env, lat, mine)
@@ -369,7 +391,7 @@ class HumanModel(ProfileModel):
         mine.update(next_beat_t=max(nb, t), rr_ms=rr_ms)
 
         v.update(health_state=float(state), core_temp_c=core, sleep_stage=mine["sleep_stage"], dehydration_pct=dehyd,
-                 nausea=mine["sms_eff"], rr_interval_ms=rr_ms, rhythm=1.0 if af_w > 0.5 else 0.0,
+                 nausea=mine["sms_eff"], cohb_pct=mine["cohb_pct"], rr_interval_ms=rr_ms, rhythm=1.0 if af_w > 0.5 else 0.0,
                  gas_scale=min(1.0, 1.0 / max(npc.met, 1.0)) if unconscious else 1.0)
         return VitalsUpdate(vitals=v, latent={**lat, **vit.latent, **mine})
 

@@ -25,6 +25,9 @@ class ModuleSpec(BaseModel):
     # "occupied": alarm rules are evaluated only while someone is inside (EVA suit / vehicle volumes, whose
     # atmosphere is not the habitat's and must not alarm when empty)
     alarm_mode: Literal["always", "occupied"] = "always"
+    # the escape vehicle (our Soyuz): a module the crew can retreat to. Emergency rules never close a hatch
+    # between a crew member and a return vehicle (docs: NASA SpaceOps 2023, "Safe Haven and Safe Return").
+    return_vehicle: bool = False
 
 
 class HatchSpec(BaseModel):

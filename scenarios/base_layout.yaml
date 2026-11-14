@@ -19,7 +19,12 @@ modules:
     alarm_mode: occupied
     atmosphere: {pressure_kpa: 46.66, o2_fraction: 0.42, co2_ppm: 1500}
 
+  # Escape vehicle (our "Soyuz"), docked to the hab. Empty and sealed until the crew retreats into it. ESTIMATE: volume (Soyuz
+  # descent+orbital module ~ 10 m3), crew-of-4 capacity, no own life support yet (no actuators: awaiting Mario).
+  - {id: lifeboat, volume_m3: 12, ua_w_k: 2, alarm_mode: occupied, return_vehicle: true}
+
 hatches:
   - {a: hab, b: lab,        diffusion_coeff: 0.08}
+  - {a: hab, b: lifeboat,   diffusion_coeff: 0.03, open: false}   # normally sealed, like the Soyuz hatch
   - {a: hab, b: greenhouse, diffusion_coeff: 0.08}
   - {a: hab, b: airlock,    diffusion_coeff: 0.05}
