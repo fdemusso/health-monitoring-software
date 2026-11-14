@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(npm audit *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(turbo *)",
+      "Bash(wrangler *)",
+      "Bash(tsc *)",
+      "Bash(vitest *)",
+      "Bash(eslint *)",
+      "Bash(prettier *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(diff *)",
+      "Bash(wc *)",
+      "Bash(stat *)",
+      "Bash(du *)",
+      "Bash(pwd)",
+      "Bash(which *)",
+      "Bash(echo *)",
+      "Bash(env)",
+      "Bash(ps *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(python3 -c \"import json,sys; d=json.load(sys.stdin); print(d.get('tool_input',d).get('command',''))\" 2>/dev/null || true); case \"$CMD\" in *grep*|*rg\\ *|*ripgrep*|*find\\ *|*fd\\ *|*ack\\ *|*ag\\ *)   [ -f graphify-out/graph.json ] &&   echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"graphify: Knowledge graph exists. Do NOT read GRAPH_REPORT.md (308KB, unreadable). For cross-module questions use: graphify path \\\"A\\\" \\\"B\\\" | graphify query \\\"<question>\\\" | graphify explain \\\"filename.ts\\\". For specific symbol lookups, grep is faster and more reliable.\"}}'   || true ;; esac"
+          }
+        ]
+      }
+    ]
+  },
+  "attribution":{"commit": "", "pr":"", "sessionUrl": false}
+}
