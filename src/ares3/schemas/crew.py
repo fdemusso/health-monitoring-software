@@ -47,6 +47,8 @@ class CrewMember(BaseModel):
     profile: str  # free label: commander | engineer | medic | botanist | ...
     body_mass_kg: float = Field(default=82.0, gt=0)
     sex: Literal["M", "F"] | None = None
+    age_y: float | None = Field(default=None, gt=0)  # years; drives HRmax, resting HRV (None = model defaults)
+    height_cm: float | None = Field(default=None, gt=0)
     alias: str | None = None  # name used in the bioengineer's brief (ASTRO_01 ...)
     schedule: list[ActivityBlock]
     physiology: PhysiologySpec | None = None  # None -> CrewConfig.physiology

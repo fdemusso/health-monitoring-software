@@ -1,7 +1,10 @@
-"""Verification PDF for the bioengineer: what each NPC produces in a normal day and in every event scenario.
+"""Verification report for the bioengineer: what each NPC produces in a normal day and in every event scenario.
+
+The report is written as HTML (output/npc_report/report.html, figures as PNG in img/) and converted to
+output/npc_report/report.pdf with headless Chrome or Edge (any installed Chromium; no Python PDF library needed).
 
     uv sync --extra dev --extra report
-    uv run python tools/npc_report.py              # runs every scenario (~5 min), writes output/npc_report/report.pdf
+    uv run python tools/npc_report.py              # runs every scenario (~10 min), writes report.html and report.pdf
     uv run python tools/npc_report.py --reuse      # re-plots from the cached runs
 
 Scenarios: scenarios/nominal.yaml (baseline day), scenarios/events/*.yaml. Luca's rule functions are copied from
@@ -11,9 +14,12 @@ notebooks/luca/Critical_condition_monitor.ipynb and applied to the simulated EVA
 from __future__ import annotations
 
 import argparse
+import html
 import math
 import pickle
-import textwrap
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import matplotlib
@@ -22,14 +28,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.backends.backend_pdf import PdfPages
 
 from ares3.core.engine import Engine
 from ares3.plugins.physiology.baseline import SPO2_VS_PIO2, spo2_from_pio2
+from ares3.plugins.physiology.human import CO2_TLOC, HYPOXIA_TUC, STATE_NAMES
 from ares3.schemas.scenario import load_scenario
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "output" / "npc_report"
+IMG = OUT / "img"
 MMHG = 7.50062
 NPCS = ["cmd", "bot", "eng", "med"]  # = ASTRO_01, 02, 03, 04
 ALIAS = {"cmd": "ASTRO_01", "bot": "ASTRO_02", "eng": "ASTRO_03", "med": "ASTRO_04"}
@@ -38,9 +45,12 @@ COL = {"cmd": "#1b9e77", "bot": "#d95f02", "eng": "#7570b3", "med": "#e7298a"}
 ACT_COL = {"sleep": "#4c72b0", "meal": "#ccb974", "nominal": "#8c8c8c", "work": "#8c8c8c", "rest": "#b0b0b0",
            "exercise_aerobic": "#d62728", "exercise_resistive": "#ff7f0e", "recovery": "#2ca02c"}
 METRICS = {"hr": ("FC (bpm)", "hr"), "spo2": ("SpO2 (%)", "spo2"), "rr": ("Resp. (atti/min)", "resp_rate"),
-           "hrv": ("HRV (ms)", "hrv_rmssd"), "skin": ("T cutanea (C)", "skin_temp_c")}
-EVENTS = ["eva_nominal", "eva_decompression", "fibrillation", "scrubber_failure", "co2_release", "slow_leak",
-          "dehydration", "stress", "fever", "motion_sickness"]
+           "hrv": ("HRV RMSSD (ms)", "hrv_rmssd"), "skin": ("T cutanea (C)", "skin_temp_c"),
+           "core": ("T centrale (C)", "core_temp_c"), "state": ("Stato di salute (0-4)", "health_state"),
+           "dehyd": ("Acqua persa (% massa)", "dehydration_pct"), "rrint": ("Intervallo RR (ms)", "rr_interval_ms"),
+           "stage": ("Fase del sonno", "sleep_stage"), "nausea": ("Nausea (0-3)", "nausea"), "rhythm": ("Ritmo (1 = AF)", "rhythm")}
+EVENTS = ["eva_nominal", "eva_decompression", "eva_decompression_fatal", "fibrillation", "scrubber_failure", "co2_release",
+          "slow_leak", "dehydration", "stress", "fever", "motion_sickness"]
 # Luca's brief: values he expects per astronaut (midpoint of his ranges)
 LUCA = {"cmd": dict(hr=69.5, spo2=98.5, o2=21.0, co2=0.25, p=758.0), "bot": dict(hr=142.5, spo2=96.2, o2=20.8, co2=0.38, p=758.0),
         "eng": dict(hr=150.0, spo2=93.0, o2=20.8, co2=0.38, p=758.0), "med": dict(hr=132.5, spo2=94.0, o2=28.0, co2=0.15, p=350.0)}
@@ -53,14 +63,20 @@ EV_IT = {
     "eva_nominal": ("Uscita EVA senza problemi", "ASTRO_04, 10:00-10:30", "Passeggiata esterna di 30 minuti, supporto vitale della tuta attivo.",
                     "Atmosfera tuta: 350 mmHg, 42 % O2 (nostra assunzione, vedi pagina Ambiente); sforzo 5.5 MET (ESTIMATE).",
                     "FC attorno a 125 bpm (la media NASA delle EVA e' 131-135) e SpO2 ~96 %: sono plausibili per una EVA? Nessun allarme atteso."),
-    "eva_decompression": ("Decompressione esplosiva durante la EVA", "ASTRO_04, evento alle 10:10", "In un solo istante la pressione passa da 350 a 50 mmHg, il supporto vitale si spegne.",
-                          "Evento e valori di pressione dal brief di Luca; i vitali NON sono imposti (Luca: FC 172, SpO2 88): seguono l'ambiente.",
-                          "Cosa deve produrre l'NPC quando la pressione parziale di ossigeno va a ~0? Il modello fa crollare la SpO2 e sale la FC; la perdita di coscienza non e' modellata."),
-    "fibrillation": ("Possibile fibrillazione atriale", "ASTRO_03, 11:10-11:25", "Per 15 minuti la FC sale a 150 bpm e la SpO2 scende a 93 % mentre lavora in habitat.",
-                     "FC 150 e SpO2 93 dal brief di Luca; HRV x2 e respirazione +3/min sono ESTIMATE (in AF l'RMSSD tende ad aumentare).",
-                     "Il quadro FC 150 / SpO2 93 e' coerente con la fibrillazione che ha in mente? L'HRV e la respirazione vanno corrette?"),
+    "eva_decompression": ("Decompressione esplosiva durante la EVA (morte disabilitata)", "ASTRO_04, evento alle 10:10",
+                          "In un solo istante la pressione passa da 350 a 50 mmHg e il supporto vitale si spegne. L'astronauta perde coscienza e, con la morte disabilitata, resta incosciente (stato 3).",
+                          "Evento e pressioni dal brief di Luca; i vitali NON sono imposti (Luca: FC 172, SpO2 88): derivano dall'ossigeno inspirato. Perdita di coscienza dalla dose di ipossia (tempo di coscienza utile FAA [P21]); soglie ESTIMATE.",
+                          "Quanti secondi servono per la perdita di coscienza (Luca: 9-15 s)? Dopo la perdita di coscienza la FC scende (bradicardia da ipossia grave): e' coerente con la clinica?"),
+    "eva_decompression_fatal": ("Decompressione esplosiva durante la EVA (morte abilitata)", "ASTRO_04, evento alle 10:10",
+                                "Stesso evento con la morte abilitata (opzione del modello): se la dose di ipossia supera 30 (circa 2 minuti di quasi vuoto) lo stato diventa 'morto'. FC, SpO2 e respirazione vanno a zero e l'NPC non scambia piu' gas.",
+                                "Stesso evento; la dose di morte (30 volte il tempo di coscienza utile) e' ESTIMATE.",
+                                "Un tempo alla morte di circa 2 minuti senza recompressione e' accettabile? Quale etichetta vuole nel dataset dopo la morte (serie che continua a zero o che si interrompe)?"),
+    "fibrillation": ("Possibile fibrillazione atriale", "ASTRO_03, 11:10-11:25",
+                     "Per 15 minuti la FC sale a 150 bpm, la SpO2 scende a 93 % e gli intervalli tra i battiti diventano irregolari (ritmo AF) mentre lavora in habitat.",
+                     "FC 150 e SpO2 93 dal brief di Luca; irregolarita' (deviazione standard degli RR = 15 % della media, RMSSD ~85 ms, nell'intervallo 80-250 ms [P20]) e respirazione +3/min ESTIMATE.",
+                     "Il quadro FC 150 / SpO2 93 con RR irregolari e' coerente con la fibrillazione che ha in mente? RMSSD e respirazione vanno corretti?"),
     "scrubber_failure": ("Guasto del depuratore di CO2", "habitat, 13:00-23:00", "Il depuratore di CO2 dell'habitat si ferma per 10 ore; l'equipaggio continua a produrre CO2.",
-                         "Evento fisico; effetto di CO2 su FC/respirazione: ESTIMATE (+1 bpm e +1.5 resp/min per mmHg sopra 2).",
+                         "Evento fisico; effetto di CO2 su FC/respirazione: ESTIMATE (+1 bpm e +1.5 resp/min per mmHg sopra 2). Perdita di coscienza solo oltre 50 mmHg [P22].",
                          "La CO2 sale fino al limite NASA (3 mmHg) e fa scattare l'allarme: l'effetto sui vitali (piccolo) e' realistico?"),
     "co2_release": ("Rilascio improvviso di CO2", "habitat, 13:00-15:00", "Una sorgente di CO2 supera la capacita' del depuratore per 2 ore.",
                     "Evento fisico; stessa risposta dei vitali alla CO2 (ESTIMATE).",
@@ -68,17 +84,20 @@ EV_IT = {
     "slow_leak": ("Perdita lenta di pressione", "habitat, 13:00-19:00", "L'habitat perde lo 0.001 % di gas al secondo (~20 % in 6 ore); il regolatore compensa solo in parte.",
                   "Evento fisico; SpO2 dalla curva PIO2 [P1] (valida solo per ipossia marcata).",
                   "La pressione scende fino a toccare il limite NASA di ossigeno (122 mmHg)? I vitali dovrebbero reagire prima?"),
-    "dehydration": ("Disidratazione progressiva", "ASTRO_02, 07:00-15:00", "Nel corso di 8 ore la FC sale di ~12 bpm a riposo e la HRV scende del 15 %.",
-                    "Tutti i valori sono ESTIMATE (nessuna fonte quantitativa trovata).",
-                    "Entita' e velocita' dell'effetto: sono ragionevoli? Quali altri vitali cambiano (temperatura cutanea)?"),
+    "dehydration": ("Disidratazione progressiva", "ASTRO_02, 07:00-15:00",
+                    "ASTRO_02 non beve e perde lo 0.5 % della massa corporea ogni ora per 8 ore (4 % in totale). FC, respirazione, HRV, temperatura cutanea e centrale seguono il deficit d'acqua; a fine evento la reidratazione chiude il deficit con costante di 2 ore.",
+                    "3 bpm e +0.2 C di temperatura centrale per 1 % di massa persa [P17]; HRV, respirazione e pelle ESTIMATE.",
+                    "0.5 %/h e' una perdita realistica? FC +12 bpm e temperatura centrale +0.8 C a fine evento sono ragionevoli? La reidratazione (2 h) e' troppo lenta?"),
     "stress": ("Stress acuto", "ASTRO_01, 10:00-12:00", "FC +10 bpm, respirazione +2/min, HRV ridotta del 40 % per 2 ore.",
-               "Valori ESTIMATE.", "Valori e durata ragionevoli per uno stress acuto in missione?"),
-    "fever": ("Febbre", "ASTRO_04, 11:00-17:00", "Febbre di +1.5 C per 6 ore: FC +13 bpm, respirazione +3/min, temperatura cutanea +1 C.",
-              "FC da letteratura (8.5 bpm per grado C) [P8]; resto ESTIMATE.",
+               "Valori ESTIMATE (episodio imposto, nessuna fonte quantitativa).", "Valori e durata ragionevoli per uno stress acuto in missione?"),
+    "fever": ("Febbre", "ASTRO_04, 11:00-17:00",
+              "La temperatura centrale sale di 1.5 C per 6 ore; FC (+8.5 bpm per grado), respirazione (+2 per grado) e temperatura cutanea (+1 C) la seguono.",
+              "8.5 bpm per grado C [P8]; respirazione, pelle e HRV ESTIMATE.",
               "La temperatura cutanea (misurata al polso) sale quanto la febbre? Come cambiano respirazione e HRV?"),
-    "motion_sickness": ("Mal di spazio (nausea)", "ASTRO_02, 08:00-09:00", "Un'ora di nausea: FC +10 bpm, respirazione +2/min, HRV -20 %.",
-                        "Valori ESTIMATE; fenomeno tipico delle prime ore-giorni in microgravita'.",
-                        "Tipico dei primi giorni in microgravita': l'intensita' e la durata sono ragionevoli?"),
+    "motion_sickness": ("Mal di spazio (nausea)", "ASTRO_02, 08:00-09:00",
+                        "Un'ora di mal di spazio severo (primo giorno di missione, nausea 3 su 3): FC +9 bpm, respirazione +1.5/min, HRV -15 %, pelle piu' fredda.",
+                        "Incidenza e gravita' dalle missioni Shuttle (67 % al primo volo: 30 % lieve, 24 % moderato, 13 % severo; 2-3 giorni) [P19]; effetto per livello ESTIMATE.",
+                        "Intensita' e durata per livello sono ragionevoli? La nausea (0-3) e' una variabile utile nei dati?"),
 }
 
 
@@ -189,6 +208,10 @@ def scenario_path(name: str) -> Path:
 def run(name: str) -> dict:
     sc = load_scenario(scenario_path(name))
     eng = Engine(sc)
+    ind = {n: dict(sex=eng.npcs[n].spec.sex, age=eng.npcs[n].spec.age_y, height=eng.npcs[n].spec.height_cm,
+                   mass=eng.npcs[n].spec.body_mass_kg, hr_rest=eng.physiology[n].params.hr_rest, hr_max=eng.physiology[n].params.hr_max,
+                   met_max=eng.physiology[n].params.met_max, hrv_rest=eng.physiology[n].params.hrv_rest,
+                   sms=getattr(eng.physiology[n], "_sms_level", 0)) for n in NPCS}
     ticks = round(sc.file.duration_days * sc.environment.day_length_s / sc.file.dt_s)
     rec, alarms = [], []
     for res in eng.run(ticks):
@@ -212,7 +235,7 @@ def run(name: str) -> dict:
     faults = [dict(id=f.id, type=f.type, targets=f.targets, start=f.start_s, end=f.start_s + (f.duration_s or 1e12),
                    label=f.label, params=f.params) for f in sc.faults.faults]
     return {"df": pd.DataFrame(rec), "alarms": pd.DataFrame(alarms), "faults": faults, "start_tod": sc.file.start_time_of_day_h,
-            "name": sc.file.name}
+            "name": sc.file.name, "ind": ind}
 
 
 def load_all(reuse: bool) -> dict[str, dict]:
@@ -236,54 +259,101 @@ def hours(run_: dict) -> np.ndarray:
     return run_["start_tod"] + run_["df"]["t"].values / 3600.0
 
 
-def text_page(pdf, title: str, blocks: list[str], size: float = 8.4, wrap: int = 125) -> None:
-    fig = plt.figure(figsize=(11.69, 8.27))
-    fig.text(0.04, 0.96, title, fontsize=15, weight="bold", va="top")
-    y = 0.915
+CSS = """
+@page { size: A4 landscape; margin: 11mm 12mm 13mm 12mm; @bottom-right { content: counter(page); font: 8pt Segoe UI, Arial, sans-serif; color: #666; } }
+* { box-sizing: border-box; }
+body { font: 9.6pt/1.42 "Segoe UI", Arial, sans-serif; color: #1c1c1c; margin: 0; }
+section { break-after: page; }
+section:last-of-type { break-after: auto; }
+h1 { font-size: 16pt; margin: 0 0 7px; padding-bottom: 4px; border-bottom: 2px solid #34495e; color: #1d2b3a; }
+h2 { font-size: 11.2pt; margin: 11px 0 3px; color: #1d2b3a; break-after: avoid; }
+p { margin: 0 0 6px; text-align: left; }
+p.explain { background: #eef3f8; border-left: 4px solid #4a76a8; padding: 5px 9px; margin: 4px 0 6px; font-size: 9pt; }
+p.note { font-size: 8.6pt; color: #333; margin-top: 7px; }
+p.check { background: #fff6e0; border-left: 4px solid #e0a020; padding: 5px 9px; margin-top: 7px; font-weight: 600; }
+img { display: block; max-width: 100%; max-height: 118mm; margin: 4px auto; }
+img.tall { max-height: 128mm; }
+table { border-collapse: collapse; width: 100%; font-size: 8.3pt; table-layout: fixed; margin: 4px 0; }
+th, td { border: 1px solid #b8c0c8; padding: 3px 5px; vertical-align: top; overflow-wrap: anywhere; }
+th { background: #dde3ea; text-align: left; }
+tr { break-inside: avoid; }
+thead { display: table-header-group; }
+.small table { font-size: 7.6pt; }
+.ev img { max-height: 80mm; }
+.ev p { margin-bottom: 4px; }
+.ev table { margin: 2px 0; }
+.cols { display: flex; gap: 14px; align-items: flex-start; }
+.cols > div { flex: 1; }
+"""
+
+
+def esc(x) -> str:
+    return html.escape(str(x))
+
+
+class Doc:
+    """Sections of the HTML report. Figures are saved as PNG next to the HTML and referenced by relative path."""
+
+    def __init__(self) -> None:
+        self.parts: list[str] = []
+        self.n_img = 0
+        shutil.rmtree(IMG, ignore_errors=True)
+        IMG.mkdir(parents=True, exist_ok=True)
+
+    def add(self, title: str, body: str, cls: str = "") -> None:
+        self.parts.append(f'<section class="{cls}"><h1>{esc(title)}</h1>{body}</section>')
+
+    def fig(self, fig, title: str, explain: str, after: str = "", cls: str = "", tall: bool = False, intro: str = "") -> None:
+        self.n_img += 1
+        name = f"fig{self.n_img:02d}.png"
+        fig.savefig(IMG / name, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        self.add(title, f'{intro}<p class="explain">{esc(explain)}</p><img class="{"tall" if tall else ""}" src="img/{name}">{after}', cls)
+
+    def write(self) -> Path:
+        out = OUT / "report.html"
+        out.write_text(f'<!doctype html><html lang="it"><head><meta charset="utf-8"><title>ARES 3 - verifica degli NPC</title>'
+                       f"<style>{CSS}</style></head><body>{''.join(self.parts)}</body></html>", encoding="utf8")
+        return out
+
+
+def blocks_html(blocks: list[str]) -> str:
+    out = []
     for b in blocks:
-        bold = b.startswith("##")
-        txt = b.lstrip("# ").strip()
-        for ln in textwrap.wrap(txt, 95 if bold else wrap) or [""]:
-            if y < 0.03:  # overflow: continue on a new page
-                pdf.savefig(fig)
-                plt.close(fig)
-                fig = plt.figure(figsize=(11.69, 8.27))
-                y = 0.96
-            fig.text(0.04, y, ln, fontsize=size + (1.5 if bold else 0), weight="bold" if bold else "normal", va="top")
-            y -= 0.021 if not bold else 0.03
-        y -= 0.008
-    pdf.savefig(fig)
-    plt.close(fig)
+        out.append(f"<h2>{esc(b.lstrip('# ').strip())}</h2>" if b.startswith("##") else f"<p>{esc(b)}</p>")
+    return "".join(out)
 
 
-def table_page(pdf, title: str, df: pd.DataFrame, note: str = "", col_w=None, font: float = 7.5, scale: float = 1.6) -> None:
-    fig = plt.figure(figsize=(11.69, 8.27))
-    fig.text(0.04, 0.96, title, fontsize=14, weight="bold", va="top")
-    ax = fig.add_axes([0.03, 0.14, 0.94, 0.78])
-    ax.axis("off")
-    ncol = len(df.columns)
-    widths = col_w or [1.0 / ncol] * ncol
-    # wrap every cell to its column width (about 18 chars per inch at 8 pt) and grow the row to fit
-    chars = [max(8, int(w * 11.0 * 18 * 8.0 / font * 0.78)) for w in widths]
-    cells = [["\n".join(textwrap.wrap(str(v), chars[j])) or "" for j, v in enumerate(row)] for row in df.values]
-    heads = ["\n".join(textwrap.wrap(str(c), chars[j])) for j, c in enumerate(df.columns)]
-    tb = ax.table(cellText=cells, colLabels=heads, loc="upper center", cellLoc="left", colWidths=widths)
-    tb.auto_set_font_size(False)
-    tb.set_fontsize(font)
-    tb.scale(1, 1.0)
-    base = 0.022 * font / 7.5 * 1.15
-    for r in range(len(cells) + 1):
-        lines = max(c.count("\n") + 1 for c in ([heads] + cells)[r])
-        for j in range(ncol):
-            cell = tb[r, j]
-            cell.set_height(base * lines + 0.012)
-            if r == 0:
-                cell.set_facecolor("#dde3ea")
-                cell.set_text_props(weight="bold")
-    if note:
-        fig.text(0.04, 0.11, "\n".join(textwrap.wrap(note, 190)), fontsize=8, va="top")
-    pdf.savefig(fig)
-    plt.close(fig)
+def table_html(df: pd.DataFrame, col_w=None) -> str:
+    w = col_w or [1.0 / len(df.columns)] * len(df.columns)
+    cols = "".join(f'<col style="width:{100 * x:.1f}%">' for x in w)
+    head = "".join(f"<th>{esc(c)}</th>" for c in df.columns)
+    body = "".join("<tr>" + "".join(f"<td>{esc(v)}</td>" for v in row) + "</tr>" for row in df.values)
+    return f"<table><colgroup>{cols}</colgroup><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+
+
+def text_page(doc: Doc, title: str, blocks: list[str]) -> None:
+    doc.add(title, blocks_html(blocks))
+
+
+def table_page(doc: Doc, title: str, df: pd.DataFrame, note: str = "", col_w=None, intro: str = "", cls: str = "") -> None:
+    doc.add(title, (f'<p class="explain">{esc(intro)}</p>' if intro else "") + table_html(df, col_w)
+            + (f'<p class="note">{esc(note)}</p>' if note else ""), cls)
+
+
+def to_pdf(src: Path, dst: Path) -> bool:
+    """Print the HTML with a headless Chromium browser (Chrome or Edge)."""
+    candidates = [shutil.which(x) for x in ("chrome", "google-chrome", "chromium", "msedge")] + [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"]
+    browser = next((c for c in candidates if c and Path(c).exists()), None)
+    if browser is None:
+        print("no Chrome/Edge found: open report.html and print it to PDF")
+        return False
+    with tempfile.TemporaryDirectory() as prof:
+        subprocess.run([browser, "--headless=new", "--disable-gpu", "--no-pdf-header-footer", f"--user-data-dir={prof}",
+                        f"--print-to-pdf={dst}", src.as_uri()], check=True, timeout=300, capture_output=True)
+    return dst.exists()
 
 
 def activity_strip(ax, run_: dict, npc: str) -> None:
@@ -296,10 +366,6 @@ def activity_strip(ax, run_: dict, npc: str) -> None:
             start = i
     ax.set_yticks([])
     ax.set_ylim(0, 1)
-
-
-def caption(fig, text: str, y: float = 0.012) -> None:
-    fig.text(0.02, y, "\n".join(textwrap.wrap(text, 190)), fontsize=6.8, va="bottom", color="#333")
 
 
 def shade_faults(ax, run_: dict, npc: str | None = None) -> None:
@@ -318,6 +384,43 @@ def stats_by_activity(r: dict) -> pd.DataFrame:
                 continue
             rows.append(dict(npc=n, act=act, minutes=len(g) / 60, **{k: g[f"{n}_{k}"].mean() for k in METRICS}))
     return pd.DataFrame(rows)
+
+
+def event_table(r: dict, npc: str, mets: list[str], ev: str) -> pd.DataFrame:
+    """Mean 30 min before the event, min/max during, mean 30 min after (whole run for events without a fault window)."""
+    d = r["df"]
+    f0 = min(f["start"] for f in r["faults"]) if r["faults"] else None
+    f1 = max(min(f["end"], d["t"].iloc[-1]) for f in r["faults"]) if r["faults"] else None
+    rows = []
+    for k in mets:
+        s = d[f"{npc}_{k}"]
+        if f0 is None:
+            sel = d[d[f"{npc}_mod"] == "eva"] if ev == "eva_nominal" else d
+            rows.append([METRICS[k][0], f"{sel[f'{npc}_{k}'].mean():.1f}", f"{sel[f'{npc}_{k}'].min():.1f}", f"{sel[f'{npc}_{k}'].max():.1f}", "-"])
+            continue
+        pre = s[(d.t >= f0 - 1800) & (d.t < f0)].mean()
+        win = s[(d.t >= f0) & (d.t <= f1)]
+        post = s[(d.t > f1) & (d.t <= f1 + 1800)].mean()
+        rows.append([METRICS[k][0], f"{pre:.1f}", f"{win.min():.1f}", f"{win.max():.1f}", f"{post:.1f}" if not np.isnan(post) else "-"])
+    head = (["Grandezza", "media 30 min prima", "minimo nell'evento", "massimo nell'evento", "media 30 min dopo"] if f0 is not None
+            else ["Grandezza", "media (nella EVA)", "minimo", "massimo", "-"])
+    return pd.DataFrame(rows, columns=head)
+
+
+def event_notes(r: dict, npc: str) -> str:
+    al = r["alarms"]
+    if len(al):
+        g = al.groupby(["code", "module"]).agg(first=("t", "min"), last=("t", "max"), n=("t", "count")).reset_index()
+        txt = "Allarmi NASA: " + "; ".join(f"{x.code}/{x.module} {(r['start_tod'] + x['first'] / 3600) % 24:.2f}h-{(r['start_tod'] + x['last'] / 3600) % 24:.2f}h ({x.n} s)"
+                                           for _, x in g.iterrows())
+    else:
+        txt = "Allarmi NASA: nessuno."
+    labs = r["df"][f"{npc}_anom"].value_counts()
+    txt += f" Etichette scritte nel dataset per {npc} (fault attivo): " + ", ".join(f"{k} {v} s" for k, v in labs.items()) + "."
+    st = r["df"][f"{npc}_state"]
+    if st.max() > 0:
+        txt += " Stato di salute massimo raggiunto: " + STATE_NAMES[int(st.max())] + "."
+    return f'<p class="note">{esc(txt)}</p>'
 
 
 def main() -> None:
@@ -351,8 +454,11 @@ def main() -> None:
     al_nom = ev_nom["alarms"]
     eva_alarm_s = int(((al_nom.module == "eva") & (al_nom.code == "pio2_abs")).sum()) if len(al_nom) else 0
     dec = ev_dec["df"]
-    after = dec[(dec["t"] > 4260) & (dec["med_mod"] == "eva")]
+    after = dec[(dec["t"] > 4200) & (dec["med_mod"] == "eva")]
     dec_sp_min, dec_hr_max, dec_pio2 = after["med_spo2"].min(), after["med_hr"].max(), after["eva_PIO2"].mean()
+    dec_loc = float(dec[dec.med_state >= 3].t.min() - 4200)
+    fat = R["eva_decompression_fatal"]["df"]
+    dec_dead = float(fat[fat.med_state >= 4].t.min() - 4200)
     p_b, p_a = float(dec[dec.t == 4199].eva_P.iloc[0]), float(dec[dec.t == 4201].eva_P.iloc[0])
     baro_sim, baro_luca = barotrauma(p_b, p_a, 1.0), barotrauma(350, 50, 0.2)
     fib = R["fibrillation"]["df"]
@@ -370,7 +476,7 @@ def main() -> None:
 
     scope = [
         "## A cosa serve",
-        "Questo documento mostra quali dati producono i 4 astronauti simulati (NPC) in una giornata normale e in 10 situazioni particolari "
+        "Questo documento mostra quali dati producono i 4 astronauti simulati (NPC) in una giornata normale e in 11 situazioni particolari "
         "(scenari). Serve a controllare se i valori sono realistici e se ogni situazione e' rappresentata correttamente. Il modello non e' "
         "validato: dove manca una fonte il numero e' una nostra stima, marcata ESTIMATE, e chiediamo di correggerla.",
         "## Cosa chiediamo di verificare",
@@ -384,7 +490,7 @@ def main() -> None:
         "Nei grafici l'area rosa e' il periodo in cui l'evento e' attivo; la linea punteggiata e' il valore indicato da Luca.",
         "## Astronauti simulati",
         "ASTRO_01 comandante (uomo, 76 kg), ASTRO_02 botanica (donna, 61.5 kg, si allena sul tapis roulant T2), ASTRO_03 ingegnera (donna, 84 kg, "
-        "episodio di fibrillazione), ASTRO_04 medico (donna, 65 kg, uscita EVA). Pesi e sesso sono quelli del brief di Luca.",
+        "episodio di fibrillazione), ASTRO_04 medico (donna, 65 kg, uscita EVA). Pesi e sesso sono quelli del brief di Luca; eta' e altezza (pagina 'Persone simulate') sono una nostra stima da confermare.",
     ]
 
     env_text = [
@@ -446,7 +552,7 @@ def main() -> None:
         ["ECG IMPROVEMENTFINAL: monitor_astronaut_live", "Tutte le fasi", "single_raw_ecg (140 campioni), already_normalized",
          "Riga fissa del dataset per astronauta", "Non generato dai vitali; etichetta legata all'evento"],
         ["ENERGY_INTAKE, cella 1: lancio del razzo", "DECOLLO dalla Terra (forze G)", "heart_rate, peso_kg, durata_minuti, allarme ECG, score",
-         "NON simulata: nessuna fase di lancio", "Domanda 11"],
+         "NON simulata: nessuna fase di lancio", "Domanda 13"],
         ["ENERGY_INTAKE, cella 2: stazione 'statica'", "Stazione, lavoro o riposo", "heart_rate, peso_kg, durata, allarme ECG, score",
          "FC, peso disponibili; MAE dipende dal modello ECG", "Metabolismo basale -10 % in microgravita' (nel nostro modello non applicato)"],
         ["ENERGY_INTAKE, cella 3: allenamento ISS", "Stazione, esercizio con T2, ARED o CEVIS", "heart_rate, peso_kg, durata, macchinario, allarme ECG, score",
@@ -455,7 +561,7 @@ def main() -> None:
          "FC, SpO2 disponibili", "SpO2 < 95 % / < 90 % aumenta il costo energetico del 15 % / 30 %"],
         ["ENERGY_INTAKE, cella 5: reintegrazione", "STATION oppure OUTSIDE", "scenario, durata, heart_rate, peso, sex, kcal e acqua giornaliere",
          "scenario e sex disponibili; kcal e acqua giornaliere NO", "Serve un consumo di cibo e acqua simulato"],
-        ["stress-level-detection", "Non specificata", "colonne di Stress-lysis.csv (es. passi)", "Non simulabile: file non fornito", "Domanda 10"],
+        ["stress-level-detection", "Non specificata", "colonne di Stress-lysis.csv (es. passi)", "Non simulabile: file non fornito", "Domanda 12"],
     ], columns=["Sezione dei dati di Luca", "Fase di missione", "Ingressi", "Disponibile dalla simulazione?", "Nota"])
 
     limits = pd.DataFrame([
@@ -466,27 +572,52 @@ def main() -> None:
         ["Umidita' relativa", "tra 25 e 75 %", "Vapore acqueo rispetto alla saturazione.", "Comfort, condensa"],
     ], columns=["Grandezza", "Limite NASA-STD-3001", "Cosa significa", "Perche' conta"])
 
+    def rg(k, f="{:.0f}"):
+        return f"{f.format(ranges[k][0])} - {f.format(ranges[k][1])}"
+
     variables = pd.DataFrame([
-        ["FC (hr)", "bpm", "Battiti al minuto", "Riposo + sforzo (MET) + ambiente + fase (sonno); ritardo 40 s salita, 65 s discesa", f"{ranges['hr'][0]:.0f} - {ranges['hr'][1]:.0f}"],
-        ["SpO2 (spo2)", "%", "Saturazione di ossigeno nel sangue", "Curva dalla PIO2 [P1]; scostamenti degli episodi", f"{ranges['spo2'][0]:.1f} - {ranges['spo2'][1]:.1f}"],
-        ["Freq. respiratoria (resp_rate)", "atti/min", "Respiri al minuto", "14 a riposo (12 nel sonno) + 1.5 per MET + CO2", f"{ranges['rr'][0]:.0f} - {ranges['rr'][1]:.0f}"],
-        ["HRV (hrv_rmssd)", "ms", "Variabilita' del battito (RMSSD)", "45 ms a riposo, scende con la FC, +-10 % nel giorno", f"{ranges['hrv'][0]:.0f} - {ranges['hrv'][1]:.0f}"],
-        ["Temperatura cutanea (skin_temp_c)", "C", "Temperatura della pelle (polso)", "33.5 + 0.05 per MET + sonno + ambiente", f"{ranges['skin'][0]:.1f} - {ranges['skin'][1]:.1f}"],
-        ["MET", "-", "Intensita' dell'attivita' (1 = riposo)", "Dalla routine: sonno 0.9, lavoro 1.45, esercizio 7, EVA 5.5", "0.9 - 7"],
+        ["FC (hr)", "bpm", "Battiti al minuto", "Riposo per persona + sforzo (MET) + ambiente + fase del sonno + ritmo circadiano + febbre, disidratazione, microgravita'; ritardo 40 s salita, 65 s discesa", rg("hr")],
+        ["SpO2 (spo2)", "%", "Saturazione di ossigeno nel sangue", "Curva dalla PIO2 [P1]; scostamenti degli episodi", rg("spo2", "{:.1f}")],
+        ["Freq. respiratoria (resp_rate)", "atti/min", "Respiri al minuto", "14 a riposo (12 nel sonno, varia con la fase) + 1.5 per MET + CO2 + febbre", rg("rr")],
+        ["HRV (hrv_rmssd)", "ms", "Variabilita' del battito (RMSSD)", "Per persona (sesso, eta'), scende con la FC; in AF dagli RR irregolari", rg("hrv")],
+        ["Temperatura cutanea (skin_temp_c)", "C", "Temperatura della pelle (polso)", "33.5 + 0.05 per MET + sonno + ambiente", rg("skin", "{:.1f}")],
+        ["Temperatura centrale (core_temp_c)", "C", "Temperatura interna del corpo", "36.8 + ritmo circadiano (+-0.4) + calore dello sforzo + febbre + disidratazione", rg("core", "{:.1f}")],
+        ["Stato di salute (health_state)", "0-4", "0 ok, 1 sintomi, 2 compromesso, 3 incosciente, 4 morto", "Dose di ipossia, CO2 e calore (pagina del modello)", rg("state")],
+        ["Acqua persa (dehydration_pct)", "% massa", "Deficit di acqua corporea", "Sudore dallo sforzo meno reidratazione (2 h); disidratazione da evento", rg("dehyd", "{:.1f}")],
+        ["Fase del sonno (sleep_stage)", "codice", "0 veglia, 1 N1, 2 N2, 3 N3, 5 REM", "Ipnogramma a cicli di 90 minuti dall'inizio del sonno", "0 - 5"],
+        ["Intervallo RR (rr_interval_ms)", "ms", "Tempo tra due battiti consecutivi", "Estratto attorno a 60000/FC con la variabilita' dell'HRV; irregolare in AF", rg("rrint")],
+        ["Ritmo (rhythm)", "0/1", "1 = fibrillazione atriale in corso", "Dall'evento 'arrhythmia: af'", "0 - 1"],
+        ["Nausea (nausea)", "0-3", "Gravita' del mal di spazio", "Livello della persona per il giorno di missione; evento", "0 - 3"],
+        ["MET", "-", "Intensita' dell'attivita' (1 = riposo)", "Dalla routine: sonno 0.9, lavoro 1.45, esercizio 7, EVA 5.5; da incosciente e' 1", "0.9 - 7"],
         ["Attivita' e modulo", "-", "Cosa fa e dove si trova", "Dalla routine giornaliera", "-"],
-        ["PIO2, ppCO2, P, T, UR del modulo", "mmHg, mmHg, mmHg, C, %", "Aria del modulo in cui si trova", "Fisica dei gas: respirazione degli astronauti, impianti, guasti", f"hab: PIO2 {dd['hab_PIO2'].min():.0f}-{dd['hab_PIO2'].max():.0f}, ppCO2 {dd['hab_ppCO2'].min():.1f}-{dd['hab_ppCO2'].max():.1f}"],
+        ["PIO2, ppCO2, P, T, UR del modulo", "mmHg, mmHg, mmHg, C, %", "Aria del modulo in cui si trova", "Fisica dei gas: respirazione degli astronauti (zero se morto), impianti, guasti", f"hab: PIO2 {dd['hab_PIO2'].min():.0f}-{dd['hab_PIO2'].max():.0f}, ppCO2 {dd['hab_ppCO2'].min():.1f}-{dd['hab_ppCO2'].max():.1f}"],
         ["Misura dei sensori", "come sopra", "Valore letto dal sensore", "Valore vero + rumore + ritardo; i guasti dei sensori non sono simulati in questi scenari", "-"],
-        ["Etichetta anomalia (is_anomaly, anomaly_type)", "-", "Vale 'fault attivo' per ogni riga di dati", "Dall'evento attivo; fuori dagli eventi = 'nominal'", "-"],
+        ["Etichetta anomalia (is_anomaly, anomaly_type)", "-", "Vale 'fault attivo' per ogni riga di dati", "Dall'evento attivo; fuori dagli eventi = 'nominal'. Lo stato di salute e' un'etichetta a parte", "-"],
     ], columns=["Variabile", "Unita'", "Cosa rappresenta", "Come viene prodotta", "Intervallo nel giorno normale"])
 
     model_text = [
         "## Come nascono i vitali",
-        "Ogni astronauta ha un valore di riferimento a riposo. Su quello si sommano tre effetti: lo sforzo (piu' MET, piu' FC e respiro), l'ambiente (poco ossigeno = SpO2 piu' bassa e FC piu' alta; "
-        "CO2 alta = respiro piu' frequente) e la fase della giornata (nel sonno FC -20 %, HRV piu' alta, pelle piu' calda). Il valore vero si avvicina al valore obiettivo con ritardo: la FC sale con costante di "
-        "tempo ~40 s e scende in ~65 s. Gli episodi (febbre, fibrillazione, stress...) aggiungono uno scostamento che entra in alcuni minuti e rientra gradualmente (30 s) quando l'evento finisce.",
+        "Ogni astronauta ha un valore di riferimento a riposo che dipende da sesso, eta' e massa (pagina 'Persone simulate'). Su quello si sommano gli effetti: lo sforzo (piu' MET, piu' FC e respiro), "
+        "l'ambiente (poco ossigeno = SpO2 piu' bassa e FC piu' alta; CO2 alta = respiro piu' frequente), la fase della giornata (sonno: FC -20 %, HRV piu' alta; di giorno la FC segue un ritmo circadiano di +-3 bpm con picco alle 15) "
+        "e lo stato del corpo (febbre, disidratazione, microgravita'). Il valore vero si avvicina al valore obiettivo con ritardo: la FC sale con costante di tempo ~40 s e scende in ~65 s.",
+        "## Stato di salute e coscienza (nuovo)",
+        "Ogni astronauta ha uno stato: 0 ok, 1 sintomi, 2 compromesso (non puo' piu' agire), 3 incosciente, 4 morto. Lo stato segue una 'dose' di esposizione che ogni secondo aumenta di 1 diviso il tempo di coscienza utile "
+        "(il tempo dopo il quale una persona non sa piu' reagire, tabella FAA [P21]) nelle condizioni di quel momento. Esempio: a PIO2 70 mmHg (18000 piedi) il tempo e' 25 minuti, a 8 mmHg (quasi vuoto) 6-9 secondi. "
+        "La dose conta ipossia (PIO2), CO2 alta (perdita di coscienza solo sopra 50 mmHg, 7-10 % a pressione di mare [P22]) e calore (temperatura centrale sopra 39.5 C). Soglie sulla dose: 0.25 sintomi, 1 compromesso, 1.5 incosciente, 30 morto. "
+        "Quando l'esposizione finisce la dose decade (costante 10 minuti) e l'astronauta si riprende. Dopo una decompressione rapida il tempo e' dimezzato [P21]. Tutte le soglie sono ESTIMATE, costruite sulla tabella FAA.",
+        "## Conseguenze dello stato",
+        "Incosciente: l'NPC smette di lavorare (MET 1, scambi di gas a riposo), con ipossia grave la FC scende (bradicardia) e il respiro rallenta. Morto: FC, SpO2, respirazione e HRV vanno a zero (costanti 30-60 s), "
+        "gli scambi di gas si fermano e la temperatura del corpo si porta a quella della stanza. La morte e' OPZIONALE: parametro 'death_enabled' (falso di default; per uno scenario si imposta con 'physiology_overrides'). "
+        "Con la morte disabilitata la dose si ferma appena sotto la soglia di morte e lo stato massimo e' 'incosciente'.",
+        "## Altri meccanismi (nuovi)",
+        "Persone: frequenza massima 208 - 0.7 x eta' [P13]; FC a riposo uomini 60, donne 64 [P14]; HRV a riposo piu' alta nelle donne (+5 ms) e in calo con l'eta' [P14]; VO2max per sesso ed eta' (ESTIMATE). "
+        "Circadiano e sonno: ritmo di FC e temperatura centrale [P15]; ipnogramma deterministico a cicli di 90 minuti (N3 10-20 %, REM 20-25 % [P16]) che modifica FC e respiro nel sonno. "
+        "Temperatura e acqua: la temperatura centrale cresce con lo sforzo e con la febbre; il sudore (da MET) riduce l'acqua del corpo, che si recupera bevendo (costante 2 h); la disidratazione aumenta la FC di 3 bpm per 1 % di massa persa [P17]. "
+        "Microgravita': FC +3.4 bpm e HRV -10 % a regime [P18]; mal di spazio nei primi giorni, con gravita' per persona estratta dalla distribuzione Shuttle [P19] (le persone sono al giorno 30 di missione, quindi adattate). "
+        "Ritmo: per ogni battito si estrae un intervallo RR attorno a 60000/FC; nel ritmo sinusale la variabilita' riproduce l'HRV, in fibrillazione l'RR e' irregolare [P20].",
         "## Cosa il modello non fa",
-        "Non simula: perdita di coscienza, calo di SpO2 da sforzo, aritmia battito per battito, variazioni circadiane della FC, differenze per sesso/eta' nei valori di riposo, adattamento alla microgravita'. "
-        "Gli stessi valori di riposo sono usati per tutti (tranne il comandante, FC 64).",
+        "Non simula: sincope senza ipossia, traumi, perdita di massa ossea e muscolare, farmaci, discesa della SpO2 da sforzo, ECG generato dai vitali (l'ECG resta una riga fissa del dataset), "
+        "reazioni dell'astronauta agli allarmi (fuori dallo scopo del progetto), il decollo dalla Terra.",
     ]
 
     incong = [
@@ -497,7 +628,7 @@ def main() -> None:
         f"2) Ossigeno della tuta. 350 mmHg e 28 % O2 danno PIO2 {pio2_luca_eva:.0f} mmHg (limite NASA 122) e, secondo la curva di letteratura [P1], SpO2 ~{spo2_luca_eva:.0f} %; il brief indica SpO2 94 %. "
         "Una tuta reale usa 222 mmHg con O2 100 % (PIO2 ~175 mmHg) [P11]; la proposta NASA per Marte e' 8.2 psia (424 mmHg) con 34 % O2 (PIO2 128 mmHg, non validata). Abbiamo assunto il 42 % (PIO2 127).",
         f"3) Emergenza EVA. A 50 mmHg e 20 % O2 la PIO2 e' ~{pio2(50, 20):.1f} mmHg, praticamente vuoto. Il brief stesso indica perdita di coscienza in 9-15 s; la letteratura [P1] riporta 0-15 s a PIO2 28 mmHg dopo decompressione rapida. "
-        f"FC 172 e SpO2 88 % descrivono invece una persona ancora cosciente. Nel modello la SpO2 scende a {dec_sp_min:.0f} % (minimo del modello) e la FC a {dec_hr_max:.0f} bpm.",
+        f"FC 172 e SpO2 88 % descrivono invece una persona ancora cosciente. Nel modello la FC sale fino a {dec_hr_max:.0f} bpm, l'astronauta perde coscienza dopo {dec_loc:.0f} s, la SpO2 scende fino a {dec_sp_min:.0f} % e, con la morte abilitata, il decesso avviene dopo {dec_dead:.0f} s.",
         f"4) Passo temporale. La caduta 350->50 mmHg in 0.2 s avviene in un solo passo di simulazione (1 s). Applicando la regola barotrauma ai dati simulati il risultato e' '{baro_sim}', con i valori del brief (0.2 s) e' '{baro_luca}'. "
         "Per rilevare l'esplosiva servono passi <= 0.1 s attorno all'evento o un campo che dichiari la durata.",
         "5) Atmosfera della stanza. ASTRO_02 e ASTRO_03 sono indicati con 20.8 % O2 e 0.38 % CO2, ASTRO_01 con 21.0 % e 0.25 %, tutti nella stessa stanza (3 astronauti, 60 m3). Nello stesso volume e nello stesso istante l'aria e' una sola. "
@@ -505,7 +636,7 @@ def main() -> None:
         "6) Dati anagrafici. ASTRO_02 e' descritto 'uomo' ma ha sex F e 61.5 kg. Il blocco 'astro_4' compare due volte (il terzo e' ASTRO_03). Per ASTRO_02/03 'oxygenperc' e' 21 ma 'o2_perc_attuale' e' 20.8.",
         "7) Due tabelle di soglie. La funzione del notebook e il file monitor_parametri_spaziali.csv danno stati di ipossia e O2 minimo diversi alla stessa quota (pagina dedicata).",
         f"8) Fibrillazione. FC 150 e SpO2 93 % a riposo sono simili a un allenamento intenso (ASTRO_02: {bot_ex:.0f} bpm): su FC e SpO2 i due casi non si separano, serve l'ECG (label 0.0) e il contesto 'in_allenamento'. "
-        "Nella fibrillazione l'HRV (RMSSD) tende ad aumentare [P9]: il modello lo raddoppia (ESTIMATE).",
+        "Nella fibrillazione l'HRV (RMSSD) tende ad aumentare [P9]: il modello genera RR irregolari (RMSSD ~85 ms, ESTIMATE nell'intervallo 80-250 ms [P20]).",
         f"9) Intensita' dell'allenamento. Il catalogo di attivita' assegna 9.7 MET all'esercizio aerobico (FC ~180, 97 % del massimo); NASA riporta sessioni sul tapis roulant ISS al 66-75 % del picco di FC [P2]. Abbiamo usato 7.0 MET: FC media {bot_ex:.0f} bpm (brief: 142.5), circa 78 % del massimo.",
         "10) ECG. Il dataset ha 100 righe da 140 campioni (60 normali = label 1.0, 40 anomale = label 0.0). Ogni NPC riceve una riga fissa; l'ECG non viene generato dai vitali. L'etichetta andrebbe legata all'evento (0.0 durante fibrillazione ed emergenza).",
     ]
@@ -513,7 +644,7 @@ def main() -> None:
     questions = [
         "## Decisioni gia' prese (se non corrette da Luca)",
         "Gli NPC sono ASTRO_01 comandante, ASTRO_02 botanica, ASTRO_03 ingegnera, ASTRO_04 medico (confermato). L'ambiente e' la stazione (758 mmHg, 21 % O2). Per l'EVA usiamo 350 mmHg con 42 % di ossigeno invece di 28 %, perche' il valore del brief da' PIO2 sotto il limite NASA. "
-        "L'esercizio aerobico e' fissato a 7.0 MET e la EVA a 5.5 MET.",
+        "L'esercizio aerobico e' fissato a 7.0 MET e la EVA a 5.5 MET. La morte e' opzionale (disabilitata di default). Il comportamento reattivo degli astronauti (reazione agli allarmi) e' fuori dallo scopo: il progetto monitora la salute.",
         "## 1) Ambiente di riferimento: conferma stazione/livello del mare",
         "Contesto: abbiamo adottato l'ambiente dei suoi profili 'STATION' (758 mmHg, 21 % O2, microgravita'): e' coerente con altitudine 0, soglia ppO2 148 mmHg, macchinari ISS e metabolismo in microgravita'. "
         f"L'habitat marziano (70.3 kPa, 26.5 % O2) darebbe PIO2 127 mmHg e SpO2 a riposo ~{spo2_mars:.0f} %, contro ~{spo2_station:.0f} % della stazione. Ci serve: conferma che il modello di allerta lavora in ambiente ISS/livello del mare "
@@ -522,8 +653,8 @@ def main() -> None:
         "Contesto: vedi incongruenza 2. Opzioni: 350 mmHg al 28 % (brief, PIO2 85, SpO2 attesa ~83 %), 350 mmHg al 42 % (nostra assunzione, PIO2 127), tuta EMU 222 mmHg con O2 100 %, tuta marziana 424 mmHg con 34 %. "
         "Il volume di 12 m3 e' un airlock/rover o una tuta (0.1-0.2 m3)? Ci serve: i valori reali che intende usare.",
         "## 3) Cosa deve produrre l'NPC durante l'emergenza EVA",
-        f"Contesto: a 50 mmHg la PIO2 e' ~{pio2(50, 20):.1f} mmHg. Il modello porta la SpO2 a {dec_sp_min:.0f} % (limite inferiore del modello) e la FC a {dec_hr_max:.0f} bpm, non simula la perdita di coscienza. Il brief indica FC 172 e SpO2 88 %. "
-        "Ci serve: sono i valori iniziali dopo la rottura (da cui l'NPC peggiora) oppure a regime? Vuole un segnale di perdita di coscienza dopo 9-15 s?",
+        f"Contesto: a 50 mmHg la PIO2 e' ~{pio2(50, 20):.1f} mmHg. Il modello ora simula la perdita di coscienza dopo {dec_loc:.0f} s (la FC sale fino a {dec_hr_max:.0f} bpm prima, poi scende) e, se abilitata, la morte dopo {dec_dead:.0f} s; il brief indica FC 172 e SpO2 88 % e perdita di coscienza in 9-15 s. "
+        "Ci serve: sono i valori iniziali dopo la rottura (da cui l'NPC peggiora) oppure a regime? Il tempo alla perdita di coscienza e quello alla morte sono accettabili?",
         "## 4) Altitudine",
         "Contesto: incongruenza 1. Assunzione attuale: l'altitudine non viene calcolata. Ci serve: quale grandezza considera 'vera' (pressione, PIO2 o altitudine) per le sue regole; proponiamo di derivare l'altitudine equivalente dalla PIO2.",
         "## 5) Quale tabella di soglie vale",
@@ -532,20 +663,29 @@ def main() -> None:
         "Contesto: dal notebook, num_astronauti e' il numero di persone nel modulo e tempo_trascorso_secondi e' l'intervallo tra pressione iniziale e attuale (1.0 normale, 0.2 emergenza). "
         "La funzione di atmosfera allarma con ppO2 = P x %O2 sotto 148 mmHg (soglia da livello del mare). Con la stazione (758 x 21 % = 159) non scatta; con la tuta (350 x 42 % = 147) e con l'habitat marziano (140) scatta anche in condizioni normali. "
         "Il limite O2 > 23.5 % (rischio incendio) vale per una cabina ma scatta sempre in tuta (O2 28-42 %). Ci serve: conferma del significato di tempo_trascorso_secondi e quali criteri usare per l'ossigeno in cabina e in tuta (ppO2 oppure PIO2 con limite NASA 122-127 mmHg; limite di O2 alto solo per la cabina).",
-        "## 7) Fibrillazione: valori clinici",
-        "Contesto: FC 150 e SpO2 93 % sono nel brief; HRV x2 e respirazione +3 sono nostre stime. Ci serve: i valori clinici che considera corretti per FC, SpO2, HRV e respirazione, e come la SpO2 misurata al polso viene disturbata dall'aritmia.",
-        "## 8) Valori a riposo",
-        "Contesto: usiamo FC 65 (comandante 64), SpO2 98, respirazione 14, HRV 45 ms per tutti. Ci serve: valori per persona (sesso, eta', forma fisica) e se desidera una variazione circadiana.",
-        "## 9) Disidratazione, stress, nausea, febbre",
-        "Contesto: nessuna fonte quantitativa per disidratazione, stress e nausea (per la febbre: +8.5 bpm per grado C). Ci serve: intervalli di FC, HRV, respirazione e temperatura per ciascun evento e la loro durata tipica.",
-        "## 10) Ingressi del modello di allerta",
-        "Contesto: il simulatore produce FC, SpO2, respirazione, HRV, temperatura cutanea, ECG (riga del dataset) e ambiente, a 1 campione al secondo. I suoi moduli (pagina 'Dati che i moduli di Luca si aspettano') usano FC, SpO2, peso, sesso, macchinario, luogo, atmosfera e punteggio ECG, ma non respirazione, HRV e temperatura cutanea. "
-        "Il modulo di stress usa un file (Stress-lysis.csv) che non abbiamo. Ci serve: il csv dello stress con le sue variabili (es. passi), e conferma che respirazione, HRV e temperatura cutanea non servono (altrimenti con quale ruolo). "
+        "## 7) Stati di salute: soglie e morte",
+        "Contesto: abbiamo 5 stati (ok, sintomi, compromesso, incosciente, morto) guidati da una dose di ipossia, CO2 e calore costruita sul tempo di coscienza utile della FAA, con soglie nostre (0.25 / 1 / 1.5 / 30). "
+        "La morte e' opzionale per scenario. Ci serve: sono questi gli stati che il suo modello di allerta deve riconoscere? Soglie e tempi realistici (perdita di coscienza, morte)? Nel dataset la serie dopo la morte deve continuare a zero, interrompersi o avere un'etichetta dedicata?",
+        "## 8) Persone: eta', altezza, valori a riposo",
+        "Contesto: usiamo FC a riposo 60 (uomini) e 64 (donne) con il comandante a 64, HRV 45 ms (+5 donne), massima 208 - 0.7 x eta'; eta' e altezza sono nostre stime (comandante 42, ingegnera 36, medico 38, botanica 34). "
+        "Ci serve: eta', altezza, forma fisica reali e i valori a riposo per persona.",
+        "## 9) Fibrillazione: valori clinici",
+        "Contesto: FC 150 e SpO2 93 % sono nel brief; la respirazione +3 e l'irregolarita' degli RR (deviazione standard 15 % dell'RR medio, RMSSD ~85 ms) sono nostre stime. Ci serve: i valori clinici che considera corretti per FC, SpO2, HRV e respirazione, "
+        "come la SpO2 misurata al polso viene disturbata dall'aritmia e se il modello ECG vuole in ingresso la serie degli intervalli RR (la forniamo come 'rr_interval_ms').",
+        "## 10) Disidratazione, stress, nausea, febbre",
+        "Contesto: la disidratazione, la febbre e il mal di spazio sono ora stati del corpo che seguono formule (3 bpm per 1 % di massa persa, 8.5 bpm per grado, gravita' dello Shuttle); lo stress resta un episodio imposto (nessuna fonte quantitativa). "
+        "Ci serve: intervalli di FC, HRV, respirazione e temperatura per ciascun evento e la loro durata tipica; la perdita d'acqua (0.5 %/h) e la reidratazione (2 h) sono realistiche?",
+        "## 11) Ritmo circadiano, sonno e microgravita'",
+        "Contesto: FC +-3 bpm con picco alle 15, temperatura centrale +-0.4 C con minimo alle 4:30, ipnogramma a cicli di 90 minuti, e in orbita FC +3.4 bpm e HRV -10 %; gli astronauti sono al giorno 30 di missione (adattati). "
+        "Ci serve: ampiezze corrette, e il giorno di missione in cui far partire gli scenari (nei primi 3 giorni compare il mal di spazio).",
+        "## 12) Ingressi del modello di allerta",
+        "Contesto: il simulatore produce FC, SpO2, respirazione, HRV, temperatura cutanea e centrale, intervallo RR, stato di salute (etichetta), ECG (riga del dataset) e ambiente, a 1 campione al secondo. I suoi moduli (pagina 'Dati che i moduli di Luca si aspettano') usano FC, SpO2, peso, sesso, macchinario, luogo, atmosfera e punteggio ECG, ma non respirazione, HRV e temperatura. "
+        "Il modulo di stress usa un file (Stress-lysis.csv) che non abbiamo. Ci serve: il csv dello stress con le sue variabili (es. passi), e quali delle nostre variabili servono davvero al modello (lo stato di salute e' un'etichetta, non va dato in ingresso). "
         "Il macchinario (T2/ARED/CEVIS) va aggiunto ai dati: usiamo T2 per l'esercizio aerobico di ASTRO_02 e ARED per quello di forza.",
-        "## 11) Decollo dalla Terra",
+        "## 13) Decollo dalla Terra",
         "Contesto: i notebook considerano il decollo (calcolo energetico con forze G, miscela di ossigeno durante il decollo, strati atmosferici). La simulazione non ha questa fase. "
         "Ci serve: vuole uno scenario di decollo? In tal caso servono profilo di quota e di accelerazione nel tempo, pressione e miscela della tuta, durata e vitali attesi (FC > 140 nel suo calcolo energetico).",
-        "## 12) Dati del brief da correggere",
+        "## 14) Dati del brief da correggere",
         "ASTRO_02 e' uomo o donna? I blocchi astro_4 sono due? Qual e' il valore corretto di ossigeno per ASTRO_02/03 (20.8 o 21)?",
     ]
 
@@ -557,298 +697,351 @@ def main() -> None:
         ["P5", "Normali: respirazione 12-20/min, SpO2 96-100 %", "OpenStax Clinical Nursing Skills, 15.6", "openstax.org/books/clinical-nursing-skills/pages/15-6-respiration", "A"],
         ["P7", "Recupero FC dopo sforzo (tau 65 s)", "Exponential modelling of heart rate recovery after maximal exercise", "ijpp.com/exponential-modelling-of-heart-rate-recovery-after-a-maximal-exercise", "B"],
         ["P8", "Febbre: +8.5 bpm per grado C", "Fever and cardiac rhythm; Body temperature and heart rate", "pubmed.ncbi.nlm.nih.gov/2424378 ; journalfeed.org/?p=2902", "B"],
-        ["P9", "Fibrillazione: RR irregolari, RMSSD piu' alto", "HRV in AF and hypertension (Eur J Clin Invest 2021); AMBOSS AF con risposta ventricolare rapida", "onlinelibrary.wiley.com/doi/full/10.1111/eci.13361", "B"],
+        ["P9", "Fibrillazione: RR irregolari, RMSSD piu' alto", "HRV in AF and hypertension (Eur J Clin Invest 2021)", "onlinelibrary.wiley.com/doi/full/10.1111/eci.13361", "B"],
         ["P10", "FC durante EVA (media 131-135 bpm, picchi ~162)", "NASA: Physical exertion and metabolic demand of EVA (NTRS 19910001262)", "ntrs.nasa.gov/citations/19910001262", "B"],
         ["P11", "Pressione e O2 delle tute (EMU 222 mmHg 100 % O2; Marte 8.2 psia 34 %)", "NASA EVA Operations, cap. 5.4; OCHMO-TB-037", "nasa.gov/wp-content/uploads/2023/03/gernhardt-eva-ops-chp-5.4-2013.pdf", "A/B"],
         ["P12", "Limiti e sintomi della CO2", "NASA OCHMO-TB-004 Carbon dioxide", "nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf", "A"],
+        ["P13", "FC massima per eta' (208 - 0.7 x eta')", "Tanaka et al. 2001, Age-predicted maximal heart rate revisited", "pubmed.ncbi.nlm.nih.gov/11153730", "A"],
+        ["P14", "Differenze di sesso: FC a riposo +4 bpm nelle donne, RMSSD +5 ms (20-45 anni)", "Altini (dati di sportivi); Lifelines Cohort; Koenig e Thayer 2016", "pmc.ncbi.nlm.nih.gov/articles/PMC7734556 ; lifelines.sites.kirra.nl", "B"],
+        ["P15", "Ritmo circadiano di FC e temperatura (minimo di temperatura 03-05); ampiezze ESTIMATE", "Sleep 2013, circadian rhythm of heart rate in sleep stages", "pmc.ncbi.nlm.nih.gov/articles/PMC3825442", "B"],
+        ["P16", "Architettura del sonno (N3 10-20 %, REM 20-25 %, cicli 90-120 min)", "Sleep Foundation; polisonnografia su 206 adulti sani", "sleepfoundation.org/how-sleep-works/deep-sleep ; pmc.ncbi.nlm.nih.gov/articles/PMC5886429", "B"],
+        ["P17", "Disidratazione: +3 bpm e +0.12-0.25 C per 1 % di massa persa", "Revisione sull'esercizio al caldo", "pubmed.gov/24736771", "B"],
+        ["P18", "Microgravita': FC +3.4 bpm, volume plasmatico -10-17 %, parasimpatico ridotto", "Effects of weightlessness on the cardiovascular system, meta-analisi 2024", "pmc.ncbi.nlm.nih.gov/articles/PMC11310543 ; PMC8773383", "B"],
+        ["P19", "Mal di spazio: 67 % al primo volo (30 % lieve, 24 % moderato, 13 % severo), 2-3 giorni", "Space motion sickness during 24 flights of the Space Shuttle", "researchexperts.utmb.edu ; ntrs.nasa.gov/citations/20050000946", "B"],
+        ["P20", "Intervalli RR in fibrillazione atriale (RMSSD 80-250 ms)", "Modello AFVP (PhysioNet); tesi BioGears, Univ. Washington", "pmc.ncbi.nlm.nih.gov/articles/PMC1820785 ; archive.physionet.org/physiotools/afvp", "B"],
+        ["P21", "Tempo di coscienza utile contro quota; dimezzato dopo decompressione rapida", "FAA, hypoxia (airman education); tabella FAA AC 61-107B (da verificare)", "faa.gov/pilots/training/airman_education/topics_of_interest/hypoxia", "B"],
+        ["P22", "CO2 ad alta concentrazione: 7-10 % svenimento in pochi minuti", "EPA appendice B (Schulte 1964, Lambertsen 1971)", "19january2021snapshot.epa.gov/.../co2appendixb.pdf", "B"],
         ["-", "Limiti di pressione, PIO2, T, UR usati come allarmi", "NASA-STD-3001 (via docs/reference/ambientmonitor)", "-", "A"],
-        ["E", "Disidratazione, stress, nausea, HRV, risposta alla CO2, SpO2 in AF, effetto decompressione", "Nessuna fonte quantitativa trovata: stima nostra (ESTIMATE)", "-", "E"],
+        ["E", "Stress, nausea, ampiezze circadiane, soglie di dose (sintomi, perdita di coscienza, morte), SpO2 in AF, VO2max, eta' e altezza degli astronauti", "Nessuna fonte quantitativa trovata: stima nostra (ESTIMATE)", "-", "E"],
     ], columns=["Tag", "Cosa supporta", "Fonte", "Dove (URL abbreviato)", "Aff."])
 
-    with PdfPages(OUT / "report.pdf") as pdf:
-        text_page(pdf, "ARES 3 - Dati prodotti dagli astronauti simulati: verifica", scope, size=9.0, wrap=120)
-        text_page(pdf, "Ambiente e assunzioni della simulazione", env_text, size=8.6, wrap=130)
-        table_page(pdf, "Glossario e limiti di sicurezza NASA usati come allarmi", limits,
-                   "Un 'allarme' nella simulazione significa che il valore VERO di un modulo ha superato uno di questi limiti (NASA-STD-3001, standard di salute e prestazioni degli equipaggi). "
-                   "Non e' una diagnosi sull'astronauta.", col_w=[0.15, 0.22, 0.45, 0.18], font=8, scale=2.4)
-        table_page(pdf, "Variabili prodotte dalla simulazione", variables,
-                   "Gli intervalli sono quelli osservati in un giorno normale (4 astronauti). Gli scenari possono uscire da questi intervalli.",
-                   col_w=[0.17, 0.08, 0.2, 0.37, 0.18], font=7.5, scale=2.2)
-        text_page(pdf, "Come funziona il modello dei vitali", model_text, size=9.0, wrap=120)
-        text_page(pdf, "Come leggere i grafici", guide, size=9.0, wrap=120)
-        table_page(pdf, "Dati che i moduli di Luca si aspettano e dove li prendiamo", luca_inputs,
-                   "Elenco ricavato dai notebook di Luca (ECG IMPROVEMENTFINAL, Critical_condition_monitor, ENERGY_INTAKE_HYDRATION, stress-level-detection). "
-                   "Nota sui nomi: 'oxygen_perc' e' la SpO2 (sangue), 'oxygenperc' e' la percentuale di ossigeno della miscela respirata.",
-                   col_w=[0.21, 0.19, 0.25, 0.17, 0.18], font=6.6, scale=2.15)
-        params = pd.DataFrame([
-            ["FC a riposo", "65 bpm (comandante 64)", "ESTIMATE; intervallo clinico 60-100", "E"],
-            ["FC nel sonno", "80 % del riposo (~52 bpm)", "20-30 % piu' bassa [P4]", "B"],
-            ["FC sotto sforzo", "riposo + (185 - riposo) x (MET-1)/9", "FC e VO2 lineari [P3]", "B"],
-            ["FC recupero / salita", "tau 65 s / 40 s", "[P7] / ESTIMATE", "B/E"],
-            ["FC con poco ossigeno", "+0.5 bpm per mmHg sotto PIO2 127, massimo +40", "ESTIMATE", "E"],
-            ["SpO2", "98 % a riposo; scende secondo la curva PIO2->SpO2", "[P1] tra 70 e 99 mmHg, sotto ESTIMATE; 96-100 % [P5]", "A/E"],
-            ["Freq. respiratoria", "14/min (sonno 12) + 1.5 per MET", "12-20/min [P5]; incremento ESTIMATE", "A/E"],
-            ["HRV (RMSSD)", "45 ms a riposo, scende con la FC, +-10 % nel giorno", "ESTIMATE", "E"],
-            ["Temperatura cutanea", "33.5 C + 0.05 per MET, +0.6 nel sonno", "ESTIMATE", "E"],
-            ["CO2 -> FC / respirazione", "+1 bpm e +1.5/min per mmHg sopra 2", "ESTIMATE (sintomi a 3.5 mmHg [P12])", "E"],
-            ["Febbre", "+13 bpm per +1.5 C", "8.5 bpm per grado C [P8]", "B"],
-            ["Fibrillazione", "FC 150, SpO2 93 (brief), HRV x2", "FC>100-110 [P9]; SpO2 e HRV ESTIMATE", "B/E"],
-            ["Disidratazione, stress, nausea", "FC +10-12, HRV x0.6-0.85, respirazione +1-2", "nessuna fonte quantitativa", "E"],
-        ], columns=["Grandezza", "Valore nel modello", "Fonte / nota", "Aff."])
-        table_page(pdf, "Parametri del modello e loro fonti", params,
-                   "I tag [P1]-[P12] sono spiegati con il titolo della fonte nell'ultima pagina. Aff.: A letta direttamente, B letta tramite riassunto da riverificare, E = ESTIMATE, nessuna fonte.",
-                   col_w=[0.18, 0.34, 0.38, 0.06], font=8)
+    doc = Doc()
+    text_page(doc, "ARES 3 - Dati prodotti dagli astronauti simulati: verifica", scope)
+    text_page(doc, "Ambiente e assunzioni della simulazione", env_text)
+    table_page(doc, "Glossario e limiti di sicurezza NASA usati come allarmi", limits,
+               "Un 'allarme' nella simulazione significa che il valore VERO di un modulo ha superato uno di questi limiti (NASA-STD-3001, standard di salute e prestazioni degli equipaggi). "
+               "Non e' una diagnosi sull'astronauta.", col_w=[0.15, 0.22, 0.45, 0.18])
+    table_page(doc, "Variabili prodotte dalla simulazione", variables,
+               "Gli intervalli sono quelli osservati in un giorno normale (4 astronauti). Gli scenari possono uscire da questi intervalli.",
+               col_w=[0.17, 0.07, 0.19, 0.38, 0.19], cls="small")
+    text_page(doc, "Come funziona il modello: vitali e stato di salute", model_text)
 
-        # ---- one page per NPC: normal day
-        for n in NPCS:
-            fig, axes = plt.subplots(7, 1, figsize=(11.69, 8.27), sharex=True,
-                                     gridspec_kw={"height_ratios": [0.4, 2, 1.3, 1.3, 1.3, 1.3, 1.3]})
-            h = hours(day)
-            activity_strip(axes[0], day, n)
-            axes[0].set_ylabel("attivita'", fontsize=6, rotation=0, labelpad=26)
-            keys = ["hr", "spo2", "rr", "hrv", "skin"]
-            for ax, k in zip(axes[1:6], keys):
-                ax.plot(h, day["df"][f"{n}_{k}"], color=COL[n], lw=0.9)
-                ax.set_ylabel(METRICS[k][0], fontsize=7)
-                ax.tick_params(labelsize=7)
-                if k in ("hr", "spo2") and n in LUCA:
-                    pass
-            axes[1].axhline(LUCA[n]["hr"], color="k", ls=":", lw=0.8)
-            axes[1].text(h[0] + 0.1, LUCA[n]["hr"], f" Luca {LUCA[n]['hr']}", fontsize=6, va="bottom")
-            axes[2].axhline(LUCA[n]["spo2"], color="k", ls=":", lw=0.8)
-            axes[2].text(h[0] + 0.1, LUCA[n]["spo2"], f" Luca {LUCA[n]['spo2']}", fontsize=6, va="bottom")
-            ax = axes[6]
-            ax.plot(h, day["df"][f"{n}_mod"].astype("category").cat.codes, color="#555", lw=0.8, drawstyle="steps-post")
-            cats = list(day["df"][f"{n}_mod"].astype("category").cat.categories)
-            ax.set_yticks(range(len(cats)))
-            ax.set_yticklabels(cats, fontsize=6)
-            ax.set_ylabel("modulo", fontsize=7)
-            ax.set_xlabel("ora locale (h, oltre 24 = giorno dopo)", fontsize=8)
-            ax.set_xlim(h[0], h[-1])
-            handles = [plt.Rectangle((0, 0), 1, 1, color=c) for c in ACT_COL.values()]
-            fig.legend(handles, list(ACT_COL), ncol=8, fontsize=6, loc="upper right", frameon=False)
-            fig.suptitle(f"{NAME[n]} - giornata nominale (stazione 758 mmHg, 21 % O2). Linea punteggiata = valore di Luca",
-                         fontsize=10, x=0.02, ha="left")
-            fig.tight_layout(rect=(0, 0.03, 1, 0.96))
-            caption(fig, "Asse orizzontale: ora locale. Asse verticale di ogni pannello: la grandezza nel titolo con unita' (FC bpm, SpO2 %, respirazione atti/min, HRV ms, temperatura cutanea C). "
-                         "Striscia in alto = attivita'; striscia in basso = modulo; linea punteggiata = valore indicato da Luca.")
-            pdf.savefig(fig)
-            plt.close(fig)
+    # ---- time of useful consciousness used by the model
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.3))
+    xs, ys = zip(*HYPOXIA_TUC[:-1])
+    a1.semilogy(xs, ys, "o-", color="#1f77b4")
+    for label, x in (("stazione 149", 149), ("EVA assunta / Marte 127", 127), ("limite NASA 122", 122), ("EVA di Luca 85", 85), ("quasi vuoto 8", 8)):
+        a1.axvline(x, color="#999", ls=":", lw=0.8)
+        a1.text(x + 1.5, 7, label, rotation=90, fontsize=7, va="bottom", ha="left")
+    a1.set_xlim(0, 160)
+    a1.set_xlabel("PIO2 (mmHg)")
+    a1.set_ylabel("tempo di coscienza utile (s, scala log)")
+    a1.set_title("Ipossia: tempo prima di non poter piu' agire [P21]", fontsize=9)
+    cx, cy = zip(*CO2_TLOC)
+    a2.semilogy(cx, cy, "o-", color="#d95f02")
+    a2.axvline(3, color="k", ls="--", lw=0.8)
+    a2.text(4.5, 70, "limite NASA 3 mmHg (solo sintomi)", rotation=90, fontsize=7, va="bottom", ha="left")
+    a2.set_xlabel("ppCO2 (mmHg)")
+    a2.set_ylabel("tempo alla perdita di coscienza (s, scala log)")
+    a2.set_title("CO2: sotto 50 mmHg nessuna perdita di coscienza [P22]", fontsize=9)
+    a2.set_xlim(0, 160)
+    fig.tight_layout()
+    doc.fig(fig, "Dose di esposizione: tempi usati dal modello",
+            "Sinistra: asse orizzontale = PIO2, l'ossigeno inspirato in mmHg; asse verticale = secondi (scala logaritmica) dopo i quali l'astronauta non sa piu' reagire; i punti sono la tabella FAA da 18000 a 50000 piedi [P21] "
+            "e le linee tratteggiate sono le PIO2 incontrate negli scenari. Destra: asse orizzontale = ppCO2 in mmHg, verticale = secondi alla perdita di coscienza (stima nostra dentro '7-10 % in pochi minuti' [P22]). "
+            "Ogni secondo la dose aumenta di 1/tempo; con PIO2 oltre 100 mmHg (cioe' tutte le linee a destra) la dose non cresce mai, quindi nell'aria della stazione, nell'habitat marziano e nella EVA assunta (127 mmHg) nessuno perde coscienza.",
+            intro='<p>Questo e\' il cuore dello stato di salute: piu\' l\'ossigeno e\' basso (o la CO2 alta), piu\' in fretta la dose sale verso le soglie 0.25 sintomi, 1 compromesso, 1.5 incosciente, 30 morto (solo se abilitata).</p>')
 
-        # ---- per activity table with reference ranges
-        refs = {"sleep": dict(hr=(40, 60), spo2=(95, 100), rr=(10, 16)),
-                "work": dict(hr=(60, 100), spo2=(95, 100), rr=(12, 20)),
-                "exercise_aerobic": dict(hr=(122, 139), spo2=(95, 100), rr=(16, 40))}
-        refs["meal"] = refs["rest"] = refs["recovery"] = refs["work"]
-        rows = []
-        for _, r in sa.iterrows():
-            ref = refs.get(r.act)
-            flags = []
-            if ref:
-                for k in ("hr", "spo2", "rr"):
-                    lo, hi = ref[k]
-                    if not lo <= r[k] <= hi:
-                        flags.append(f"{k} fuori {lo}-{hi}")
-            rows.append([ALIAS[r.npc], r.npc, r.act, f"{r.minutes:.0f}", f"{r.hr:.0f}", f"{r.spo2:.1f}", f"{r.rr:.1f}", f"{r.hrv:.0f}",
-                         f"{r.skin:.1f}", "OK" if ref and not flags else ("; ".join(flags) if flags else "-")])
-        table_page(pdf, "Media per attivita' nel giorno nominale e verifica sui riferimenti", pd.DataFrame(
-            rows, columns=["Luca", "NPC", "Attivita'", "min", "FC", "SpO2", "FR", "HRV", "T cut.", "Verifica"]),
-            "Riferimenti (ESTIMATE di lavoro): sonno FC 40-60 [P4]; veglia a riposo FC 60-100, SpO2 95-100, FR 12-20 [P5]; esercizio ISS 66-75 % del picco "
-            "(122-139 bpm su 185) [P2]. Le attivita' con 'fuori' non sono errori: sono i punti da guardare insieme a Luca.",
-            col_w=[0.07, 0.05, 0.14, 0.05, 0.05, 0.06, 0.05, 0.05, 0.06, 0.30], font=6.8, scale=1.25)
+    # ---- people
+    ind = day["ind"]
+    ind_df = pd.DataFrame([[ALIAS[n], n, ind[n]["sex"], f"{ind[n]['age']:.0f}", f"{ind[n]['height']:.0f}", f"{ind[n]['mass']:.1f}", f"{ind[n]['hr_rest']:.0f}",
+                            f"{ind[n]['hr_max']:.0f}", f"{ind[n]['met_max'] * 3.5:.0f}", f"{ind[n]['hrv_rest']:.0f}",
+                            ["nessuna", "lieve", "moderata", "severa"][ind[n]["sms"]]] for n in NPCS],
+                          columns=["Luca", "NPC", "Sesso", "Eta' (anni)", "Altezza (cm)", "Massa (kg)", "FC riposo (bpm)", "FC massima (bpm)",
+                                   "VO2max (ml/kg/min)", "HRV riposo (ms)", "Predisposizione al mal di spazio"])
+    table_page(doc, "Persone simulate e parametri individuali", ind_df,
+               "Sesso e massa dal brief di Luca. Eta' e altezza sono NOSTRE STIME (non nel brief): da sostituire con i dati reali. Le altre colonne sono calcolate: FC massima = 208 - 0.7 x eta' [P13]; "
+               "FC a riposo 60 (uomini) e 64 (donne) con il comandante fissato a 64 [P14]; HRV a riposo 45 ms (+5 donne, -0.4 per anno sopra i 30) [P14]; VO2max 44 (uomini) e 37 (donne) a 30 anni, -0.3 per anno (ESTIMATE); "
+               "predisposizione estratta a caso (seed fisso) dalla distribuzione Shuttle [P19]: dopo il giorno 3 di missione non ha effetto.",
+               intro="Parametri che differenziano i quattro astronauti. Vengono usati dal modello fisiologico al posto di valori uguali per tutti.")
+    text_page(doc, "Come leggere i grafici", guide)
+    table_page(doc, "Dati che i moduli di Luca si aspettano e dove li prendiamo", luca_inputs,
+               "Elenco ricavato dai notebook di Luca (ECG IMPROVEMENTFINAL, Critical_condition_monitor, ENERGY_INTAKE_HYDRATION, stress-level-detection). "
+               "Nota sui nomi: 'oxygen_perc' e' la SpO2 (sangue), 'oxygenperc' e' la percentuale di ossigeno della miscela respirata.",
+               col_w=[0.21, 0.19, 0.25, 0.17, 0.18], cls="small")
+    params = pd.DataFrame([
+        ["FC a riposo", "uomini 60, donne 64 bpm (comandante 64)", "differenza ~4 bpm [P14]; valori ESTIMATE", "B/E"],
+        ["FC massima", "208 - 0.7 x eta'", "Tanaka [P13]", "A"],
+        ["FC nel sonno", "80 % del riposo, modulata dalla fase (N3 -7 %, REM +7 %)", "20-30 % piu' bassa [P4]; fasi [P16], entita' ESTIMATE", "B/E"],
+        ["FC diurna (circadiano)", "+-3 bpm, picco alle 15:00", "[P15]; ampiezza ESTIMATE", "E"],
+        ["FC sotto sforzo", "riposo + (massima - riposo) x (MET-1)/(MET max - 1)", "FC e VO2 lineari [P3]", "B"],
+        ["FC recupero / salita", "tau 65 s / 40 s", "[P7] / ESTIMATE", "B/E"],
+        ["FC con poco ossigeno", "+0.5 bpm per mmHg sotto PIO2 127, massimo +40", "ESTIMATE", "E"],
+        ["SpO2", "98 % a riposo; scende secondo la curva PIO2->SpO2", "[P1] tra 70 e 99 mmHg, sotto ESTIMATE; 96-100 % [P5]", "A/E"],
+        ["Freq. respiratoria", "14/min (sonno 12) + 1.5 per MET", "12-20/min [P5]; incremento ESTIMATE", "A/E"],
+        ["HRV (RMSSD)", "45 ms (+5 donne), scende con la FC", "[P14]; resto ESTIMATE", "B/E"],
+        ["Temperatura centrale", "36.8 C +-0.4 (minimo 4:30) + 0.15 per MET", "[P15]; ampiezze ESTIMATE", "E"],
+        ["Temperatura cutanea", "33.5 C + 0.05 per MET, +0.6 nel sonno", "ESTIMATE", "E"],
+        ["Disidratazione", "FC +3 bpm, T centrale +0.2 C per 1 % di massa persa; sudore 3 g/min per MET sopra 2", "[P17]; sudore ESTIMATE", "B/E"],
+        ["CO2 -> FC / respirazione", "+1 bpm e +1.5/min per mmHg sopra 2", "ESTIMATE (sintomi a 3.5 mmHg [P12])", "E"],
+        ["Febbre", "+8.5 bpm per C, respirazione +2 per C", "[P8]; respirazione ESTIMATE", "B/E"],
+        ["Fibrillazione", "FC 150, SpO2 93 (brief); RR con SD 15 % (RMSSD ~85 ms)", "FC>100-110 [P9]; RMSSD 80-250 ms [P20]; SpO2 ESTIMATE", "B/E"],
+        ["Microgravita'", "FC +3.4 bpm, HRV -10 %; mal di spazio fino al giorno 3", "[P18], [P19]; effetti per livello ESTIMATE", "B/E"],
+        ["Perdita di coscienza e morte", "dose = somma di 1/tempo di coscienza utile; soglie 1.5 e 30", "tabella FAA [P21], CO2 [P22]; soglie ESTIMATE", "B/E"],
+        ["Stress", "FC +10, HRV x0.6, respirazione +2", "nessuna fonte quantitativa", "E"],
+    ], columns=["Grandezza", "Valore nel modello", "Fonte / nota", "Aff."])
+    table_page(doc, "Parametri del modello e loro fonti", params,
+               "I tag [P1]-[P22] sono spiegati con il titolo della fonte nell'ultima pagina. Aff.: A letta direttamente, B letta tramite riassunto da riverificare, E = ESTIMATE, nessuna fonte.",
+               col_w=[0.18, 0.36, 0.38, 0.08], cls="small")
 
-        # ---- environment of the day
-        fig, axes = plt.subplots(2, 3, figsize=(11.69, 8.27), sharex=True)
+    # ---- one page per NPC: normal day
+    for n in NPCS:
+        fig, axes = plt.subplots(6, 1, figsize=(11, 6.4), sharex=True, gridspec_kw={"height_ratios": [0.35, 1.7, 1.1, 1.1, 1.1, 1.3]})
         h = hours(day)
-        for ax, (c, t, lim) in zip(axes.flat, [("hab_ppCO2", "ppCO2 habitat (mmHg)", 3.0), ("hab_PIO2", "PIO2 habitat (mmHg)", 122),
-                                               ("hab_T", "T habitat (C)", 27), ("hab_RH", "Umidita' habitat (%)", 75),
-                                               ("hab_P", "Pressione habitat (mmHg)", None), ("eva_PIO2", "PIO2 modulo EVA (mmHg)", 122)]):
-            ax.plot(h, day["df"][c], lw=0.8)
+        activity_strip(axes[0], day, n)
+        axes[0].set_ylabel("attivita'", fontsize=6, rotation=0, labelpad=26)
+        for ax, k in zip(axes[1:5], ["hr", "spo2", "rr", "hrv"]):
+            ax.plot(h, day["df"][f"{n}_{k}"], color=COL[n], lw=0.9)
+            ax.set_ylabel(METRICS[k][0], fontsize=7)
+            ax.tick_params(labelsize=7)
+        axes[1].axhline(LUCA[n]["hr"], color="k", ls=":", lw=0.8)
+        axes[1].text(h[0] + 0.1, LUCA[n]["hr"], f" Luca {LUCA[n]['hr']}", fontsize=6, va="bottom")
+        axes[2].axhline(LUCA[n]["spo2"], color="k", ls=":", lw=0.8)
+        axes[2].text(h[0] + 0.1, LUCA[n]["spo2"], f" Luca {LUCA[n]['spo2']}", fontsize=6, va="bottom")
+        ax = axes[5]
+        ax.plot(h, day["df"][f"{n}_core"], color=COL[n], lw=0.9, label="centrale")
+        ax.plot(h, day["df"][f"{n}_skin"], color=COL[n], lw=0.9, ls="--", label="cutanea")
+        ax.legend(fontsize=6, loc="center right", frameon=False)
+        ax.set_ylabel("Temperatura (C)", fontsize=7)
+        ax.tick_params(labelsize=7)
+        ax.set_xlabel("ora locale (h, oltre 24 = giorno dopo)", fontsize=8)
+        ax.set_xlim(h[0], h[-1])
+        handles = [plt.Rectangle((0, 0), 1, 1, color=c) for c in ACT_COL.values()]
+        fig.legend(handles, list(ACT_COL), ncol=8, fontsize=6, loc="upper right", frameon=False)
+        fig.tight_layout(rect=(0, 0, 1, 0.97))
+        mods = ", ".join(dict.fromkeys(day["df"][f"{n}_mod"]))
+        i = ind[n]
+        doc.fig(fig, f"{NAME[n]} - giornata nominale",
+                "Asse orizzontale: ora locale (da 6 a 30; i valori oltre 24 sono il giorno dopo). Striscia in alto: attivita' in corso (legenda a destra). Pannelli, dall'alto: FC in battiti al minuto; SpO2 in % (normale 95-100); "
+                "frequenza respiratoria in atti al minuto; HRV (RMSSD) in millisecondi, piu' alta = battito piu' variabile e rilassato; temperature in gradi C (continua = centrale, tratteggiata = cutanea). "
+                "La linea punteggiata e' il valore di FC e SpO2 indicato da Luca per questo astronauta.",
+                intro=f'<p>{esc(ALIAS[n])}: sesso {i["sex"]}, {i["age"]:.0f} anni (stima), {i["mass"]:.1f} kg; FC a riposo {i["hr_rest"]:.0f}, massima {i["hr_max"]:.0f} bpm. '
+                      f'Ambiente: stazione, 758 mmHg, 21 % O2. Moduli visitati nella giornata: {esc(mods)}.</p>')
+
+    # ---- per activity table with reference ranges
+    refs = {"sleep": dict(hr=(40, 60), spo2=(95, 100), rr=(10, 16)),
+            "work": dict(hr=(60, 100), spo2=(95, 100), rr=(12, 20)),
+            "exercise_aerobic": dict(hr=(122, 139), spo2=(95, 100), rr=(16, 40))}
+    refs["meal"] = refs["rest"] = refs["recovery"] = refs["work"]
+    rows = []
+    for _, r in sa.iterrows():
+        ref = refs.get(r.act)
+        flags = []
+        if ref:
+            for k in ("hr", "spo2", "rr"):
+                lo, hi = ref[k]
+                if not lo <= r[k] <= hi:
+                    flags.append(f"{k} fuori {lo}-{hi}")
+        rows.append([ALIAS[r.npc], r.npc, r.act, f"{r.minutes:.0f}", f"{r.hr:.0f}", f"{r.spo2:.1f}", f"{r.rr:.1f}", f"{r.hrv:.0f}",
+                     f"{r.skin:.1f}", f"{r.core:.1f}", "OK" if ref and not flags else ("; ".join(flags) if flags else "-")])
+    table_page(doc, "Media per attivita' nel giorno nominale e verifica sui riferimenti", pd.DataFrame(
+        rows, columns=["Luca", "NPC", "Attivita'", "min", "FC", "SpO2", "FR", "HRV", "T cut.", "T centr.", "Verifica"]),
+        "Riferimenti (ESTIMATE di lavoro): sonno FC 40-60 [P4]; veglia a riposo FC 60-100, SpO2 95-100, FR 12-20 [P5]; esercizio ISS 66-75 % del picco "
+        "(122-139 bpm su 185) [P2]. Le attivita' con 'fuori' non sono errori: sono i punti da guardare insieme a Luca.",
+        col_w=[0.08, 0.05, 0.15, 0.05, 0.05, 0.06, 0.05, 0.05, 0.06, 0.06, 0.34],
+        intro="Ogni riga e' la media dei valori veri di un astronauta durante un tipo di attivita'. 'min' = minuti totali di quell'attivita' nel giorno; FC in bpm, SpO2 in %, FR in atti/min, HRV in ms, temperature in C.",
+        cls="small")
+
+    # ---- body state of the day (all NPCs)
+    d = day["df"]
+    h = hours(day)
+    fig, axs = plt.subplots(2, 2, figsize=(11, 5.6))
+    for n in NPCS:
+        axs[0, 0].plot(h, d[f"{n}_core"], color=COL[n], lw=0.9, label=ALIAS[n])
+        axs[0, 1].plot(h, d[f"{n}_dehyd"], color=COL[n], lw=0.9)
+    axs[0, 0].set_title("Temperatura centrale (C)", fontsize=9)
+    axs[0, 0].legend(fontsize=6, frameon=False, ncol=2)
+    axs[0, 1].set_title("Acqua persa (% della massa corporea)", fontsize=9)
+    night = (h >= 22) & (h <= 30)
+    stage_y = d["cmd_stage"].values[night]
+    axs[1, 0].step(h[night], stage_y, where="post", color=COL["cmd"], lw=0.9)
+    axs[1, 0].set_yticks([0, 1, 2, 3, 5])
+    axs[1, 0].set_yticklabels(["veglia", "N1", "N2", "N3", "REM"], fontsize=7)
+    axs[1, 0].set_title("Fasi del sonno di ASTRO_01 (ora locale 22-6)", fontsize=9)
+    win = (d["tod"] >= 14.0) & (d["tod"] < 14.05)
+    axs[1, 1].plot(d["t"][win] - d["t"][win].iloc[0], d["cmd_rrint"][win], "o-", color=COL["cmd"], ms=2, lw=0.6, label="intervallo RR")
+    axs[1, 1].plot(d["t"][win] - d["t"][win].iloc[0], 60000.0 / d["cmd_hr"][win], color="k", ls=":", lw=0.8, label="60000 / FC")
+    axs[1, 1].legend(fontsize=6, frameon=False)
+    axs[1, 1].set_title("Intervalli RR di ASTRO_01 a riposo (3 minuti alle 14:00)", fontsize=9)
+    axs[1, 1].set_xlabel("secondi", fontsize=7)
+    for ax in axs.flat:
+        ax.tick_params(labelsize=7)
+    fig.tight_layout()
+    doc.fig(fig, "Stato del corpo nella giornata nominale",
+            "In alto a sinistra: asse orizzontale = ora locale, asse verticale = temperatura centrale in C (minimo di notte, sale con l'esercizio delle 17). In alto a destra: acqua persa in % della massa corporea "
+            "(cresce col sudore dell'allenamento e rientra bevendo). In basso a sinistra: fase del sonno di ASTRO_01 (asse verticale = codice della fase) dall'addormentamento alle 22 al risveglio. "
+            "In basso a destra: asse orizzontale = secondi, asse verticale = millisecondi tra un battito e il successivo (punti) confrontato con 60000/FC (linea): in ritmo normale gli RR oscillano attorno a quel valore.",
+            intro="Variabili che il modello tiene come stato (non solo come numeri imposti): temperatura centrale, acqua del corpo, sonno e intervalli tra battiti.")
+
+    # ---- environment of the day
+    fig, axes = plt.subplots(2, 3, figsize=(11, 5.4), sharex=True)
+    h = hours(day)
+    for ax, (c, t, lim) in zip(axes.flat, [("hab_ppCO2", "ppCO2 habitat (mmHg)", 3.0), ("hab_PIO2", "PIO2 habitat (mmHg)", 122),
+                                           ("hab_T", "T habitat (C)", 27), ("hab_RH", "Umidita' habitat (%)", 75),
+                                           ("hab_P", "Pressione habitat (mmHg)", None), ("eva_PIO2", "PIO2 modulo EVA (mmHg)", 122)]):
+        ax.plot(h, day["df"][c], lw=0.8)
+        if lim is not None:
+            ax.axhline(lim, color="k", ls="--", lw=0.8)
+        ax.set_title(t, fontsize=9)
+        ax.tick_params(labelsize=7)
+    fig.tight_layout()
+    doc.fig(fig, "Ambiente nella giornata nominale",
+            "Asse orizzontale: ora locale. Asse verticale: grandezza nel titolo (ppCO2 e PIO2 in mmHg, temperatura in C, umidita' in %, pressione in mmHg). Il tratteggio e' il limite NASA-STD-3001: superarlo fa scattare un allarme. "
+            "Nell'ultimo pannello il modulo EVA e' vuoto per quasi tutto il giorno (la PIO2 resta a 127 mmHg).",
+            intro="Aria dell'habitat e del modulo EVA durante la giornata normale: serve a verificare che l'ambiente resti dentro i limiti.")
+
+    scen_rows = [[ev, EV_IT[ev][0], EV_IT[ev][1], EV_IT[ev][2], EV_IT[ev][3]] for ev in EVENTS]
+    table_page(doc, "Scenari simulati", pd.DataFrame(scen_rows, columns=["Codice", "Situazione", "Quando", "Cosa succede", "Origine dei valori"]),
+               "Ogni scenario simula la stessa giornata di routine; cambia solo l'evento. Lo stato 'nominal' / il nome dell'evento sono le etichette scritte nei dati per il modello di allerta.",
+               col_w=[0.10, 0.15, 0.10, 0.34, 0.31], cls="small")
+
+    # ---- events
+    EVDEF = {
+        "eva_nominal": ("med", ["hr", "spo2", "rr", "hrv"], [("eva", "P", None), ("eva", "PIO2", 122), ("eva", "ppCO2", 3.0)], (9.0, 11.5)),
+        "eva_decompression": ("med", ["hr", "spo2", "state", "hrv"], [("eva", "P", None), ("eva", "PIO2", 122), ("eva", "ppCO2", 3.0)], (9.5, 11.5)),
+        "eva_decompression_fatal": ("med", ["hr", "spo2", "state", "hrv"], [("eva", "P", None), ("eva", "PIO2", 122), ("eva", "ppCO2", 3.0)], (9.5, 11.5)),
+        "fibrillation": ("eng", ["hr", "spo2", "rrint", "hrv"], [], (10.0, 13.0)),
+        "scrubber_failure": ("cmd", ["hr", "rr", "spo2", "hrv"], [("hab", "ppCO2", 3.0), ("hab", "T", 27)], (12.0, 26.0)),
+        "co2_release": ("cmd", ["hr", "rr", "spo2", "hrv"], [("hab", "ppCO2", 3.0), ("hab", "PIO2", 122)], (12.0, 20.0)),
+        "slow_leak": ("cmd", ["hr", "spo2", "rr", "hrv"], [("hab", "P", None), ("hab", "PIO2", 122), ("hab", "ppCO2", 3.0)], (12.0, 22.0)),
+        "dehydration": ("bot", ["hr", "dehyd", "core", "hrv"], [], (6.0, 20.0)),
+        "stress": ("cmd", ["hr", "hrv", "rr", "skin"], [], (8.0, 14.0)),
+        "fever": ("med", ["hr", "core", "skin", "rr"], [], (10.0, 20.0)),
+        "motion_sickness": ("bot", ["hr", "nausea", "hrv", "rr"], [], (7.0, 13.0)),
+    }
+    for ev in EVENTS:
+        r = R[ev]
+        npc, mets, envs, (x0, x1) = EVDEF[ev]
+        h = hours(r)
+        title_it, when, what, origin, check = EV_IT[ev]
+        panels = [(f"{npc}_{k}", METRICS[k][0], None) for k in mets] + [(f"{m}_{k}", f"{m}: {k}", lim) for m, k, lim in envs]
+        cols = 3 if len(panels) > 4 else 2
+        rows_n = math.ceil(len(panels) / cols)
+        fig, axs = plt.subplots(rows_n, cols, figsize=(11, 1.5 * rows_n + 0.3), squeeze=False)
+        for ax in axs.flat:
+            ax.set_visible(False)
+        for i, (c, t, lim) in enumerate(panels):
+            ax = axs.flat[i]
+            ax.set_visible(True)
+            ax.plot(h, r["df"][c], color=COL[npc] if c.startswith(npc) else "#1f77b4", lw=0.9)
             if lim is not None:
-                ax.axhline(lim, color="k", ls="--", lw=0.8)
-            ax.set_title(t, fontsize=9)
-            ax.tick_params(labelsize=7)
-        fig.suptitle("Ambiente nella giornata nominale (tratteggio = limite NASA-STD-3001)", fontsize=11)
-        fig.tight_layout(rect=(0, 0.04, 1, 1))
-        caption(fig, "Asse orizzontale: ora locale. Asse verticale: grandezza nel titolo (ppCO2 e PIO2 in mmHg, temperatura in C, umidita' in %, pressione in mmHg). Tratteggio = limite NASA. "
-                     "Nelle ultime due colonne a destra, il modulo EVA e' vuoto per quasi tutto il giorno.")
-        pdf.savefig(fig)
-        plt.close(fig)
+                ax.axhline(lim, color="k", ls="--", lw=0.7)
+            if c.endswith("_state"):
+                ax.set_ylim(-0.2, 4.2)
+                ax.set_yticks([0, 1, 2, 3, 4])
+            shade_faults(ax, r)
+            ax.set_xlim(x0, min(x1, h[-1]))
+            ax.set_title(t, fontsize=8)
+            ax.tick_params(labelsize=6)
+        fig.tight_layout()
+        intro = (f'<p><b>Quando:</b> {esc(when)}. <b>Cosa succede:</b> {esc(what)}</p>'
+                 f'<p><b>Origine dei valori:</b> {esc(origin)}</p>')
+        after = table_html(event_table(r, npc, mets, ev), [0.28, 0.18, 0.18, 0.18, 0.18]) + event_notes(r, npc) + f'<p class="check">Da verificare: {esc(check)}</p>'
+        doc.fig(fig, f"{title_it} - {NAME[npc]}",
+                "Asse orizzontale: ora locale (h). Ogni pannello e' una grandezza (titolo con unita'); i primi sono i vitali dell'astronauta, gli ultimi l'aria del modulo (pressione e PIO2 in mmHg, ppCO2 in mmHg). "
+                "L'area rosa e' il periodo in cui l'evento e' attivo, il tratteggio e' il limite NASA; 'Stato di salute' va da 0 (ok) a 4 (morto). La tabella sotto riporta la media nei 30 minuti prima dell'evento, "
+                "il minimo e il massimo durante e la media nei 30 minuti dopo.",
+                after=after, intro=intro, cls="ev")
 
-        scen_rows = [[ev, EV_IT[ev][0], EV_IT[ev][1], EV_IT[ev][2], EV_IT[ev][3]] for ev in EVENTS]
-        table_page(pdf, "Scenari simulati", pd.DataFrame(scen_rows, columns=["Codice", "Situazione", "Quando", "Cosa succede", "Origine dei valori"]),
-                   "Ogni scenario simula la stessa giornata di routine; cambia solo l'evento. Lo stato 'nominal' / il nome dell'evento sono le etichette scritte nei dati per il modello di allerta.",
-                   col_w=[0.10, 0.15, 0.11, 0.32, 0.32], font=6.8, scale=2.6)
+    # ---- Luca declared vs model
+    rows = []
 
-        # ---- events
-        EVDEF = {
-            "eva_nominal": ("med", ["hr", "spo2", "rr", "hrv"], [("eva", "P", None), ("eva", "PIO2", 122), ("eva", "ppCO2", 3.0)], (9.0, 11.5)),
-            "eva_decompression": ("med", ["hr", "spo2", "rr", "hrv"], [("eva", "P", None), ("eva", "PIO2", 122), ("eva", "ppCO2", 3.0)], (9.5, 11.5)),
-            "fibrillation": ("eng", ["hr", "spo2", "rr", "hrv"], [], (10.0, 13.0)),
-            "scrubber_failure": ("cmd", ["hr", "rr", "spo2", "hrv"], [("hab", "ppCO2", 3.0), ("hab", "T", 27)], (12.0, 26.0)),
-            "co2_release": ("cmd", ["hr", "rr", "spo2", "hrv"], [("hab", "ppCO2", 3.0), ("hab", "PIO2", 122)], (12.0, 20.0)),
-            "slow_leak": ("cmd", ["hr", "spo2", "rr", "hrv"], [("hab", "P", None), ("hab", "PIO2", 122), ("hab", "ppCO2", 3.0)], (12.0, 22.0)),
-            "dehydration": ("bot", ["hr", "hrv", "rr", "skin"], [], (6.0, 20.0)),
-            "stress": ("cmd", ["hr", "hrv", "rr", "skin"], [], (8.0, 14.0)),
-            "fever": ("med", ["hr", "skin", "rr", "hrv"], [], (10.0, 20.0)),
-            "motion_sickness": ("bot", ["hr", "rr", "hrv", "skin"], [], (7.0, 13.0)),
-        }
-        for ev in EVENTS:
-            r = R[ev]
-            npc, mets, envs, (x0, x1) = EVDEF[ev]
-            h = hours(r)
-            title_it, when, what, origin, check = EV_IT[ev]
-            desc = f"{what} Quando: {when}. Origine dei valori: {origin}"
-            n_pan = len(mets) + len(envs)
-            cols = 3 if n_pan > 4 else 2
-            fig = plt.figure(figsize=(11.69, 8.27))
-            fig.text(0.03, 0.97, f"{title_it}  -  {NAME[npc]}", fontsize=13, weight="bold", va="top")
-            fig.text(0.03, 0.94, "\n".join(textwrap.wrap(desc, 175)), fontsize=8, va="top")
-            fig.text(0.03, 0.072, "Da verificare: " + check, fontsize=8, weight="bold", va="top", wrap=True)
-            caption(fig, "Asse orizzontale: ora locale. Asse verticale: grandezza nel titolo di ogni pannello (unita' tra parentesi o nel nome). Area rosa = evento attivo; tratteggio = limite NASA. "
-                         "Tabella: media 30 min prima, minimo e massimo durante l'evento, media 30 min dopo.", y=0.004)
-            rows_n = math.ceil(n_pan / cols)
-            gs = fig.add_gridspec(rows_n + 1, cols, top=0.88, bottom=0.10, hspace=0.55, wspace=0.25,
-                                  height_ratios=[1] * rows_n + [0.9])
-            panels = [(f"{npc}_{k}", METRICS[k][0], None) for k in mets] + [(f"{m}_{k}", f"{m}: {k}", lim) for m, k, lim in envs]
-            for i, (c, t, lim) in enumerate(panels):
-                ax = fig.add_subplot(gs[i // cols, i % cols])
-                ax.plot(h, r["df"][c], color=COL[npc] if c.startswith(npc) else "#1f77b4", lw=0.9)
-                if c == f"{npc}_hr_s":
-                    pass
-                if lim is not None:
-                    ax.axhline(lim, color="k", ls="--", lw=0.7)
-                shade_faults(ax, r)
-                ax.set_xlim(x0, min(x1, h[-1]))
-                ax.set_title(t, fontsize=8)
-                ax.tick_params(labelsize=6)
-            # stats table: pre / extreme in fault window / post
-            axt = fig.add_subplot(gs[rows_n, :])
-            axt.axis("off")
-            f0 = min(f["start"] for f in r["faults"]) if r["faults"] else None
-            f1 = max(min(f["end"], r["df"]["t"].iloc[-1]) for f in r["faults"]) if r["faults"] else None
-            d = r["df"]
-            trows = []
-            for k in mets:
-                s = d[f"{npc}_{k}"]
-                if f0 is None:
-                    sel = d[d[f"{npc}_mod"] == "eva"] if ev == "eva_nominal" else d
-                    trows.append([METRICS[k][0], f"{sel[f'{npc}_{k}'].mean():.1f}", f"{sel[f'{npc}_{k}'].min():.1f}", f"{sel[f'{npc}_{k}'].max():.1f}", "-"])
-                    continue
-                pre = s[(d.t >= f0 - 1800) & (d.t < f0)].mean()
-                win = s[(d.t >= f0) & (d.t <= f1)]
-                post = s[(d.t > f1) & (d.t <= f1 + 1800)].mean()
-                trows.append([METRICS[k][0], f"{pre:.1f}", f"{win.min():.1f}", f"{win.max():.1f}", f"{post:.1f}" if not np.isnan(post) else "-"])
-            head = ["Grandezza", "prima (30 min)" if f0 is not None else "media (EVA)", "min nell'evento" if f0 is not None else "min",
-                    "max nell'evento" if f0 is not None else "max", "dopo (30 min)"]
-            tb = axt.table(cellText=trows, colLabels=head, loc="upper left", cellLoc="left", colWidths=[0.15, 0.10, 0.10, 0.10, 0.10])
-            tb.auto_set_font_size(False)
-            tb.set_fontsize(7)
-            tb.scale(1, 1.2)
-            al = r["alarms"]
-            if len(al):
-                g = al.groupby(["code", "module"]).agg(first=("t", "min"), last=("t", "max"), n=("t", "count")).reset_index()
-                txt = "Allarmi NASA: " + "; ".join(f"{x.code}/{x.module} {(r['start_tod'] + x['first'] / 3600) % 24:.2f}h-{(r['start_tod'] + x['last'] / 3600) % 24:.2f}h ({x.n}s)"
-                                                   for _, x in g.iterrows())
-            else:
-                txt = "Allarmi NASA: nessuno."
-            labs = d[f"{npc}_anom"].value_counts()
-            txt += "\nEtichette dataset per " + npc + ": " + ", ".join(f"{k} {v}s" for k, v in labs.items())
-            fig.text(0.62, 0.20, "\n".join(textwrap.wrap(txt, 70)), fontsize=7, va="top")
-            pdf.savefig(fig)
-            plt.close(fig)
+    def win_mean(r, n, c, lo, hi):
+        d_ = r["df"]
+        sel = d_[(d_["tod"] >= lo) & (d_["tod"] < hi)] if "tod" in d_ else d_
+        return sel[f"{n}_{c}"].mean()
 
-        # ---- Luca declared vs model
-        rows = []
+    rows.append(["ASTRO_01 lavoro 7-12 h", "69.5 / 98.5", f"{win_mean(day, 'cmd', 'hr', 7, 12):.0f} / {win_mean(day, 'cmd', 'spo2', 7, 12):.1f}",
+                 f"{win_mean(daym, 'cmd', 'hr', 7, 12):.0f} / {win_mean(daym, 'cmd', 'spo2', 7, 12):.1f}", "stazione: PIO2 149"])
+    rows.append(["ASTRO_02 T2 17:00-17:45", "142.5 / 96.2", f"{win_mean(day, 'bot', 'hr', 17.1, 17.75):.0f} / {win_mean(day, 'bot', 'spo2', 17.1, 17.75):.1f}",
+                 f"{win_mean(daym, 'bot', 'hr', 17.1, 17.75):.0f} / {win_mean(daym, 'bot', 'spo2', 17.1, 17.75):.1f}", "MET 7.0 scelto per HR ~ 142"])
+    rows.append(["ASTRO_03 fibrillazione", "150 / 93", f"{fib_w['eng_hr'].mean():.0f} / {fib_w['eng_spo2'].mean():.1f}", "-", "imposto da Luca (hr_to, spo2_to)"])
+    rows.append(["ASTRO_04 EVA nominale", "132.5 / 94", f"{eva_hr:.0f} / {eva_sp:.1f}", "-", f"PIO2 EVA {eva_pio2:.0f} mmHg"])
+    rows.append(["ASTRO_04 EVA emergenza", "172 / 88", f"{dec_hr_max:.0f} (max) / {dec_sp_min:.0f} (min)", "-", f"PIO2 {dec_pio2:.1f}: incosciente dopo {dec_loc:.0f} s"])
+    table_page(doc, "Valori di Luca (FC / SpO2) contro il modello",
+               pd.DataFrame(rows, columns=["Situazione", "Luca FC / SpO2", "Modello: stazione 758 mmHg (adottata)", "Modello: habitat Marte (confronto)", "Nota"]),
+               "Dove la differenza e' grande il modello segue le fonti [P1][P2]; non significa che il modello abbia ragione: serve la decisione di Luca "
+               "(vedi incongruenze 2, 3 e domanda 1). SpO2 in decompressione: valore minimo; FC: massimo.", col_w=[0.20, 0.14, 0.18, 0.18, 0.30],
+               intro="Valori attesi indicati nel brief a confronto con quanto produce la simulazione nelle stesse situazioni (FC in bpm / SpO2 in %).")
 
-        def win(r, n, c, lo, hi):
-            d = r["df"]
-            sel = d[(d["tod"] >= lo) & (d["tod"] < hi)] if "tod" in d else d
-            return sel[f"{n}_{c}"].mean()
+    text_page(doc, "Incongruenze nel brief ricevuto", incong)
+    table_page(doc, "Monitor atmosfera di Luca applicato alla simulazione (1 campione al minuto)",
+               pd.DataFrame(atm_rows, columns=["Atmosfera simulata", "Luogo", "Minuti occupati", "ppO2 = P x %O2 (mmHg)", "Esito della funzione"]),
+               "La funzione di Luca segnala 'CRITICAL ipossia' quando ppO2 (pressione totale x frazione di O2) e' sotto 148 mmHg o l'O2 e' sotto 19.5 %: soglie da livello del mare (758 mmHg x 19.5 % = 148). "
+               "Con l'atmosfera della stazione (758 x 21 % = 159) non scatta; con la tuta (350 mmHg x 42 % = 147) e con l'habitat marziano (527 x 26.5 % = 140) scatta anche in condizioni nominali. NASA usa invece la PIO2 (che sottrae 47 mmHg di vapore acqueo) con limite 122-127 mmHg. "
+               "Inoltre il limite di O2 alto (23.5 %, rischio incendio) e' pensato per una cabina: in una tuta, per sua natura, l'O2 e' piu' alto (28 % nel brief, 42 % nella nostra assunzione) e la funzione segnala sempre allarme. Serve decidere quali criteri valgono per la tuta (domande 2 e 6).",
+               col_w=[0.26, 0.10, 0.10, 0.16, 0.38])
 
-        rows.append(["ASTRO_01 lavoro 7-12 h", "69.5 / 98.5", f"{win(day, 'cmd', 'hr', 7, 12):.0f} / {win(day, 'cmd', 'spo2', 7, 12):.1f}",
-                     f"{win(daym, 'cmd', 'hr', 7, 12):.0f} / {win(daym, 'cmd', 'spo2', 7, 12):.1f}", "stazione: PIO2 149"])
-        rows.append(["ASTRO_02 T2 17:00-17:45", "142.5 / 96.2", f"{win(day, 'bot', 'hr', 17.1, 17.75):.0f} / {win(day, 'bot', 'spo2', 17.1, 17.75):.1f}",
-                     f"{win(daym, 'bot', 'hr', 17.1, 17.75):.0f} / {win(daym, 'bot', 'spo2', 17.1, 17.75):.1f}", "MET 7.0 scelto per HR ~ 142"])
-        rows.append(["ASTRO_03 fibrillazione", "150 / 93", f"{fib_w['eng_hr'].mean():.0f} / {fib_w['eng_spo2'].mean():.1f}", "-", "imposto da Luca (hr_to, spo2_to)"])
-        rows.append(["ASTRO_04 EVA nominale", "132.5 / 94", f"{eva_hr:.0f} / {eva_sp:.1f}", "-", f"PIO2 EVA {eva_pio2:.0f} mmHg"])
-        rows.append(["ASTRO_04 EVA emergenza", "172 / 88", f"{dec_hr_max:.0f} / {dec_sp_min:.0f}", "-", f"PIO2 {dec_pio2:.1f}: coscienza persa, non modellata"])
-        table_page(pdf, "Valori di Luca (FC / SpO2) contro il modello",
-                   pd.DataFrame(rows, columns=["Situazione", "Luca FC / SpO2", "Modello: stazione 758 mmHg (adottata)", "Modello: habitat Marte (confronto)", "Nota"]),
-                   "Dove la differenza e' grande il modello segue le fonti [P1][P2]; non significa che il modello abbia ragione: serve la decisione di Luca "
-                   "(vedi incongruenze 2, 3 e domanda 1). SpO2 in decompressione: valore minimo; FC: massimo.", col_w=[0.20, 0.14, 0.18, 0.18, 0.30], font=8)
+    sub = []
+    for lbl, r in (("EVA nominale", ev_nom), ("EVA decompressione", ev_dec)):
+        d_ = r["df"][r["df"]["med_mod"] == "eva"]
+        alt_i = d_["eva_P"].map(isa_altitude_m)
+        alt_e = d_["eva_PIO2"].map(pio2_equiv_altitude_m)
+        st = alt_e.map(monitor_analysis).value_counts()
+        o2m = alt_e.map(lambda a: o2_minimum(a * 3.28084 if np.isfinite(a) else 1e9)).max()
+        sub.append([lbl, f"{alt_i.median():,.0f}", f"{alt_e.replace(np.inf, np.nan).median():,.0f}",
+                    ", ".join(f"{k}: {v}s" for k, v in st.items()), f"{o2m} % / {d_['eva_o2pct'].median():.0f} %"])
+    table_page(doc, "Regole di Luca applicate ai valori simulati dell'EVA",
+               pd.DataFrame(sub, columns=["Scenario", "Alt. da pressione (m)", "Alt. equiv. PIO2 (m)", "Stato ipossia (secondi)", "O2 min richiesto / attuale"]),
+               "Alt. da pressione = atmosfera standard ISA invertita; alt. equiv. PIO2 = quota in aria con la stessa PIO2 (piu' fisiologica). 'inf' = nessun O2 inspirato.",
+               col_w=[0.15, 0.15, 0.15, 0.35, 0.20])
+    csv_tab = {1000: ("NOMINALE", 21), 3000: ("PRE-ALLERTA", 27), 5500: ("PERICOLO AVANZATO", 44), 7000: ("CRITICO ELEVATO", 78),
+               12000: ("EMERGENZA SPAZIALE", 100)}
+    cmp_rows = [[hh, monitor_analysis(hh), o2_minimum(hh * 3.28084), st_, o2_, f"{isa_mmhg(hh):.0f}"] for hh, (st_, o2_) in csv_tab.items()]
+    table_page(doc, "Due tabelle di soglie in conflitto: notebook vs monitor_parametri_spaziali.csv",
+               pd.DataFrame(cmp_rows, columns=["Quota (m)", "Stato (notebook)", "O2 min % (notebook)", "Stato (CSV)", "O2 min % (CSV)", "Pressione ISA (mmHg)"]),
+               "Stato ipossia e O2 minimo differiscono tra le due fonti di Luca. Va deciso quale vale.")
 
-        text_page(pdf, "Incongruenze nel brief ricevuto", incong, size=8.4, wrap=135)
-        table_page(pdf, "Monitor atmosfera di Luca applicato alla simulazione (1 campione al minuto)",
-                   pd.DataFrame(atm_rows, columns=["Atmosfera simulata", "Luogo", "Minuti occupati", "ppO2 = P x %O2 (mmHg)", "Esito della funzione"]),
-                   "La funzione di Luca segnala 'CRITICAL ipossia' quando ppO2 (pressione totale x frazione di O2) e' sotto 148 mmHg o l'O2 e' sotto 19.5 %: soglie da livello del mare (758 mmHg x 19.5 % = 148). "
-                   "Con l'atmosfera della stazione (758 x 21 % = 159) non scatta; con la tuta (350 mmHg x 42 % = 147) e con l'habitat marziano (527 x 26.5 % = 140) scatta anche in condizioni nominali. NASA usa invece la PIO2 (che sottrae 47 mmHg di vapore acqueo) con limite 122-127 mmHg. "
-                   "Inoltre il limite di O2 alto (23.5 %, rischio incendio) e' pensato per una cabina: in una tuta, per sua natura, l'O2 e' piu' alto (28 % nel brief, 42 % nella nostra assunzione) e la funzione segnala sempre allarme. Serve decidere quali criteri valgono per la tuta (domande 2 e 6).",
-                   col_w=[0.26, 0.10, 0.10, 0.16, 0.38], font=7.5, scale=2.2)
+    # ---- ECG
+    fig, axes = plt.subplots(3, 2, figsize=(11, 6.2))
+    picks = [("ASTRO_01", 1.0), ("ASTRO_02", 1.0), ("ASTRO_03 (fibrillazione)", 0.0), ("ASTRO_04 EVA nominale", 1.0),
+             ("ASTRO_04 EVA emergenza", 0.0)]
+    for ax, (k, label) in zip(axes.flat, picks):
+        idx = ecg_row(label)
+        ax.plot(ecg[idx, :-1], color="#1f77b4" if label == 1.0 else "#d62728", lw=1)
+        ax.set_title(f"{k}: riga {idx}, label {label}", fontsize=9)
+        ax.tick_params(labelsize=7)
+    axes.flat[-1].axis("off")
+    axes.flat[-1].text(0, 0.5, f"ecg_dataset_megatron.csv: {len(ecg)} righe x 140 campioni (60 label 1.0, 40 label 0.0)\n"
+                       f"valori da {ecg[:, :-1].min():.2f} a {ecg[:, :-1].max():.2f}. Riga fissa per NPC (seed 42),\n"
+                       "non generata dai vitali: l'etichetta va legata all'evento.", fontsize=8)
+    fig.tight_layout()
+    doc.fig(fig, "ECG assegnati agli NPC",
+            "Asse orizzontale: campione del battito (140 per riga). Asse verticale: ampiezza normalizzata del segnale. Blu = battito normale (label 1.0), rosso = anomalo (label 0.0).",
+            intro="Ogni astronauta riceve una riga del dataset ECG di Luca; la riga non e' generata dai vitali simulati.")
 
-        # ---- Luca's rules on simulated EVA values
-        sub = []
-        for lbl, r in (("EVA nominale", ev_nom), ("EVA decompressione", ev_dec)):
-            d = r["df"][r["df"]["med_mod"] == "eva"]
-            alt_i = d["eva_P"].map(isa_altitude_m)
-            alt_e = d["eva_PIO2"].map(pio2_equiv_altitude_m)
-            st = alt_e.map(monitor_analysis).value_counts()
-            o2m = alt_e.map(lambda a: o2_minimum(a * 3.28084 if np.isfinite(a) else 1e9)).max()
-            sub.append([lbl, f"{alt_i.median():,.0f}", f"{alt_e.replace(np.inf, np.nan).median():,.0f}",
-                        ", ".join(f"{k}: {v}s" for k, v in st.items()), f"{o2m} % / {d['eva_o2pct'].median():.0f} %"])
-        table_page(pdf, "Regole di Luca applicate ai valori simulati dell'EVA",
-                   pd.DataFrame(sub, columns=["Scenario", "Alt. da pressione (m)", "Alt. equiv. PIO2 (m)", "Stato ipossia (secondi)", "O2 min richiesto / attuale"]),
-                   "Alt. da pressione = atmosfera standard ISA invertita; alt. equiv. PIO2 = quota in aria con la stessa PIO2 (piu' fisiologica). 'inf' = nessun O2 inspirato.",
-                   col_w=[0.15, 0.15, 0.15, 0.35, 0.15], font=8)
-        csv_tab = {1000: ("NOMINALE", 21), 3000: ("PRE-ALLERTA", 27), 5500: ("PERICOLO AVANZATO", 44), 7000: ("CRITICO ELEVATO", 78),
-                   12000: ("EMERGENZA SPAZIALE", 100)}
-        cmp_rows = [[h, monitor_analysis(h), o2_minimum(h * 3.28084), st, o2, f"{isa_mmhg(h):.0f}"] for h, (st, o2) in csv_tab.items()]
-        table_page(pdf, "Due tabelle di soglie in conflitto: notebook vs monitor_parametri_spaziali.csv",
-                   pd.DataFrame(cmp_rows, columns=["Quota (m)", "Stato (notebook)", "O2 min % (notebook)", "Stato (CSV)", "O2 min % (CSV)", "Pressione ISA (mmHg)"]),
-                   "Stato ipossia e O2 minimo differiscono tra le due fonti di Luca. Va deciso quale vale.", font=8)
+    # ---- SpO2 curve
+    fig, ax = plt.subplots(figsize=(11, 4.8))
+    xs, ys = zip(*SPO2_VS_PIO2)
+    ax.plot(xs, ys, "o-", color="#1f77b4")
+    for label, x in (("habitat Marte 127", 127), ("sup. nominale 85 (EVA Luca)", 85), ("limite NASA 122", 122), ("ISS 149", 149)):
+        ax.axvline(x, color="#999", ls=":", lw=0.8)
+        ax.text(x, 12, label, rotation=90, fontsize=7, va="bottom")
+    ax.set_xlabel("PIO2 (mmHg)")
+    ax.set_ylabel("SpO2 stazionaria (%)")
+    fig.tight_layout()
+    doc.fig(fig, "Curva SpO2 contro PIO2 usata dal modello",
+            "Asse orizzontale: PIO2 = pressione parziale dell'ossigeno inspirato (mmHg) = (pressione totale - 47) x frazione di O2. Asse verticale: SpO2 stazionaria (%). "
+            "Le linee verticali sono i valori incontrati nelle simulazioni: 85 = EVA con 28 % O2 (brief), 122 = limite NASA, 127 = EVA assunta e habitat Marte, 149 = aria della stazione (adottata). Sotto 70 mmHg i punti sono ESTIMATE.",
+            intro="Relazione tra ossigeno inspirato e saturazione del sangue: determina la SpO2 in ogni ambiente simulato [P1].")
 
-        # ---- ECG
-        fig, axes = plt.subplots(3, 2, figsize=(11.69, 8.27))
-        picks = [("ASTRO_01", 1.0), ("ASTRO_02", 1.0), ("ASTRO_03 (fibrillazione)", 0.0), ("ASTRO_04 EVA nominale", 1.0),
-                 ("ASTRO_04 EVA emergenza", 0.0)]
-        for ax, (k, label) in zip(axes.flat, picks):
-            idx = ecg_row(label)
-            ax.plot(ecg[idx, :-1], color="#1f77b4" if label == 1.0 else "#d62728", lw=1)
-            ax.set_title(f"{k}: riga {idx}, label {label}", fontsize=9)
-            ax.tick_params(labelsize=7)
-        axes.flat[-1].axis("off")
-        axes.flat[-1].text(0, 0.5, f"ecg_dataset_megatron.csv: {len(ecg)} righe x 140 campioni (60 label 1.0, 40 label 0.0)\n"
-                           f"valori da {ecg[:, :-1].min():.2f} a {ecg[:, :-1].max():.2f}. Riga fissa per NPC (seed 42),\n"
-                           "non generata dai vitali: l'etichetta va legata all'evento.", fontsize=8)
-        fig.suptitle("ECG assegnati agli NPC", fontsize=12)
-        fig.tight_layout(rect=(0, 0.04, 1, 1))
-        caption(fig, "Asse orizzontale: campione del battito (140 per riga). Asse verticale: ampiezza normalizzata del segnale. Blu = battito normale (label 1.0), rosso = anomalo (label 0.0).")
-        pdf.savefig(fig)
-        plt.close(fig)
+    text_page(doc, "Domande per Luca", questions)
+    table_page(doc, "Fonti", sources, "Ricerca online del 2026-11-14. Elenco con URL completi: docs/reference/physiology-sources.md.",
+               col_w=[0.04, 0.30, 0.30, 0.31, 0.05], cls="small")
 
-        # ---- SpO2 curve + open questions + sources
-        fig, ax = plt.subplots(figsize=(11.69, 8.27))
-        xs, ys = zip(*SPO2_VS_PIO2)
-        ax.plot(xs, ys, "o-", color="#1f77b4")
-        for label, x in (("habitat Marte 127", 127), ("sup. nominale 85 (EVA Luca)", 85), ("limite NASA 122", 122), ("ISS 149", 149)):
-            ax.axvline(x, color="#999", ls=":", lw=0.8)
-            ax.text(x, 12, label, rotation=90, fontsize=7, va="bottom")
-        ax.set_xlabel("PIO2 (mmHg)")
-        ax.set_ylabel("SpO2 stazionaria (%)")
-        ax.set_title("Curva SpO2 contro PIO2 usata dal modello [P1] (sotto 70 mmHg: ESTIMATE)")
-        caption(fig, "Asse orizzontale: PIO2 = pressione parziale dell'ossigeno inspirato (mmHg) = (pressione totale - 47) x frazione di O2. Asse verticale: SpO2 stazionaria (%). "
-                     "Le linee verticali sono i valori incontrati nelle simulazioni: 85 = EVA con 28 % O2 (brief), 122 = limite NASA, 127 = EVA assunta e habitat Marte, 149 = aria della stazione (adottata).")
-        pdf.savefig(fig)
-        plt.close(fig)
-
-        text_page(pdf, "Domande per Luca", questions, size=8.6, wrap=135)
-        src_rows = sources.copy()
-        for c, w in (("Cosa supporta", 38), ("Fonte", 48), ("Dove (URL abbreviato)", 52)):
-            src_rows[c] = src_rows[c].map(lambda x, w=w: "\n".join(textwrap.wrap(str(x), w)))
-        table_page(pdf, "Fonti", src_rows, "Ricerca online del 2026-11-14. Elenco con URL completi: docs/reference/physiology-sources.md.",
-                   col_w=[0.04, 0.27, 0.32, 0.33, 0.04], font=7, scale=3.0)
-
-    print(f"report: {OUT / 'report.pdf'}")
+    html_path = doc.write()
+    ok = to_pdf(html_path, OUT / "report.pdf")
+    print(f"report: {OUT / 'report.pdf' if ok else html_path}")
 
 
 if __name__ == "__main__":

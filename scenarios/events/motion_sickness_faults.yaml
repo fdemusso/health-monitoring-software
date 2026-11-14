@@ -1,10 +1,11 @@
-# PLACEHOLDER - awaiting review by Luca. ASTRO_02 (bot): space motion sickness 08:00-09:00. Magnitudes ESTIMATE; unusual on a planetary surface, typical of the transit.
+# PLACEHOLDER - awaiting review by Luca. ASTRO_02 (bot): severe space motion sickness 08:00-09:00, mission day 1.0 (plateau, [P19]).
+# hr, respiration, HRV and skin are driven by the severity level in the model (ESTIMATE per level).
 faults:
   - id: bot_motion_sickness
     type: medical
     targets: [bot]
     start_s: 3600
     duration_s: 3600
-    params: {"hr_delta": 10, "resp_delta": 2, "hrv_factor": 0.8, "ramp_s": 300}
+    params: {"sms_severity": 3, "adaptation_day0": 1.0}
     anomaly_type: space_motion_sickness
     priority: 5

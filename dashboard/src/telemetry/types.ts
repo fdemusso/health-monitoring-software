@@ -42,6 +42,10 @@ export interface NPCState {
   vo2_l_min: number;
   vco2_l_min: number;
   heat_w: number;
+  sex?: 'M' | 'F' | null;
+  age_y?: number | null;
+  height_cm?: number | null;
+  body_mass_kg?: number | null;
   /** TRUE vital signs (ground truth), keyed by {@link VitalName}. */
   vitals: Record<VitalName, number>;
   /** Opaque persistent state of the physiology model. */

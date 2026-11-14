@@ -96,6 +96,7 @@ class Engine:
         return NPCState(
             id=npc.id, profile=npc.spec.profile, module_id=npc.block.module, activity=npc.block.activity,
             met=r.met, vo2_l_min=r.vo2_l_min, vco2_l_min=r.vco2_l_min, heat_w=r.heat_sensible_w,
+            sex=npc.spec.sex, age_y=npc.spec.age_y, height_cm=npc.spec.height_cm, body_mass_kg=npc.spec.body_mass_kg,
             vitals=dict(npc.vitals), latent=dict(npc.latent),
         )
 
@@ -126,11 +127,12 @@ class Engine:
 
         for npc in self.npcs.values():  # 3: crew exchange
             r, mid = npc.rates, npc.block.module
-            w.add_moles(mid, "o2", -r.o2_mol_s * dt, f"crew:{npc.id}")
-            w.add_moles(mid, "co2", r.co2_mol_s * dt, f"crew:{npc.id}")
-            w.add_moles(mid, "h2o", r.h2o_mol_s * dt, f"crew:{npc.id}")
-            w.book(f"crew:{npc.id}", "sweat_kg", r.sweat_kg_s * dt)
-            w.add_heat(mid, r.heat_sensible_w)
+            g = npc.vitals.get("gas_scale", 1.0)  # physiology: unconscious -> resting exchange, dead -> none
+            w.add_moles(mid, "o2", -r.o2_mol_s * g * dt, f"crew:{npc.id}")
+            w.add_moles(mid, "co2", r.co2_mol_s * g * dt, f"crew:{npc.id}")
+            w.add_moles(mid, "h2o", r.h2o_mol_s * g * dt, f"crew:{npc.id}")
+            w.book(f"crew:{npc.id}", "sweat_kg", r.sweat_kg_s * g * dt)
+            w.add_heat(mid, r.heat_sensible_w * g)
         for f in active:  # 3: physical faults
             if f.category != "physical":
                 continue

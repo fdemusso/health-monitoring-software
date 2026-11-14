@@ -6,7 +6,7 @@
 # Activities: sleep | nominal | exercise_aerobic | exercise_resistive | recovery (+ aliases work, rest, meal,
 # exercise). A block can override `met`. Custom classes can be added under `activities:`.
 physiology:
-  kind: "ares3.plugins.physiology.profile:ProfileModel"   # literature-based baseline (+ absolute episode targets)
+  kind: "ares3.plugins.physiology.human:HumanModel"   # organism: health state, per-person parameters, circadian, hydration, microgravity (death optional: death_enabled)
   params: {}
 members:
   - id: cmd
@@ -14,7 +14,9 @@ members:
     profile: commander
     sex: M
     body_mass_kg: 76
-    physiology: {kind: "ares3.plugins.physiology.profile:ProfileModel", params: {hr_rest: 64}}
+    age_y: 42                # ESTIMATE (not in Luca's brief): to confirm
+    height_cm: 178             # ESTIMATE: to confirm
+    physiology: {kind: "ares3.plugins.physiology.human:HumanModel", params: {hr_rest: 64}}
     schedule:
       - {from: 0, to: 6, activity: sleep, module: hab}
       - {from: 6, to: 7, activity: meal, module: hab}
@@ -32,6 +34,8 @@ members:
     profile: engineer
     sex: F
     body_mass_kg: 84
+    age_y: 36                # ESTIMATE (not in Luca's brief): to confirm
+    height_cm: 170             # ESTIMATE: to confirm
     schedule:
       - {from: 0, to: 6, activity: sleep, module: hab}
       - {from: 6, to: 7, activity: meal, module: hab}
@@ -52,6 +56,8 @@ members:
     profile: medic
     sex: F
     body_mass_kg: 65
+    age_y: 38                # ESTIMATE (not in Luca's brief): to confirm
+    height_cm: 165             # ESTIMATE: to confirm
     schedule:
       - {from: 0, to: 6, activity: sleep, module: hab}
       - {from: 6, to: 7, activity: meal, module: hab}
@@ -72,6 +78,8 @@ members:
     profile: botanist
     sex: F
     body_mass_kg: 61.5
+    age_y: 34                # ESTIMATE (not in Luca's brief): to confirm
+    height_cm: 168             # ESTIMATE: to confirm
     schedule:
       - {from: 0, to: 6.5, activity: sleep, module: hab}
       - {from: 6.5, to: 7.5, activity: meal, module: hab}

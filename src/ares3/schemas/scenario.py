@@ -44,6 +44,7 @@ class ScenarioFile(BaseModel):
     start_time_of_day_h: float = Field(default=6.0, ge=0, lt=24)
     environment: str
     environment_overrides: dict[str, Any] = {}
+    physiology_overrides: dict[str, Any] = {}  # merged into the params of every crew member's physiology (e.g. death_enabled)
     layout: str | list[str]  # one file, or several merged in order (modules, sensors, actuators in separate files)
     crew: str
     faults: str | None = None
@@ -83,6 +84,11 @@ def load_scenario(path: str | Path) -> Scenario:
     base = path.parent
     env_data = deep_merge(_read_yaml(base / sf.environment), sf.environment_overrides)
     crew = CrewConfig.model_validate(_read_yaml(base / sf.crew))
+    if sf.physiology_overrides:
+        crew.physiology.params = deep_merge(crew.physiology.params, sf.physiology_overrides)
+        for member in crew.members:
+            if member.physiology is not None:
+                member.physiology.params = deep_merge(member.physiology.params, sf.physiology_overrides)
     layout_files = [sf.layout] if isinstance(sf.layout, str) else sf.layout
     merged: dict[str, list] = {}
     for name in layout_files:

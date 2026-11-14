@@ -19,4 +19,5 @@ actuators:
   - {id: scrubber_eva, kind: "ares3.plugins.actuators.life_support:CO2Scrubber", module: eva, params: {sensor: eva_ppCO2, on_mmhg: 0.8, off_mmhg: 0.4, removal_mol_s: 5.0e-4}}
   - {id: o2gen_eva,    kind: "ares3.plugins.actuators.life_support:O2Generator", module: eva, params: {sensor: eva_pO2, setpoint_kpa: 19.60, rate_mol_s: 2.0e-3}}
   - {id: press_eva,    kind: "ares3.plugins.actuators.life_support:PressureRegulator", module: eva, params: {sensor: eva_P, setpoint_kpa: 46.66, band_kpa: 0.3}}
+  - {id: dehum_eva,    kind: "ares3.plugins.actuators.life_support:Dehumidifier", module: eva, params: {sensor: eva_RH}}
   - {id: thermo_eva,   kind: "ares3.plugins.actuators.life_support:Thermostat", module: eva, params: {sensor: eva_T}}

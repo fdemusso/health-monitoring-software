@@ -1,10 +1,11 @@
-# PLACEHOLDER - awaiting review by Luca. ASTRO_02 (bot): progressive dehydration 07:00-15:00. Magnitudes ESTIMATE (no quantitative source found).
+# PLACEHOLDER - awaiting review by Luca. ASTRO_02 (bot): no fluid intake and 0.5 % of body mass lost per hour, 07:00-15:00 (4 % in 8 h).
+# hr, respiration, HRV, skin and core temperature follow the water deficit in the model ([P17] 3 bpm per 1 %).
 faults:
   - id: bot_dehydration
     type: medical
     targets: [bot]
     start_s: 3600
     duration_s: 28800
-    params: {"hr_delta": 12, "resp_delta": 1, "hrv_factor": 0.85, "skin_temp_delta": -0.3, "ramp_s": 7200}
+    params: {"fluid_loss_pct_per_h": 0.5}
     anomaly_type: dehydration
     priority: 6

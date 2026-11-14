@@ -1,0 +1,14 @@
+# PLACEHOLDER - event scenario, death ENABLED (physiology_overrides). Same event as eva_decompression. ASTRO_04 (med): explosive decompression of the EVA volume at 10:10 (350 -> 50 mmHg in one tick), suit ECLSS off. Vitals follow the environment (not Luca's 172/88).
+name: evt_eva_decompression_fatal
+seed: 42
+dt_s: 1.0
+duration_days: 0.125000000     # 3 h
+start_time_of_day_h: 9.0
+environment: ../environments/orbital_station.yaml
+environment_overrides:
+  atmosphere: {pressure_kpa: 101.06, o2_fraction: 0.21, co2_ppm: 2500}   # Luca's STATION profiles: 758 mmHg, 21.0 % O2, 0.25 % CO2
+layout: [../base_layout.yaml, ../sensors_placeholder.yaml, ../actuators_placeholder.yaml]
+crew: ../crew.yaml
+physiology_overrides: {death_enabled: true}
+faults: eva_decompression_faults.yaml
+export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

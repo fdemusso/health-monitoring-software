@@ -66,6 +66,11 @@ class NPCState(_Frozen):
     vo2_l_min: float
     vco2_l_min: float
     heat_w: float
+    # anthropometrics of the crew member (None = not given); read by physiology models
+    sex: Literal["M", "F"] | None = None
+    age_y: float | None = None
+    height_cm: float | None = None
+    body_mass_kg: float | None = None
     # true vital signs, written by the PhysiologyModel: hr, hrv_rmssd, spo2, resp_rate, skin_temp_c, ...
     vitals: dict[str, float] = Field(default_factory=dict)
     # persistent latent state of the model (fatigue, circadian drift, ...); opaque to the core

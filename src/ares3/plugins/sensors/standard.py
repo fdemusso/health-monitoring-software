@@ -29,7 +29,7 @@ MODULE_DEFAULTS: dict[str, tuple[float, float]] = {
     "P": (0.05, 5.0),
 }
 # Wearable noise (std, unit of the vital). ESTIMATES: to be validated with the bioengineer.
-WEARABLE_NOISE: dict[str, float] = {"hr": 1.0, "hrv_rmssd": 2.0, "spo2": 0.5, "resp_rate": 0.5, "skin_temp_c": 0.1}
+WEARABLE_NOISE: dict[str, float] = {"hr": 1.0, "hrv_rmssd": 2.0, "spo2": 0.5, "resp_rate": 0.5, "skin_temp_c": 0.1, "core_temp_c": 0.05}
 
 
 class _SensorParams(BaseModel):
