@@ -199,6 +199,8 @@ class Engine:
         entities.add(module_id)
         entities.update(a.id for a in self.actuators if a.module == module_id)
         is_anom, a_type, a_ids = label_row(entities, active)
+        if npc is not None and npc.vitals.get("health_state", 0.0) >= 4.0:  # dead (Luca: label MORTO)
+            is_anom, a_type = True, "dead"
         return {
             "tick": obs.tick, "timestamp": obs.t_s, "sensor_id": obs.sensor_id, "entity_id": obs.entity_id,
             "metric": obs.metric, "value": obs.value, "value_true": obs.value_true,

@@ -38,6 +38,25 @@ def test_decompression_is_survivable_unless_death_is_enabled():
     assert safe[-1].vitals["gas_scale"] < 1.0  # an unconscious NPC stops working
 
 
+def test_decompression_starts_from_the_briefs_vitals_and_death_is_zero():
+    ticks = _run("eva_decompression_fatal", 4800, "med")
+    first = ticks[4200]  # first tick of the rupture (10:10)
+    assert 165 <= first.vitals["hr"] <= 173 and 80 <= first.vitals["spo2"] <= 89
+    dead = ticks[-1].vitals
+    assert dead["health_state"] == 4 and dead["hr"] == 0.0 and dead["spo2"] == 0.0 and dead["resp_rate"] == 0.0
+
+
+def test_dead_rows_are_labelled_dead():
+    eng = Engine(load_scenario(SCEN / "eva_decompression_fatal.yaml"))
+    rows = [row for r in eng.run(4800) for row in r.rows if row["entity_id"] == "med" and row["metric"] == "hr"]
+    assert rows[-1]["anomaly_type"] == "dead" and rows[-1]["is_anomaly"]
+
+
+def test_af_spo2_wanders_between_91_and_94():
+    sp = [n.vitals["spo2"] for n in _run("fibrillation", 4800, "eng")[4400:4800]]
+    assert 90.5 <= min(sp) and max(sp) <= 94.5 and max(sp) - min(sp) > 0.8
+
+
 def test_individual_parameters_use_sex_and_age():
     nom = _run("day_nominal", 2, "eng")[0].vitals, _run("day_nominal", 2, "med")[0].vitals
     assert nom[0]["hrv_rmssd"] > 0 and nom[1]["hrv_rmssd"] > 0
@@ -46,8 +65,8 @@ def test_individual_parameters_use_sex_and_age():
 
 
 def test_fever_and_dehydration_are_states_not_offsets():
-    fever = _run("fever", 7200, "med", every=300)
-    healthy = _run("day_nominal", 3600 * 6 + 1, "med", every=3600 * 6)[-1]  # same clock time (12:00), no fever
+    fever = _run("fever", 3600 * 5, "cmd", every=300)  # scenario starts at 07:00 -> last sample ~12:00
+    healthy = _run("day_nominal", 3600 * 6 + 1, "cmd", every=3600 * 6)[-1]  # same clock time (12:00), no fever
     assert fever[-1].vitals["core_temp_c"] - healthy.vitals["core_temp_c"] > 1.0
     assert fever[-1].vitals["hr"] > healthy.vitals["hr"] + 8
     dehy = _run("dehydration", 3600 * 6, "bot", every=600)

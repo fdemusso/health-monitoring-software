@@ -110,6 +110,7 @@ class HumanParams(ProfileParams):
     rapid_decompression_factor: float = 0.5  # TUC shortened to 1/3-1/2 after a rapid decompression [P21]
     rapid_drop_mmhg: float = 20.0
     tau_pio2_ref_s: float = 60.0
+    adrenergic_hr_bpm: float = 0.0  # >0: sympathetic surge, hr target floor while the air is hypoxic (PIO2 < pio2_ref_mmhg), state >= 1 and alive; 0 = off. Luca: 150-175 bpm
     heat_dose_core_c: float = 39.5  # heat dose starts here; 1/1800 s at +0.5 C (ESTIMATE)
     # --- individuals (used only when the matching base param was not given explicitly)
     hr_rest_m: float = 60.0  # ESTIMATE; women ~4 bpm higher [P14]
@@ -130,7 +131,7 @@ class HumanParams(ProfileParams):
     hr_per_c: float = 8.5  # [P8]
     rr_per_c: float = 2.0  # ESTIMATE
     # --- hydration
-    sweat_g_min_per_met: float = 3.0  # above sweat_met_threshold; 7 MET -> ~0.9 L/h (ESTIMATE)
+    sweat_g_min_per_met: float = 5.0  # above sweat_met_threshold; 7 MET -> 1.5 L/h (Luca: right on target)
     sweat_met_threshold: float = 2.0
     drink_tau_s: float = 7200.0  # ad libitum: the deficit closes with this time constant (ESTIMATE)
     hr_per_pct_dehyd: float = 3.0  # [P17] 3-5 bpm per 1 % of body mass lost
@@ -142,13 +143,14 @@ class HumanParams(ProfileParams):
     days_in_orbit: float = 30.0  # mission day at t = 0 (microgravity only)
     micro_hr_delta: float = 3.4  # [P18] meta-analysis, mean difference in flight
     micro_hrv_factor: float = 0.90  # reduced parasympathetic activity [P18]; magnitude ESTIMATE
-    micro_adapt_days: float = 7.0  # ESTIMATE
+    micro_adapt_days: float = 10.0  # Luca: adapted from mission day 10
     sms_probs: tuple[float, float, float, float] = (0.33, 0.30, 0.24, 0.13)  # none/mild/moderate/severe [P19]
     sms_hr_per_level: float = 3.0  # ESTIMATE
     sms_rr_per_level: float = 0.5
     sms_hrv_per_level: float = 0.05
     sms_skin_per_level: float = -0.15
     # --- rhythm
+    af_spo2_osc: float = 1.5  # AF: spo2 wanders +-1.5 around spo2_to (Luca: 91-94 %), slow noise
     af_sd_frac: float = 0.15  # AF: SD of RR / mean RR (RMSSD 80-250 ms is the usual AF range [P20])
     rr_min_ms: float = 250.0  # refractory limit
 
@@ -201,6 +203,9 @@ class HumanModel(ProfileModel):
         else:
             hr_add += p.hr_circ_amp * math.cos(2 * math.pi * (tod_h - p.hr_circ_peak_h) / 24.0)
         t["hr"] += hr_add
+        if (p.adrenergic_hr_bpm > 0.0 and lat.get("health_state", 0.0) >= 1.0 and not lat.get("dead", 0.0)
+                and env.pio2_mmhg < p.pio2_ref_mmhg):  # only while the air is hypoxic: it ends with the exposure
+            t["hr"] = max(t["hr"], p.adrenergic_hr_bpm)
         t["resp_rate"] += rr_add
         return t
 
@@ -326,16 +331,29 @@ class HumanModel(ProfileModel):
         af_w += ((1.0 if af_on else 0.0) - af_w) * (1.0 - math.exp(-dt / p.tau_fault_s))
         mine["af_w"] = af_w
 
+        # initial values right after an event (Luca: the brief's vitals are the START, no vertical crash): set once at fault start
+        for f in faults:
+            key = f"init_{f.id}"
+            if ("hr_init" in f.params or "spo2_init" in f.params) and t >= f.start_s and not lat.get(key):
+                lat["hr"], lat["spo2"] = float(f.params.get("hr_init", lat.get("hr", 0.0))), float(f.params.get("spo2_init", lat.get("spo2", 100.0)))
+                mine[key] = 1.0
+
         # the vitals of the underlying (profile) model; an unconscious NPC does not exercise
         view = npc.model_copy(update={"met": met, "activity": "rest" if unconscious and not sleeping else npc.activity,
                                       "latent": {**lat, **mine}})
         vit = super().step(dt, view, env, ctx)
         v = dict(vit.vitals)
-        if state == 3:  # severe hypoxia: bradycardia and agonal breathing
-            v["hr"] *= min(1.0, max(0.25, (v["spo2"] - 35.0) / 30.0))
+        if state == 3:  # severe hypoxia: bradycardia (unless the adrenergic floor holds hr up) and agonal breathing
+            if p.adrenergic_hr_bpm <= 0.0:
+                v["hr"] *= min(1.0, max(0.25, (v["spo2"] - 35.0) / 30.0))
             if v["spo2"] < 50.0:
                 v["resp_rate"] *= 0.5
         if af_w > 0.0:
+            osc = lat.get("spo2_osc", 0.0)
+            osc += -osc * dt / 10.0 + 0.45 * math.sqrt(dt) * float(self.rng.standard_normal())
+            osc = max(-p.af_spo2_osc, min(p.af_spo2_osc, osc))
+            mine["spo2_osc"] = osc
+            v["spo2"] = min(100.0, v["spo2"] + af_w * osc)
             af_hrv = math.sqrt(2.0) * p.af_sd_frac * 60000.0 / max(v["hr"], 20.0)
             v["hrv_rmssd"] = v["hrv_rmssd"] * (1.0 - af_w) + af_hrv * af_w
 
@@ -357,10 +375,10 @@ class HumanModel(ProfileModel):
 
     def _dead_step(self, dt: float, npc: NPCState, env: ModuleState, lat: dict[str, float],
                    mine: dict[str, float]) -> VitalsUpdate:
-        """Vitals decay to zero (hr, resp, spo2); skin and core temperature relax to the room temperature."""
+        """Vitals are zero (hr, resp, spo2, hrv); skin and core temperature relax to the room temperature."""
         v = dict(npc.vitals)
-        for key, tau in (("hr", 30.0), ("resp_rate", 30.0), ("spo2", 60.0), ("hrv_rmssd", 30.0)):
-            v[key] = v.get(key, 0.0) * math.exp(-dt / tau)
+        for key in ("hr", "resp_rate", "spo2", "hrv_rmssd"):  # Luca: after death the series is 0
+            v[key] = 0.0
         for key, tau in (("skin_temp_c", 3600.0), ("core_temp_c", 18000.0)):
             v[key] = env.temperature_c + (v.get(key, env.temperature_c) - env.temperature_c) * math.exp(-dt / tau)
         v.update(health_state=4.0, gas_scale=0.0, sleep_stage=0.0, nausea=0.0, rr_interval_ms=0.0, rhythm=0.0,

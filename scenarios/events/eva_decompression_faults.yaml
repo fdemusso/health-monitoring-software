@@ -20,5 +20,6 @@ faults:
     targets: [med]
     start_s: 4200
     duration_s: 1200
+    params: {"hr_init": 172, "spo2_init": 88}   # Luca: brief values are the START right after the rupture
     anomaly_type: eva_decompression
     priority: 10

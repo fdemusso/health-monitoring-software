@@ -9,5 +9,6 @@ environment_overrides:
   atmosphere: {pressure_kpa: 101.06, o2_fraction: 0.21, co2_ppm: 2500}   # Luca's STATION profiles: 758 mmHg, 21.0 % O2, 0.25 % CO2
 layout: [../base_layout.yaml, ../sensors_placeholder.yaml, ../actuators_placeholder.yaml]
 crew: ../crew.yaml
+physiology_overrides: {adrenergic_hr_bpm: 172}   # Luca: during the decompression hr stays fixed at the brief's 172 (150-175, adrenaline), no bradycardia
 faults: eva_decompression_faults.yaml
 export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

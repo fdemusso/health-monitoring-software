@@ -61,12 +61,12 @@ LUCA_EMERG = dict(hr=172.0, spo2=88.0, o2=20.0, p=50.0, alt_m=7000)
 # event -> (titolo, quando, cosa simula, da dove vengono i valori, cosa verificare)
 EV_IT = {
     "eva_nominal": ("Uscita EVA senza problemi", "ASTRO_04, 10:00-10:30", "Passeggiata esterna di 30 minuti, supporto vitale della tuta attivo.",
-                    "Atmosfera tuta: 350 mmHg, 42 % O2 (nostra assunzione, vedi pagina Ambiente); sforzo 5.5 MET (ESTIMATE).",
-                    "FC attorno a 125 bpm (la media NASA delle EVA e' 131-135) e SpO2 ~96 %: sono plausibili per una EVA? Nessun allarme atteso."),
+                    "Atmosfera tuta: 350 mmHg, 42 % O2 (nostra assunzione, vedi pagina Ambiente); sforzo 7.2 MET (indicazione di Luca).",
+                    "FC attorno a 125 bpm con 7.2 MET (la media NASA delle EVA e' 131-135) e SpO2 ~96 %: sono plausibili per una EVA? Nessun allarme atteso."),
     "eva_decompression": ("Decompressione esplosiva durante la EVA (morte disabilitata)", "ASTRO_04, evento alle 10:10",
-                          "In un solo istante la pressione passa da 350 a 50 mmHg e il supporto vitale si spegne. L'astronauta perde coscienza e, con la morte disabilitata, resta incosciente (stato 3).",
+                          "In un solo istante la pressione passa da 350 a 50 mmHg e il supporto vitale si spegne. L'astronauta perde coscienza e, con la morte disabilitata, resta incosciente (stato 3) ma la FC resta fissa a 172 bpm per l'adrenalina (opzione 'adrenergic_hr_bpm', solo in questo scenario).",
                           "Evento e pressioni dal brief di Luca; i vitali NON sono imposti (Luca: FC 172, SpO2 88): derivano dall'ossigeno inspirato. Perdita di coscienza dalla dose di ipossia (tempo di coscienza utile FAA [P21]); soglie ESTIMATE.",
-                          "Quanti secondi servono per la perdita di coscienza (Luca: 9-15 s)? Dopo la perdita di coscienza la FC scende (bradicardia da ipossia grave): e' coerente con la clinica?"),
+                          "Quanti secondi servono per la perdita di coscienza (Luca: 9-15 s)? Dopo la perdita di coscienza la FC resta alta (150-175, adrenalina, come indicato da Luca); la versione con morte mostra invece il crollo finale. Quanto deve durare la FC alta prima di calare?"),
     "eva_decompression_fatal": ("Decompressione esplosiva durante la EVA (morte abilitata)", "ASTRO_04, evento alle 10:10",
                                 "Stesso evento con la morte abilitata (opzione del modello): se la dose di ipossia supera 30 (circa 2 minuti di quasi vuoto) lo stato diventa 'morto'. FC, SpO2 e respirazione vanno a zero e l'NPC non scambia piu' gas.",
                                 "Stesso evento; la dose di morte (30 volte il tempo di coscienza utile) e' ESTIMATE.",
@@ -74,7 +74,7 @@ EV_IT = {
     "fibrillation": ("Possibile fibrillazione atriale", "ASTRO_03, 11:10-11:25",
                      "Per 15 minuti la FC sale a 150 bpm, la SpO2 scende a 93 % e gli intervalli tra i battiti diventano irregolari (ritmo AF) mentre lavora in habitat.",
                      "FC 150 e SpO2 93 dal brief di Luca; irregolarita' (deviazione standard degli RR = 15 % della media, RMSSD ~85 ms, nell'intervallo 80-250 ms [P20]) e respirazione +3/min ESTIMATE.",
-                     "Il quadro FC 150 / SpO2 93 con RR irregolari e' coerente con la fibrillazione che ha in mente? RMSSD e respirazione vanno corretti?"),
+                     "Valori clinici confermati da Luca: FC 150 e SpO2 tra 91 e 94 % (l'ECG viene dal suo CSV, gli RR non servono)."),
     "scrubber_failure": ("Guasto del depuratore di CO2", "habitat, 13:00-23:00", "Il depuratore di CO2 dell'habitat si ferma per 10 ore; l'equipaggio continua a produrre CO2.",
                          "Evento fisico; effetto di CO2 su FC/respirazione: ESTIMATE (+1 bpm e +1.5 resp/min per mmHg sopra 2). Perdita di coscienza solo oltre 50 mmHg [P22].",
                          "La CO2 sale fino al limite NASA (3 mmHg) e fa scattare l'allarme: l'effetto sui vitali (piccolo) e' realistico?"),
@@ -90,7 +90,7 @@ EV_IT = {
                     "0.5 %/h e' una perdita realistica? FC +12 bpm e temperatura centrale +0.8 C a fine evento sono ragionevoli? La reidratazione (2 h) e' troppo lenta?"),
     "stress": ("Stress acuto", "ASTRO_01, 10:00-12:00", "FC +10 bpm, respirazione +2/min, HRV ridotta del 40 % per 2 ore.",
                "Valori ESTIMATE (episodio imposto, nessuna fonte quantitativa).", "Valori e durata ragionevoli per uno stress acuto in missione?"),
-    "fever": ("Febbre", "ASTRO_04, 11:00-17:00",
+    "fever": ("Febbre", "ASTRO_01, 08:00-14:00",
               "La temperatura centrale sale di 1.5 C per 6 ore; FC (+8.5 bpm per grado), respirazione (+2 per grado) e temperatura cutanea (+1 C) la seguono.",
               "8.5 bpm per grado C [P8]; respirazione, pelle e HRV ESTIMATE.",
               "La temperatura cutanea (misurata al polso) sale quanto la febbre? Come cambiano respirazione e HRV?"),
@@ -489,8 +489,8 @@ def main() -> None:
         "affidabilita' (A = letta direttamente, B = letta solo tramite riassunto e da riverificare, E = nessuna fonte, stima nostra). "
         "Nei grafici l'area rosa e' il periodo in cui l'evento e' attivo; la linea punteggiata e' il valore indicato da Luca.",
         "## Astronauti simulati",
-        "ASTRO_01 comandante (uomo, 76 kg), ASTRO_02 botanica (donna, 61.5 kg, si allena sul tapis roulant T2), ASTRO_03 ingegnera (donna, 84 kg, "
-        "episodio di fibrillazione), ASTRO_04 medico (donna, 65 kg, uscita EVA). Pesi e sesso sono quelli del brief di Luca; eta' e altezza (pagina 'Persone simulate') sono una nostra stima da confermare.",
+        "ASTRO_01 comandante (uomo, 75 kg), ASTRO_02 botanico (uomo, 74 kg, si allena sul tapis roulant T2), ASTRO_03 ingegnera (donna, 61 kg, "
+        "episodio di fibrillazione), ASTRO_04 medico (donna, 65 kg, uscita EVA). Pesi, sesso, eta' e altezza sono quelli indicati da Luca nella sua revisione.",
     ]
 
     env_text = [
@@ -561,7 +561,7 @@ def main() -> None:
          "FC, SpO2 disponibili", "SpO2 < 95 % / < 90 % aumenta il costo energetico del 15 % / 30 %"],
         ["ENERGY_INTAKE, cella 5: reintegrazione", "STATION oppure OUTSIDE", "scenario, durata, heart_rate, peso, sex, kcal e acqua giornaliere",
          "scenario e sex disponibili; kcal e acqua giornaliere NO", "Serve un consumo di cibo e acqua simulato"],
-        ["stress-level-detection", "Non specificata", "colonne di Stress-lysis.csv (es. passi)", "Non simulabile: file non fornito", "Domanda 12"],
+        ["stress-level-detection", "Non specificata", "colonne di Stress-lysis.csv (es. passi)", "Il CSV e' arrivato (umidita', temperatura, passi, stress): i passi non sono simulati", "Domanda 12"],
     ], columns=["Sezione dei dati di Luca", "Fase di missione", "Ingressi", "Disponibile dalla simulazione?", "Nota"])
 
     limits = pd.DataFrame([
@@ -588,7 +588,7 @@ def main() -> None:
         ["Intervallo RR (rr_interval_ms)", "ms", "Tempo tra due battiti consecutivi", "Estratto attorno a 60000/FC con la variabilita' dell'HRV; irregolare in AF", rg("rrint")],
         ["Ritmo (rhythm)", "0/1", "1 = fibrillazione atriale in corso", "Dall'evento 'arrhythmia: af'", "0 - 1"],
         ["Nausea (nausea)", "0-3", "Gravita' del mal di spazio", "Livello della persona per il giorno di missione; evento", "0 - 3"],
-        ["MET", "-", "Intensita' dell'attivita' (1 = riposo)", "Dalla routine: sonno 0.9, lavoro 1.45, esercizio 7, EVA 5.5; da incosciente e' 1", "0.9 - 7"],
+        ["MET", "-", "Intensita' dell'attivita' (1 = riposo)", "Dalla routine: sonno 0.9, lavoro 1.45, esercizio 7, EVA 7.2; da incosciente e' 1", "0.9 - 7"],
         ["Attivita' e modulo", "-", "Cosa fa e dove si trova", "Dalla routine giornaliera", "-"],
         ["PIO2, ppCO2, P, T, UR del modulo", "mmHg, mmHg, mmHg, C, %", "Aria del modulo in cui si trova", "Fisica dei gas: respirazione degli astronauti (zero se morto), impianti, guasti", f"hab: PIO2 {dd['hab_PIO2'].min():.0f}-{dd['hab_PIO2'].max():.0f}, ppCO2 {dd['hab_ppCO2'].min():.1f}-{dd['hab_ppCO2'].max():.1f}"],
         ["Misura dei sensori", "come sopra", "Valore letto dal sensore", "Valore vero + rumore + ritardo; i guasti dei sensori non sono simulati in questi scenari", "-"],
@@ -610,7 +610,7 @@ def main() -> None:
         "gli scambi di gas si fermano e la temperatura del corpo si porta a quella della stanza. La morte e' OPZIONALE: parametro 'death_enabled' (falso di default; per uno scenario si imposta con 'physiology_overrides'). "
         "Con la morte disabilitata la dose si ferma appena sotto la soglia di morte e lo stato massimo e' 'incosciente'.",
         "## Altri meccanismi (nuovi)",
-        "Persone: frequenza massima 208 - 0.7 x eta' [P13]; FC a riposo uomini 60, donne 64 [P14]; HRV a riposo piu' alta nelle donne (+5 ms) e in calo con l'eta' [P14]; VO2max per sesso ed eta' (ESTIMATE). "
+        "Persone: frequenza massima 208 - 0.7 x eta' [P13]; FC a riposo per persona da Luca (58, 56, 62, 60 bpm); HRV a riposo piu' alta nelle donne (+5 ms) e in calo con l'eta' [P14]; VO2max per persona da Luca (50, 54, 45, 47 ml/kg/min). "
         "Circadiano e sonno: ritmo di FC e temperatura centrale [P15]; ipnogramma deterministico a cicli di 90 minuti (N3 10-20 %, REM 20-25 % [P16]) che modifica FC e respiro nel sonno. "
         "Temperatura e acqua: la temperatura centrale cresce con lo sforzo e con la febbre; il sudore (da MET) riduce l'acqua del corpo, che si recupera bevendo (costante 2 h); la disidratazione aumenta la FC di 3 bpm per 1 % di massa persa [P17]. "
         "Microgravita': FC +3.4 bpm e HRV -10 % a regime [P18]; mal di spazio nei primi giorni, con gravita' per persona estratta dalla distribuzione Shuttle [P19] (le persone sono al giorno 30 di missione, quindi adattate). "
@@ -628,12 +628,12 @@ def main() -> None:
         f"2) Ossigeno della tuta. 350 mmHg e 28 % O2 danno PIO2 {pio2_luca_eva:.0f} mmHg (limite NASA 122) e, secondo la curva di letteratura [P1], SpO2 ~{spo2_luca_eva:.0f} %; il brief indica SpO2 94 %. "
         "Una tuta reale usa 222 mmHg con O2 100 % (PIO2 ~175 mmHg) [P11]; la proposta NASA per Marte e' 8.2 psia (424 mmHg) con 34 % O2 (PIO2 128 mmHg, non validata). Abbiamo assunto il 42 % (PIO2 127).",
         f"3) Emergenza EVA. A 50 mmHg e 20 % O2 la PIO2 e' ~{pio2(50, 20):.1f} mmHg, praticamente vuoto. Il brief stesso indica perdita di coscienza in 9-15 s; la letteratura [P1] riporta 0-15 s a PIO2 28 mmHg dopo decompressione rapida. "
-        f"FC 172 e SpO2 88 % descrivono invece una persona ancora cosciente. Nel modello la FC sale fino a {dec_hr_max:.0f} bpm, l'astronauta perde coscienza dopo {dec_loc:.0f} s, la SpO2 scende fino a {dec_sp_min:.0f} % e, con la morte abilitata, il decesso avviene dopo {dec_dead:.0f} s.",
+        f"FC 172 e SpO2 88 % descrivono invece una persona ancora cosciente. Nel modello la FC parte da 172 bpm e resta fissa, l'astronauta perde coscienza dopo {dec_loc:.0f} s, la SpO2 scende fino a {dec_sp_min:.0f} % e, con la morte abilitata, il decesso avviene dopo {dec_dead:.0f} s.",
         f"4) Passo temporale. La caduta 350->50 mmHg in 0.2 s avviene in un solo passo di simulazione (1 s). Applicando la regola barotrauma ai dati simulati il risultato e' '{baro_sim}', con i valori del brief (0.2 s) e' '{baro_luca}'. "
         "Per rilevare l'esplosiva servono passi <= 0.1 s attorno all'evento o un campo che dichiari la durata.",
         "5) Atmosfera della stanza. ASTRO_02 e ASTRO_03 sono indicati con 20.8 % O2 e 0.38 % CO2, ASTRO_01 con 21.0 % e 0.25 %, tutti nella stessa stanza (3 astronauti, 60 m3). Nello stesso volume e nello stesso istante l'aria e' una sola. "
         f"0.38 % di CO2 a 758 mmHg e' ~2.9 mmHg, a ridosso del limite NASA di 3 mmHg. Nella simulazione la CO2 dell'habitat non supera {dd['hab_co2pct'].max():.2f} %.",
-        "6) Dati anagrafici. ASTRO_02 e' descritto 'uomo' ma ha sex F e 61.5 kg. Il blocco 'astro_4' compare due volte (il terzo e' ASTRO_03). Per ASTRO_02/03 'oxygenperc' e' 21 ma 'o2_perc_attuale' e' 20.8.",
+        "6) Dati anagrafici. ASTRO_02 e' descritto 'uomo' nel brief (e Luca elenca 2 uomini e 2 donne): ora e' uomo di 74 kg (confermato da Luca). Il blocco 'astro_4' compare due volte (il terzo e' ASTRO_03). Per ASTRO_02/03 'oxygenperc' e' 21 ma 'o2_perc_attuale' e' 20.8.",
         "7) Due tabelle di soglie. La funzione del notebook e il file monitor_parametri_spaziali.csv danno stati di ipossia e O2 minimo diversi alla stessa quota (pagina dedicata).",
         f"8) Fibrillazione. FC 150 e SpO2 93 % a riposo sono simili a un allenamento intenso (ASTRO_02: {bot_ex:.0f} bpm): su FC e SpO2 i due casi non si separano, serve l'ECG (label 0.0) e il contesto 'in_allenamento'. "
         "Nella fibrillazione l'HRV (RMSSD) tende ad aumentare [P9]: il modello genera RR irregolari (RMSSD ~85 ms, ESTIMATE nell'intervallo 80-250 ms [P20]).",
@@ -642,9 +642,22 @@ def main() -> None:
     ]
 
     questions = [
+        "## Risposte di Luca (recepite)",
+        "1, 2, 4, 5) Confermati: stazione a livello del mare (niente Marte), tuta a 350 mmHg con 42 % di O2 e volume di 12 m3, la PIO2 e' la grandezza di riferimento (l'altitudine e' solo un confronto), valgono le tabelle PIO2 e ppO2 del simulatore. "
+        "6) Il controllo sull'ossigeno in cabina (ppO2 sotto 148 mmHg, O2 sopra 23.5 %) vale solo per la cabina e non per la tuta: il simulatore usa gia' solo la PIO2 (limiti 122 e 127 mmHg). "
+        "3) I valori del brief (FC 172, SpO2 88 %) sono i valori iniziali subito dopo la rottura: ora la decompressione parte da li' e poi peggiora. "
+        "7) Cinque stati confermati; dopo la morte la serie vale 0 e le righe hanno l'etichetta 'dead' (MORTO). "
+        "8) Anagrafica aggiornata: ASTRO_01 uomo 42 anni, 178 cm, 75 kg, FC a riposo 58, VO2max 50; ASTRO_02 uomo 35 anni, 180 cm, 74 kg, 56, 54; ASTRO_03 donna 36 anni, 168 cm, 61 kg, 61, 45; ASTRO_04 donna 38 anni, 171 cm, 65 kg, 60, 47. "
+        "9) Fibrillazione: valori clinici confermati; la SpO2 oscilla tra 91 e 94 %; gli intervalli RR non servono (l'ECG viene dalla forma d'onda completa del suo CSV). "
+        "10, 11) Valori confermati (ampiezze circadiane, ipnogramma, perdita d'acqua e reidratazione); adattamento alla microgravita' dal giorno 10, mal di spazio dal giorno 1. "
+        "Seconda tornata: sudore 5 g/min per MET sopra 2 (1.5 L/h a 7 MET, giusto per Luca); MET di palestra (7.0) ed EVA (7.2) invariati, perche' Luca considera le FC ottenute giuste per atleti che si allenano 2 ore al giorno; durante la decompressione la FC resta fissa a 172 bpm; la febbre e' assegnata ad ASTRO_01 (in cabina) per non avvicinarsi all'ipertermia. "
+        "12) Stress-Lysis.csv ricevuto (umidita', temperatura, passi, livello di stress 0-2). I suoi moduli usano: ECG (140 campioni), SpO2, peso, sesso, macchinario, luogo/scenario, durata e, dai sensori, pressione, O2, CO2 e dt; non servono FC, respirazione, HRV e temperature.",
+        "## Ancora aperte",
+        "Variabile 'passi' del modulo stress (il simulatore non la produce; temperatura del CSV forse in gradi Fahrenheit); decollo dalla Terra (13). "
+        "Le sezioni numerate qui sotto sono le domande originali, gia' risposte sopra salvo quelle elencate in questo paragrafo.",
         "## Decisioni gia' prese (se non corrette da Luca)",
         "Gli NPC sono ASTRO_01 comandante, ASTRO_02 botanica, ASTRO_03 ingegnera, ASTRO_04 medico (confermato). L'ambiente e' la stazione (758 mmHg, 21 % O2). Per l'EVA usiamo 350 mmHg con 42 % di ossigeno invece di 28 %, perche' il valore del brief da' PIO2 sotto il limite NASA. "
-        "L'esercizio aerobico e' fissato a 7.0 MET e la EVA a 5.5 MET. La morte e' opzionale (disabilitata di default). Il comportamento reattivo degli astronauti (reazione agli allarmi) e' fuori dallo scopo: il progetto monitora la salute.",
+        "L'esercizio aerobico e' fissato a 7.0 MET e la EVA a 7.2 MET (indicazione di Luca). La morte e' opzionale (disabilitata di default). Il comportamento reattivo degli astronauti (reazione agli allarmi) e' fuori dallo scopo: il progetto monitora la salute.",
         "## 1) Ambiente di riferimento: conferma stazione/livello del mare",
         "Contesto: abbiamo adottato l'ambiente dei suoi profili 'STATION' (758 mmHg, 21 % O2, microgravita'): e' coerente con altitudine 0, soglia ppO2 148 mmHg, macchinari ISS e metabolismo in microgravita'. "
         f"L'habitat marziano (70.3 kPa, 26.5 % O2) darebbe PIO2 127 mmHg e SpO2 a riposo ~{spo2_mars:.0f} %, contro ~{spo2_station:.0f} % della stazione. Ci serve: conferma che il modello di allerta lavora in ambiente ISS/livello del mare "
@@ -653,7 +666,7 @@ def main() -> None:
         "Contesto: vedi incongruenza 2. Opzioni: 350 mmHg al 28 % (brief, PIO2 85, SpO2 attesa ~83 %), 350 mmHg al 42 % (nostra assunzione, PIO2 127), tuta EMU 222 mmHg con O2 100 %, tuta marziana 424 mmHg con 34 %. "
         "Il volume di 12 m3 e' un airlock/rover o una tuta (0.1-0.2 m3)? Ci serve: i valori reali che intende usare.",
         "## 3) Cosa deve produrre l'NPC durante l'emergenza EVA",
-        f"Contesto: a 50 mmHg la PIO2 e' ~{pio2(50, 20):.1f} mmHg. Il modello ora simula la perdita di coscienza dopo {dec_loc:.0f} s (la FC sale fino a {dec_hr_max:.0f} bpm prima, poi scende) e, se abilitata, la morte dopo {dec_dead:.0f} s; il brief indica FC 172 e SpO2 88 % e perdita di coscienza in 9-15 s. "
+        f"Contesto: a 50 mmHg la PIO2 e' ~{pio2(50, 20):.1f} mmHg. Il modello ora simula la perdita di coscienza dopo {dec_loc:.0f} s (la FC parte da 172 bpm e resta fissa) e, se abilitata, la morte dopo {dec_dead:.0f} s; il brief indica FC 172 e SpO2 88 % e perdita di coscienza in 9-15 s. "
         "Ci serve: sono i valori iniziali dopo la rottura (da cui l'NPC peggiora) oppure a regime? Il tempo alla perdita di coscienza e quello alla morte sono accettabili?",
         "## 4) Altitudine",
         "Contesto: incongruenza 1. Assunzione attuale: l'altitudine non viene calcolata. Ci serve: quale grandezza considera 'vera' (pressione, PIO2 o altitudine) per le sue regole; proponiamo di derivare l'altitudine equivalente dalla PIO2.",
@@ -686,7 +699,7 @@ def main() -> None:
         "Contesto: i notebook considerano il decollo (calcolo energetico con forze G, miscela di ossigeno durante il decollo, strati atmosferici). La simulazione non ha questa fase. "
         "Ci serve: vuole uno scenario di decollo? In tal caso servono profilo di quota e di accelerazione nel tempo, pressione e miscela della tuta, durata e vitali attesi (FC > 140 nel suo calcolo energetico).",
         "## 14) Dati del brief da correggere",
-        "ASTRO_02 e' uomo o donna? I blocchi astro_4 sono due? Qual e' il valore corretto di ossigeno per ASTRO_02/03 (20.8 o 21)?",
+        "ASTRO_02 e' uomo (come nel brief, 2 uomini e 2 donne)? I blocchi astro_4 sono due? Qual e' il valore corretto di ossigeno per ASTRO_02/03 (20.8 o 21)?",
     ]
 
     sources = pd.DataFrame([
@@ -760,8 +773,8 @@ def main() -> None:
                           columns=["Luca", "NPC", "Sesso", "Eta' (anni)", "Altezza (cm)", "Massa (kg)", "FC riposo (bpm)", "FC massima (bpm)",
                                    "VO2max (ml/kg/min)", "HRV riposo (ms)", "Predisposizione al mal di spazio"])
     table_page(doc, "Persone simulate e parametri individuali", ind_df,
-               "Sesso e massa dal brief di Luca. Eta' e altezza sono NOSTRE STIME (non nel brief): da sostituire con i dati reali. Le altre colonne sono calcolate: FC massima = 208 - 0.7 x eta' [P13]; "
-               "FC a riposo 60 (uomini) e 64 (donne) con il comandante fissato a 64 [P14]; HRV a riposo 45 ms (+5 donne, -0.4 per anno sopra i 30) [P14]; VO2max 44 (uomini) e 37 (donne) a 30 anni, -0.3 per anno (ESTIMATE); "
+               "Eta', altezza e massa sono quelli indicati da Luca. Le altre colonne sono calcolate: FC massima = 208 - 0.7 x eta' [P13]; "
+               "FC a riposo e VO2max forniti da Luca per ciascuna persona; HRV a riposo 45 ms (+5 donne, -0.4 per anno sopra i 30) [P14]; "
                "predisposizione estratta a caso (seed fisso) dalla distribuzione Shuttle [P19]: dopo il giorno 3 di missione non ha effetto.",
                intro="Parametri che differenziano i quattro astronauti. Vengono usati dal modello fisiologico al posto di valori uguali per tutti.")
     text_page(doc, "Come leggere i grafici", guide)
@@ -770,7 +783,7 @@ def main() -> None:
                "Nota sui nomi: 'oxygen_perc' e' la SpO2 (sangue), 'oxygenperc' e' la percentuale di ossigeno della miscela respirata.",
                col_w=[0.21, 0.19, 0.25, 0.17, 0.18], cls="small")
     params = pd.DataFrame([
-        ["FC a riposo", "uomini 60, donne 64 bpm (comandante 64)", "differenza ~4 bpm [P14]; valori ESTIMATE", "B/E"],
+        ["FC a riposo e VO2max", "per persona, da Luca: FC 58/56/62/60 bpm, VO2max 50/54/45/47", "valori forniti dal bioingegnere", "A"],
         ["FC massima", "208 - 0.7 x eta'", "Tanaka [P13]", "A"],
         ["FC nel sonno", "80 % del riposo, modulata dalla fase (N3 -7 %, REM +7 %)", "20-30 % piu' bassa [P4]; fasi [P16], entita' ESTIMATE", "B/E"],
         ["FC diurna (circadiano)", "+-3 bpm, picco alle 15:00", "[P15]; ampiezza ESTIMATE", "E"],
@@ -782,7 +795,7 @@ def main() -> None:
         ["HRV (RMSSD)", "45 ms (+5 donne), scende con la FC", "[P14]; resto ESTIMATE", "B/E"],
         ["Temperatura centrale", "36.8 C +-0.4 (minimo 4:30) + 0.15 per MET", "[P15]; ampiezze ESTIMATE", "E"],
         ["Temperatura cutanea", "33.5 C + 0.05 per MET, +0.6 nel sonno", "ESTIMATE", "E"],
-        ["Disidratazione", "FC +3 bpm, T centrale +0.2 C per 1 % di massa persa; sudore 3 g/min per MET sopra 2", "[P17]; sudore ESTIMATE", "B/E"],
+        ["Disidratazione", "FC +3 bpm, T centrale +0.2 C per 1 % di massa persa; sudore 5 g/min per MET sopra 2 (1.5 L/h a 7 MET)", "[P17]; sudore ESTIMATE", "B/E"],
         ["CO2 -> FC / respirazione", "+1 bpm e +1.5/min per mmHg sopra 2", "ESTIMATE (sintomi a 3.5 mmHg [P12])", "E"],
         ["Febbre", "+8.5 bpm per C, respirazione +2 per C", "[P8]; respirazione ESTIMATE", "B/E"],
         ["Fibrillazione", "FC 150, SpO2 93 (brief); RR con SD 15 % (RMSSD ~85 ms)", "FC>100-110 [P9]; RMSSD 80-250 ms [P20]; SpO2 ESTIMATE", "B/E"],
@@ -910,13 +923,13 @@ def main() -> None:
         "eva_nominal": ("med", ["hr", "spo2", "rr", "hrv"], [("eva", "P", None), ("eva", "PIO2", 122), ("eva", "ppCO2", 3.0)], (9.0, 11.5)),
         "eva_decompression": ("med", ["hr", "spo2", "state", "hrv"], [("eva", "P", None), ("eva", "PIO2", 122), ("eva", "ppCO2", 3.0)], (9.5, 11.5)),
         "eva_decompression_fatal": ("med", ["hr", "spo2", "state", "hrv"], [("eva", "P", None), ("eva", "PIO2", 122), ("eva", "ppCO2", 3.0)], (9.5, 11.5)),
-        "fibrillation": ("eng", ["hr", "spo2", "rrint", "hrv"], [], (10.0, 13.0)),
+        "fibrillation": ("eng", ["hr", "spo2", "rr", "hrv"], [], (10.0, 13.0)),
         "scrubber_failure": ("cmd", ["hr", "rr", "spo2", "hrv"], [("hab", "ppCO2", 3.0), ("hab", "T", 27)], (12.0, 26.0)),
         "co2_release": ("cmd", ["hr", "rr", "spo2", "hrv"], [("hab", "ppCO2", 3.0), ("hab", "PIO2", 122)], (12.0, 20.0)),
         "slow_leak": ("cmd", ["hr", "spo2", "rr", "hrv"], [("hab", "P", None), ("hab", "PIO2", 122), ("hab", "ppCO2", 3.0)], (12.0, 22.0)),
         "dehydration": ("bot", ["hr", "dehyd", "core", "hrv"], [], (6.0, 20.0)),
         "stress": ("cmd", ["hr", "hrv", "rr", "skin"], [], (8.0, 14.0)),
-        "fever": ("med", ["hr", "core", "skin", "rr"], [], (10.0, 20.0)),
+        "fever": ("cmd", ["hr", "core", "skin", "rr"], [], (7.0, 20.0)),
         "motion_sickness": ("bot", ["hr", "nausea", "hrv", "rr"], [], (7.0, 13.0)),
     }
     for ev in EVENTS:
@@ -964,7 +977,7 @@ def main() -> None:
     rows.append(["ASTRO_01 lavoro 7-12 h", "69.5 / 98.5", f"{win_mean(day, 'cmd', 'hr', 7, 12):.0f} / {win_mean(day, 'cmd', 'spo2', 7, 12):.1f}",
                  f"{win_mean(daym, 'cmd', 'hr', 7, 12):.0f} / {win_mean(daym, 'cmd', 'spo2', 7, 12):.1f}", "stazione: PIO2 149"])
     rows.append(["ASTRO_02 T2 17:00-17:45", "142.5 / 96.2", f"{win_mean(day, 'bot', 'hr', 17.1, 17.75):.0f} / {win_mean(day, 'bot', 'spo2', 17.1, 17.75):.1f}",
-                 f"{win_mean(daym, 'bot', 'hr', 17.1, 17.75):.0f} / {win_mean(daym, 'bot', 'spo2', 17.1, 17.75):.1f}", "MET 7.0 scelto per HR ~ 142"])
+                 f"{win_mean(daym, 'bot', 'hr', 17.1, 17.75):.0f} / {win_mean(daym, 'bot', 'spo2', 17.1, 17.75):.1f}", "MET 7.0 (con il VO2max di Luca la FC resta sotto il brief: da rivedere)"])
     rows.append(["ASTRO_03 fibrillazione", "150 / 93", f"{fib_w['eng_hr'].mean():.0f} / {fib_w['eng_spo2'].mean():.1f}", "-", "imposto da Luca (hr_to, spo2_to)"])
     rows.append(["ASTRO_04 EVA nominale", "132.5 / 94", f"{eva_hr:.0f} / {eva_sp:.1f}", "-", f"PIO2 EVA {eva_pio2:.0f} mmHg"])
     rows.append(["ASTRO_04 EVA emergenza", "172 / 88", f"{dec_hr_max:.0f} (max) / {dec_sp_min:.0f} (min)", "-", f"PIO2 {dec_pio2:.1f}: incosciente dopo {dec_loc:.0f} s"])
