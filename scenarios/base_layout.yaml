@@ -1,0 +1,17 @@
+# PLACEHOLDER - awaiting review by the team / Mario (station layout not defined yet). Example written to make the pipeline run end to end;
+# NOT a decision of the team. Replace this file (or add more files to `layout:` in the scenario).
+# Modules (graph nodes) and hatches (edges). Volumes, thermal masses, UA and diffusion are ESTIMATES.
+modules:
+  # ua_w_k = heat loss to the exterior per kelvin (~0.05 W/m2K x surface, ESTIMATE)
+  - {id: hab,     volume_m3: 80, ua_w_k: 6}
+  - {id: lab,     volume_m3: 40, ua_w_k: 4}
+  - id: greenhouse
+    volume_m3: 30
+    ua_w_k: 8
+    atmosphere: {rh_percent: 70, co2_ppm: 1000, temperature_c: 24}   # microclimate: only these fields differ
+  - {id: airlock, volume_m3: 15, ua_w_k: 3}
+
+hatches:
+  - {a: hab, b: lab,        diffusion_coeff: 0.08}
+  - {a: hab, b: greenhouse, diffusion_coeff: 0.08}
+  - {a: hab, b: airlock,    diffusion_coeff: 0.05}

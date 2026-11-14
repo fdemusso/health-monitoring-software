@@ -1,0 +1,22 @@
+name: orbital_station
+description: >
+  ISS-like orbital station: sea-level atmosphere (101.3 kPa / 20.9% O2), microgravity, 24 h day.
+gravity_m_s2: 0
+day_length_s: 86400
+exterior_temp_c: -20        # ESTIMATE (effective radiative sink)
+atmosphere:
+  pressure_kpa: 101.3
+  o2_fraction: 0.209
+  co2_ppm: 600
+  temperature_c: 21
+  rh_percent: 40
+alarm_rules:
+  # NASA-STD-3001 limits, ported from ambientmonitor engine/monitoring/alarms.js (source tags in
+  # docs/reference/ambientmonitor/verifica-dati.md). Evaluated on the TRUE state of each module.
+  - {code: pressure,    metric: P,     min: 34.5, max: 103, source: "NASA-STD-3001 [S6]"}
+  - {code: ppco2_1h,    metric: ppCO2, max: 3,   window_s: 3600, source: "NASA-STD-3001 [S6]"}
+  - {code: pio2_1h,     metric: PIO2,  min: 127, window_s: 3600, source: "NASA-STD-3001 [S20]"}
+  - {code: pio2_abs,    metric: PIO2,  min: 122, source: "NASA-STD-3001 [S20]"}
+  - {code: pio2_hyper,  metric: PIO2,  max: 356, severity: warning, source: "NASA-STD-3001 [S20]"}
+  - {code: temperature, metric: T,     min: 18,  max: 27, source: "NASA-STD-3001 [S6]"}
+  - {code: humidity,    metric: RH,    min: 25,  max: 75, source: "NASA-STD-3001 [S6]"}

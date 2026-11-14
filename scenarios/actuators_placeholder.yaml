@@ -1,0 +1,17 @@
+# PLACEHOLDER - awaiting review by Mario (actuators). Example written to make the pipeline run end to end;
+# NOT a decision of the team. Replace this file (or add more files to `layout:` in the scenario).
+# Minimal controllers that keep the example station stable. Setpoints left out default to the environment profile.
+# Each actuator reads a sensor BY ID: if the sensor set changes, update `sensor:` here.
+actuators:
+  - {id: scrubber_hab, kind: "ares3.plugins.actuators.life_support:CO2Scrubber", module: hab, params: {sensor: hab_ppCO2, removal_mol_s: 1.5e-3}}
+  - {id: scrubber_lab, kind: "ares3.plugins.actuators.life_support:CO2Scrubber", module: lab, params: {sensor: lab_ppCO2, removal_mol_s: 8.0e-4}}
+  - {id: scrubber_gh,  kind: "ares3.plugins.actuators.life_support:CO2Scrubber", module: greenhouse,
+     params: {sensor: greenhouse_ppCO2, on_mmhg: 1.2, off_mmhg: 0.8, removal_mol_s: 3.0e-4}}
+  - {id: o2gen_hab,    kind: "ares3.plugins.actuators.life_support:O2Generator", module: hab, params: {sensor: hab_pO2, rate_mol_s: 3.0e-3}}   # must exceed the crew O2 demand: 4 crew ~1.2e-3 mol/s at rest, ~2.1e-3 each while exercising
+  - {id: dehum_hab,    kind: "ares3.plugins.actuators.life_support:Dehumidifier", module: hab, params: {sensor: hab_RH}}
+  - {id: dehum_lab,    kind: "ares3.plugins.actuators.life_support:Dehumidifier", module: lab, params: {sensor: lab_RH}}
+  - {id: press_hab,    kind: "ares3.plugins.actuators.life_support:PressureRegulator", module: hab, params: {sensor: hab_P}}
+  - {id: thermo_hab,   kind: "ares3.plugins.actuators.life_support:Thermostat", module: hab, params: {sensor: hab_T}}
+  - {id: thermo_lab,   kind: "ares3.plugins.actuators.life_support:Thermostat", module: lab, params: {sensor: lab_T}}
+  - {id: thermo_gh,    kind: "ares3.plugins.actuators.life_support:Thermostat", module: greenhouse, params: {sensor: greenhouse_T, setpoint_c: 24}}
+  - {id: thermo_air,   kind: "ares3.plugins.actuators.life_support:Thermostat", module: airlock, params: {sensor: airlock_T}}

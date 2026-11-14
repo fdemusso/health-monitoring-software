@@ -1,0 +1,56 @@
+# PLACEHOLDER - awaiting review by Mario (physical/sensor faults) and Luca (medical faults). Example faults.
+# Faults / emergencies, injected at t = start_s (simulation seconds from the start of the run).
+# category by type: sensor (bias, drift, stuck, dropout, noise) | physical (leak, co2_source, heat_source)
+#                   | actuator_offline | medical (params are read by the physiology model)
+faults:
+  - id: scrubber_lab_failure
+    type: actuator_offline
+    targets: [scrubber_lab]
+    start_s: 7200            # 2 h
+    duration_s: 14400        # 4 h
+    anomaly_type: scrubber_failure
+    priority: 5
+
+  - id: lab_co2_source
+    type: co2_source
+    targets: [lab]
+    start_s: 9000
+    duration_s: 7200
+    params: {mol_s: 1.0e-3}
+    anomaly_type: co2_release
+    priority: 8
+
+  - id: hab_slow_leak
+    type: leak
+    targets: [hab]
+    start_s: 86400           # 24 h
+    duration_s: 21600        # 6 h
+    params: {rate_per_s: 3.0e-6}   # fraction of the module's gas lost per second
+    anomaly_type: pressure_leak
+    priority: 9
+
+  - id: med_tachycardia
+    type: medical
+    targets: [med]
+    start_s: 72000           # 20 h
+    duration_s: 3600
+    params: {hr_delta: 45, resp_delta: 6, ramp_s: 120}
+    anomaly_type: tachycardia
+    priority: 7
+
+  - id: hab_co2_sensor_drift
+    type: drift
+    targets: [hab_ppCO2]
+    start_s: 90000
+    duration_s: 28800
+    params: {rate_per_s: 5.0e-5}   # mmHg per second
+    anomaly_type: sensor_drift
+    priority: 1
+
+  - id: cmd_hr_stuck
+    type: stuck
+    targets: [cmd_hr]
+    start_s: 108000
+    duration_s: 3600
+    anomaly_type: sensor_stuck
+    priority: 1

@@ -1,0 +1,23 @@
+name: mars_surface
+description: >
+  Martian surface habitat. 70.3 kPa / 26.5% O2 is the NASA surface-habitat design point [S2] sec 4.1.1;
+  sol = 88775.244 s [S5]; exterior -60 degC is the mean of the ambientmonitor VL1 profile [S1].
+gravity_m_s2: 3.71          # [S1]
+day_length_s: 88775.244     # [S5]
+exterior_temp_c: -60        # ESTIMATE (site dependent)
+atmosphere:
+  pressure_kpa: 70.3        # [S2]
+  o2_fraction: 0.265        # [S2]
+  co2_ppm: 600
+  temperature_c: 21         # BVAD nominal 296 K [S2]
+  rh_percent: 40            # BVAD nominal [S2]
+alarm_rules:
+  # NASA-STD-3001 limits, ported from ambientmonitor engine/monitoring/alarms.js (source tags in
+  # docs/reference/ambientmonitor/verifica-dati.md). Evaluated on the TRUE state of each module.
+  - {code: pressure,    metric: P,     min: 34.5, max: 103, source: "NASA-STD-3001 [S6]"}
+  - {code: ppco2_1h,    metric: ppCO2, max: 3,   window_s: 3600, source: "NASA-STD-3001 [S6]"}
+  - {code: pio2_1h,     metric: PIO2,  min: 127, window_s: 3600, source: "NASA-STD-3001 [S20]"}
+  - {code: pio2_abs,    metric: PIO2,  min: 122, source: "NASA-STD-3001 [S20]"}
+  - {code: pio2_hyper,  metric: PIO2,  max: 356, severity: warning, source: "NASA-STD-3001 [S20]"}
+  - {code: temperature, metric: T,     min: 18,  max: 27, source: "NASA-STD-3001 [S6]"}
+  - {code: humidity,    metric: RH,    min: 25,  max: 75, source: "NASA-STD-3001 [S6]"}

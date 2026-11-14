@@ -1,0 +1,68 @@
+# PLACEHOLDER - awaiting review by Luca (profiles, MET, schedules) and the team. Example data, not validated.
+# Crew: 4 profiles. Schedules are in LOCAL hours (0-24) and must cover the whole day.
+# Activities: sleep | nominal | exercise_aerobic | exercise_resistive | recovery (+ aliases work, rest, meal,
+# exercise). A block can override `met`. Custom classes can be added under `activities:`.
+physiology:
+  kind: "ares3.plugins.physiology.baseline:BaselineModel"   # placeholder, to be replaced by the bioengineer
+  params: {}
+members:
+  - id: cmd
+    profile: commander
+    body_mass_kg: 84
+    schedule:
+      - {from: 0, to: 6, activity: sleep, module: hab}
+      - {from: 6, to: 7, activity: meal, module: hab}
+      - {from: 7, to: 12, activity: work, module: hab}
+      - {from: 12, to: 13, activity: meal, module: hab}
+      - {from: 13, to: 17, activity: work, module: hab}
+      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab}
+      - {from: 17.5, to: 18.5, activity: exercise_resistive, module: hab}
+      - {from: 18.5, to: 19.5, activity: recovery, module: hab}
+      - {from: 19.5, to: 20.5, activity: meal, module: hab}
+      - {from: 20.5, to: 22, activity: rest, module: hab}
+      - {from: 22, to: 24, activity: sleep, module: hab}
+  - id: eng
+    profile: engineer
+    body_mass_kg: 80
+    schedule:
+      - {from: 0, to: 6, activity: sleep, module: hab}
+      - {from: 6, to: 7, activity: meal, module: hab}
+      - {from: 7, to: 9, activity: work, module: lab}
+      - {from: 9, to: 11, activity: work, module: airlock, met: 3.0}
+      - {from: 11, to: 12, activity: work, module: hab}
+      - {from: 12, to: 13, activity: meal, module: hab}
+      - {from: 13, to: 15, activity: work, module: airlock, met: 3.0}
+      - {from: 15, to: 17, activity: work, module: lab, met: 2.0}
+      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab}
+      - {from: 17.5, to: 18.5, activity: exercise_resistive, module: hab}
+      - {from: 18.5, to: 19.5, activity: recovery, module: hab}
+      - {from: 19.5, to: 20.5, activity: meal, module: hab}
+      - {from: 20.5, to: 22, activity: rest, module: hab}
+      - {from: 22, to: 24, activity: sleep, module: hab}
+  - id: med
+    profile: medic
+    body_mass_kg: 70
+    schedule:
+      - {from: 0, to: 4, activity: work, module: lab}
+      - {from: 4, to: 5, activity: meal, module: hab}
+      - {from: 5, to: 6, activity: rest, module: hab}
+      - {from: 6, to: 14, activity: sleep, module: hab}
+      - {from: 14, to: 15, activity: meal, module: hab}
+      - {from: 15, to: 17, activity: rest, module: hab}
+      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab}
+      - {from: 17.5, to: 18, activity: recovery, module: hab}
+      - {from: 18, to: 24, activity: work, module: lab}
+  - id: bot
+    profile: botanist
+    body_mass_kg: 62
+    schedule:
+      - {from: 0, to: 6.5, activity: sleep, module: hab}
+      - {from: 6.5, to: 7.5, activity: meal, module: hab}
+      - {from: 7.5, to: 12, activity: work, module: greenhouse, met: 1.8}
+      - {from: 12, to: 13, activity: meal, module: hab}
+      - {from: 13, to: 17, activity: work, module: greenhouse, met: 1.8}
+      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab}
+      - {from: 17.5, to: 18.5, activity: recovery, module: hab}
+      - {from: 18.5, to: 19.5, activity: meal, module: hab}
+      - {from: 19.5, to: 22, activity: rest, module: hab}
+      - {from: 22, to: 24, activity: sleep, module: hab}

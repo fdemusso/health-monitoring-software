@@ -1,0 +1,163 @@
+"""Mutable physical state: a topological graph of modules with gas inventories (mol) and temperature.
+
+No geometry: a module is a well-mixed volume; hatches exchange gas and heat. The core is the only
+writer; plugins get frozen snapshots and return flows. Every mole that enters or leaves is booked in
+``ledger`` so conservation can be tested (see ``tests/test_world.py``).
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+
+from ares3.schemas.environment import Atmosphere
+from ares3.schemas.layout import LayoutConfig, ModuleSpec
+from ares3.sdk.types import GasComposition, HatchState, ModuleState
+
+from .constants import KELVIN, R_UNIV, SPECIES, psat_kpa
+
+CP_AIR_MOLAR = 29.1  # J/(mol K)
+RHO_CP_STP = 1200.0  # J/(m3 K) of air at 101.3 kPa (scaled with pressure)
+
+
+@dataclass
+class ModuleRT:
+    spec: ModuleSpec
+    temp_c: float
+    n: dict[str, float]  # mol per species
+    heat_in_w: float = 0.0  # accumulated this tick, integrated by ``World.step``
+    heat_load_w: float = 0.0  # reported in the snapshot
+    occupants: list[str] = field(default_factory=list)
+
+    @property
+    def id(self) -> str:
+        return self.spec.id
+
+    @property
+    def n_total(self) -> float:
+        return sum(self.n.values())
+
+    def partial_kpa(self, species: str) -> float:
+        return self.n[species] * R_UNIV * (self.temp_c + KELVIN) / self.spec.volume_m3 / 1000.0
+
+    @property
+    def pressure_kpa(self) -> float:
+        return self.n_total * R_UNIV * (self.temp_c + KELVIN) / self.spec.volume_m3 / 1000.0
+
+
+@dataclass
+class HatchRT:
+    a: str
+    b: str
+    diffusion_coeff: float
+    open: bool = True
+
+
+def initial_inventory(volume_m3: float, atm: Atmosphere) -> tuple[dict[str, float], float]:
+    t_k = atm.temperature_c + KELVIN
+    n_total = atm.pressure_kpa * 1000.0 * volume_m3 / (R_UNIV * t_k)
+    n_h2o = atm.rh_percent / 100.0 * psat_kpa(atm.temperature_c) * 1000.0 * volume_m3 / (R_UNIV * t_k)
+    n_o2 = atm.o2_fraction * n_total
+    n_co2 = atm.co2_ppm * 1e-6 * n_total
+    n_n2 = n_total - n_o2 - n_co2 - n_h2o
+    if n_n2 <= 0:
+        raise ValueError("atmosphere is inconsistent: o2 + co2 + vapour exceed the total pressure")
+    return {"o2": n_o2, "co2": n_co2, "n2": n_n2, "h2o": n_h2o}, atm.temperature_c
+
+
+class World:
+    def __init__(self, layout: LayoutConfig, default_atmosphere: Atmosphere, exterior_temp_c: float) -> None:
+        self.exterior_temp_c = exterior_temp_c
+        self.modules: dict[str, ModuleRT] = {}
+        for spec in layout.modules:
+            atm = default_atmosphere
+            if spec.atmosphere is not None:
+                atm = Atmosphere.model_validate({**atm.model_dump(), **spec.atmosphere.model_dump(exclude_none=True)})
+            n, temp = initial_inventory(spec.volume_m3, atm)
+            self.modules[spec.id] = ModuleRT(spec=spec, temp_c=temp, n=n)
+        self.hatches = [HatchRT(h.a, h.b, h.diffusion_coeff, h.open) for h in layout.hatches]
+        # cumulative booking of every transfer, mol (species-keyed) or kg: "<source>:<species>"
+        self.ledger: dict[str, float] = {}
+
+    # ---- mutation (core only) -------------------------------------------------------------
+    def book(self, source: str, species: str, dn: float) -> None:
+        key = f"{source}:{species}"
+        self.ledger[key] = self.ledger.get(key, 0.0) + dn
+
+    def add_moles(self, module_id: str, species: str, dn: float, source: str) -> float:
+        """Add (or remove, dn<0) moles; the inventory never goes negative. Returns the amount applied."""
+        m = self.modules[module_id]
+        applied = max(dn, -m.n[species])
+        m.n[species] += applied
+        self.book(source, species, applied)
+        return applied
+
+    def add_heat(self, module_id: str, watts: float) -> None:
+        self.modules[module_id].heat_in_w += watts
+
+    def begin_tick(self) -> None:
+        for m in self.modules.values():
+            m.heat_in_w = 0.0
+            m.occupants = []
+
+    # ---- physics ---------------------------------------------------------------------------
+    def step(self, dt: float) -> None:
+        self._diffuse(dt)
+        self._thermal(dt)
+        self._condense()
+
+    def _diffuse(self, dt: float) -> None:
+        open_h = [h for h in self.hatches if h.open]
+        if not open_h:
+            return
+        # explicit scheme: split dt so that D*dt/V stays well below 1
+        worst = max(h.diffusion_coeff / min(self.modules[h.a].spec.volume_m3, self.modules[h.b].spec.volume_m3)
+                    for h in open_h)
+        nsub = max(1, math.ceil(worst * dt / 0.2))
+        sub = dt / nsub
+        for _ in range(nsub):
+            for h in open_h:
+                a, b = self.modules[h.a], self.modules[h.b]
+                for sp in SPECIES:
+                    flux = h.diffusion_coeff * (a.n[sp] / a.spec.volume_m3 - b.n[sp] / b.spec.volume_m3) * sub
+                    a.n[sp] -= flux
+                    b.n[sp] += flux
+                # heat carried by the exchanged air, weighted by the sub-step share of the tick
+                p_ratio = 0.5 * (a.pressure_kpa + b.pressure_kpa) / 101.3
+                w = h.diffusion_coeff * RHO_CP_STP * p_ratio * (a.temp_c - b.temp_c) * sub / dt
+                a.heat_in_w -= w
+                b.heat_in_w += w
+
+    def _thermal(self, dt: float) -> None:
+        for m in self.modules.values():
+            cap = m.spec.thermal_mass_j_k + m.n_total * CP_AIR_MOLAR
+            loss = m.spec.ua_w_k * (m.temp_c - self.exterior_temp_c)
+            m.temp_c += (m.heat_in_w - loss) * dt / cap
+            m.heat_load_w = m.heat_in_w
+
+    def _condense(self) -> None:
+        """Vapour above saturation condenses and leaves the air (booked in the ledger)."""
+        for m in self.modules.values():
+            sat_mol = psat_kpa(m.temp_c) * 1000.0 * m.spec.volume_m3 / (R_UNIV * (m.temp_c + KELVIN))
+            if m.n["h2o"] > sat_mol:
+                excess = m.n["h2o"] - sat_mol
+                m.n["h2o"] = sat_mol
+                self.book("condensed", "h2o", -excess)
+
+    # ---- views -------------------------------------------------------------------------------
+    def snapshot_module(self, m: ModuleRT) -> ModuleState:
+        return ModuleState(
+            id=m.id,
+            volume_m3=m.spec.volume_m3,
+            temperature_c=m.temp_c,
+            pressure_kpa=m.pressure_kpa,
+            gas=GasComposition(**{sp: m.partial_kpa(sp) for sp in SPECIES}),
+            heat_load_w=m.heat_load_w,
+            occupants=tuple(m.occupants),
+        )
+
+    def snapshot_hatches(self) -> tuple[HatchState, ...]:
+        return tuple(HatchState(a=h.a, b=h.b, diffusion_coeff=h.diffusion_coeff, open=h.open) for h in self.hatches)
+
+    def total_moles(self, species: str) -> float:
+        return sum(m.n[species] for m in self.modules.values())

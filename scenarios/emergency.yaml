@@ -1,0 +1,10 @@
+name: emergency
+seed: 7
+dt_s: 1.0
+duration_days: 2
+start_time_of_day_h: 6.0
+environment: environments/mars_surface.yaml
+layout: [base_layout.yaml, sensors_placeholder.yaml, actuators_placeholder.yaml]
+crew: crew.yaml
+faults: faults.yaml
+export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

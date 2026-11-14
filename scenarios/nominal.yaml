@@ -1,0 +1,10 @@
+name: nominal
+seed: 42
+dt_s: 1.0
+duration_days: 1            # remove (or null) for an unbounded run; use `ares3 run --forever`
+start_time_of_day_h: 6.0
+environment: environments/mars_surface.yaml    # swap with environments/orbital_station.yaml
+environment_overrides: {}                      # e.g. {atmosphere: {temperature_c: 23}}
+layout: [base_layout.yaml, sensors_placeholder.yaml, actuators_placeholder.yaml]
+crew: crew.yaml
+export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

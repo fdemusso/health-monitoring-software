@@ -1,0 +1,10 @@
+# PLACEHOLDER - awaiting review by Mario (sensors) and Luca (wearable metrics). Example written to make the pipeline run end to end;
+# NOT a decision of the team. Replace this file (or add more files to `layout:` in the scenario).
+# Sensors as RULES: each `sensor_sets` entry expands to one sensor per (target, metric), id = {target}_{metric}.
+# 120 sensors = a few more rules, not 120 entries. Explicit one-off sensors can go under `sensors:`.
+sensor_sets:
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [all_modules], metrics: [T]}
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [hab], metrics: [ppCO2, pO2, RH, P]}
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [lab], metrics: [ppCO2, RH]}
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [greenhouse], metrics: [ppCO2]}
+  - {target_type: npc,    kind: "ares3.plugins.sensors.standard:WearableSensor", targets: [all_npcs], metrics: [hr, spo2]}
