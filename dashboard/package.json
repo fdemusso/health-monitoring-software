@@ -1,0 +1,33 @@
+{
+  "name": "ares3-dashboard",
+  "private": true,
+  "version": "0.0.0",
+  "license": "GPL-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "deploy": "vite build && wrangler deploy",
+    "cf:dev": "wrangler dev",
+    "doctor": "npx react-doctor@latest",
+    "docs": "typedoc"
+  },
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "oxlint": "^1.81.0",
+    "react-doctor": "^0.9.14",
+    "typedoc": "^0.28.20",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "wrangler": "^4.145.0"
+  }
+}

@@ -1,0 +1,74 @@
+.bh-root {
+  display: block;
+  overflow: visible;
+}
+
+.bh-outline {
+  fill: rgba(94, 211, 255, 0.1);
+  stroke: rgba(148, 224, 255, 0.65);
+  stroke-width: 0.6;
+  filter: drop-shadow(0 0 2.5px rgba(94, 211, 255, 0.55));
+}
+
+.bh-organ path {
+  fill: currentColor;
+  /* Semi-transparent fill: an organ in front doesn't fully hide the one
+     behind it (e.g. the kidneys, covered by the liver/stomach). */
+  fill-opacity: 0.6;
+  stroke: currentColor;
+  stroke-opacity: 0.95;
+  stroke-width: 0.4;
+  /* Keeps the outline's thickness constant even during the pulse (scale). */
+  vector-effect: non-scaling-stroke;
+}
+
+.bh-organ {
+  color: var(--organ-color);
+  filter: drop-shadow(0 0 var(--organ-glow) var(--organ-glow-color));
+}
+
+/*
+ * The animation lives on each individual "part" (one path at a time),
+ * anchored to its real center via an inline transform-origin (viewBox
+ * coordinates) rather than `transform-box: fill-box`: on a <g> whose
+ * children carry their own SVG transform, fill-box is computed
+ * inconsistently across browsers and resolves to the wrong pivot - the
+ * organ appears to "jump" instead of pulsing in place.
+ */
+.bh-organ-part--pulse {
+  animation: bh-pulse var(--pulse-duration) ease-in-out infinite;
+}
+
+.bh-base {
+  /* fill is set inline in BodyHologram.tsx with this instance's unique gradient id */
+  animation: bh-base-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes bh-pulse {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.045);
+  }
+}
+
+@keyframes bh-base-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bh-organ-part--pulse,
+  .bh-base {
+    animation: none;
+  }
+}

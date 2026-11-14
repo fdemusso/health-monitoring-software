@@ -1,0 +1,14 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/components/index.ts"],
+  "out": "docs",
+  "name": "Body Hologram",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "readme": "none",
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  }
+}

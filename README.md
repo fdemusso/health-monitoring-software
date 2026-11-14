@@ -43,3 +43,13 @@ meant to be edited by Mario or Luca.
 
 Every physical constant needs a source tag (`[S1]..[S20]`, see `docs/reference/ambientmonitor/verifica-dati.md`) or the
 word ESTIMATE.
+
+## Dashboard (`dashboard/`)
+React + Vite, independent of the Python engine (`cd dashboard && pnpm install && pnpm dev`). Contains the
+`<BodyHologram />` component (organs coloured and pulsing from vital signs). `dashboard/src/telemetry/` holds the
+TypeScript mirror of the engine's `SimulationTick` and two interfaces, `VitalsSource` (where ticks come from) and
+`VitalsAdapter` (engine signals -> organs); neither is implemented yet. The thresholds in
+`components/BodyHologram/vitals.ts` are generic resting-adult values: the engine should send them already computed.
+
+**License note:** `dashboard/src/data/anatomy.json` is derived from gganatogram (GPL-2); see
+`dashboard/THIRD_PARTY_NOTICES.md` and `dashboard/LICENSE`.
