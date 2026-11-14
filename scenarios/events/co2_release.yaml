@@ -1,0 +1,13 @@
+# PLACEHOLDER - event scenario. CO2 release in hab 13:00-15:00 (3e-3 mol/s) above the scrubber capacity (1.5e-3 mol/s).
+name: evt_co2_release
+seed: 42
+dt_s: 1.0
+duration_days: 0.333333333     # 8 h
+start_time_of_day_h: 12.0
+environment: ../environments/orbital_station.yaml
+environment_overrides:
+  atmosphere: {pressure_kpa: 101.06, o2_fraction: 0.21, co2_ppm: 2500}   # Luca's STATION profiles: 758 mmHg, 21.0 % O2, 0.25 % CO2
+layout: [../base_layout.yaml, ../sensors_placeholder.yaml, ../actuators_placeholder.yaml]
+crew: ../crew.yaml
+faults: co2_release_faults.yaml
+export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

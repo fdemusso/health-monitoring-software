@@ -27,14 +27,17 @@ class _Window:
 
 
 class AlarmMonitor:
-    def __init__(self, rules: list[AlarmRule]) -> None:
+    def __init__(self, rules: list[AlarmRule], occupied_only: frozenset[str] = frozenset()) -> None:
         self.rules = rules
+        self.occupied_only = occupied_only
         self._windows: dict[tuple[str, str], _Window] = {}
 
     def evaluate(self, t_s: float, modules: dict[str, ModuleState]) -> tuple[AlarmEvent, ...]:
         events: list[AlarmEvent] = []
         for rule in self.rules:
             for mid, m in modules.items():
+                if mid in self.occupied_only and not m.occupants:
+                    continue
                 value = module_metric(m, rule.metric)
                 if rule.window_s > 0:
                     win = self._windows.setdefault((rule.code, mid), _Window(rule.window_s))

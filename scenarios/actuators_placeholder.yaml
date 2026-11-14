@@ -15,3 +15,8 @@ actuators:
   - {id: thermo_lab,   kind: "ares3.plugins.actuators.life_support:Thermostat", module: lab, params: {sensor: lab_T}}
   - {id: thermo_gh,    kind: "ares3.plugins.actuators.life_support:Thermostat", module: greenhouse, params: {sensor: greenhouse_T, setpoint_c: 24}}
   - {id: thermo_air,   kind: "ares3.plugins.actuators.life_support:Thermostat", module: airlock, params: {sensor: airlock_T}}
+  # EVA suit ECLSS (Luca: eclss_attivo). Absolute setpoints: the module is far from the environment profile.
+  - {id: scrubber_eva, kind: "ares3.plugins.actuators.life_support:CO2Scrubber", module: eva, params: {sensor: eva_ppCO2, on_mmhg: 0.8, off_mmhg: 0.4, removal_mol_s: 5.0e-4}}
+  - {id: o2gen_eva,    kind: "ares3.plugins.actuators.life_support:O2Generator", module: eva, params: {sensor: eva_pO2, setpoint_kpa: 19.60, rate_mol_s: 2.0e-3}}
+  - {id: press_eva,    kind: "ares3.plugins.actuators.life_support:PressureRegulator", module: eva, params: {sensor: eva_P, setpoint_kpa: 46.66, band_kpa: 0.3}}
+  - {id: thermo_eva,   kind: "ares3.plugins.actuators.life_support:Thermostat", module: eva, params: {sensor: eva_T}}

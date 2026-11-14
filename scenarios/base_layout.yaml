@@ -3,13 +3,21 @@
 # Modules (graph nodes) and hatches (edges). Volumes, thermal masses, UA and diffusion are ESTIMATES.
 modules:
   # ua_w_k = heat loss to the exterior per kelvin (~0.05 W/m2K x surface, ESTIMATE)
-  - {id: hab,     volume_m3: 80, ua_w_k: 6}
+  - {id: hab,     volume_m3: 60, ua_w_k: 6}   # 60 m3 = Luca's volume_modulo_m3
   - {id: lab,     volume_m3: 40, ua_w_k: 4}
   - id: greenhouse
     volume_m3: 30
     ua_w_k: 8
     atmosphere: {rh_percent: 70, co2_ppm: 1000, temperature_c: 24}   # microclimate: only these fields differ
   - {id: airlock, volume_m3: 15, ua_w_k: 3}
+  # EVA volume: Luca's brief gives 12 m3, 350 mmHg, 28 % O2, 0.15 % CO2. 28 % at 350 mmHg gives PIO2 85 mmHg, below the
+  # NASA minimum (122), so we assume 42 % O2 (PIO2 127 mmHg, like the habitat): ASSUMPTION, to be confirmed by Luca.
+  # 12 m3 is kept although a suit is ~0.1-0.2 m3 (slow dynamics); no hatch: crew moves airlock -> eva by schedule.
+  - id: eva
+    volume_m3: 12
+    ua_w_k: 3
+    alarm_mode: occupied
+    atmosphere: {pressure_kpa: 46.66, o2_fraction: 0.42, co2_ppm: 1500}
 
 hatches:
   - {a: hab, b: lab,        diffusion_coeff: 0.08}

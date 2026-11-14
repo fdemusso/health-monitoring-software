@@ -51,7 +51,8 @@ class Engine:
         self.world = World(scenario.layout, env.atmosphere, env.exterior_temp_c)
         self.catalog = build_catalog(scenario.crew.activities)
         self.injector = FaultInjector(scenario.faults.faults, sf.seed)
-        self.alarms = AlarmMonitor(env.alarm_rules)
+        self.alarms = AlarmMonitor(
+            env.alarm_rules, frozenset(m.id for m in scenario.layout.modules if m.alarm_mode == "occupied"))
         self.npcs: dict[str, NPC] = {m.id: NPC.from_spec(m) for m in scenario.crew.members}
 
         self.physiology: dict[str, PhysiologyModel] = {}

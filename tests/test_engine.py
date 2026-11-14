@@ -106,7 +106,7 @@ def test_sensor_sets_scale_without_touching_code(nominal):
         "targets": ["all_npcs"], "metrics": ["hr", "spo2", "resp_rate", "hrv_rmssd", "skin_temp_c"],
     }]
     big = LayoutConfig.model_validate(raw).expand_sensor_sets([m.id for m in nominal.crew.members])
-    assert len(big.sensors) == 4 * 5 * 2 + 4 * 5
+    assert len(big.sensors) == len(nominal.layout.modules) * 5 * 2 + 4 * 5
     sc = nominal.model_copy(update={"layout": big})
     res = list(Engine(sc).run(5))
     assert len(res[-1].observations) == len(big.sensors)

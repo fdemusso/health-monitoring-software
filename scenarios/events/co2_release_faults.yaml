@@ -1,0 +1,10 @@
+# PLACEHOLDER - awaiting review by Luca. CO2 release in hab 13:00-15:00 (3e-3 mol/s) above the scrubber capacity (1.5e-3 mol/s).
+faults:
+  - id: hab_co2_source
+    type: co2_source
+    targets: [hab]
+    start_s: 3600
+    duration_s: 7200
+    params: {"mol_s": 0.003}
+    anomaly_type: co2_release
+    priority: 8

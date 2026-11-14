@@ -1,0 +1,13 @@
+# PLACEHOLDER - event scenario. hab slow leak 13:00-19:00 (3e-6 /s of the gas), pressure regulator makes up N2 at 2e-3 mol/s.
+name: evt_slow_leak
+seed: 42
+dt_s: 1.0
+duration_days: 0.416666667     # 10 h
+start_time_of_day_h: 12.0
+environment: ../environments/orbital_station.yaml
+environment_overrides:
+  atmosphere: {pressure_kpa: 101.06, o2_fraction: 0.21, co2_ppm: 2500}   # Luca's STATION profiles: 758 mmHg, 21.0 % O2, 0.25 % CO2
+layout: [../base_layout.yaml, ../sensors_placeholder.yaml, ../actuators_placeholder.yaml]
+crew: ../crew.yaml
+faults: slow_leak_faults.yaml
+export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

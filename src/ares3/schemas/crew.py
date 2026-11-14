@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -46,6 +46,8 @@ class CrewMember(BaseModel):
     id: str
     profile: str  # free label: commander | engineer | medic | botanist | ...
     body_mass_kg: float = Field(default=82.0, gt=0)
+    sex: Literal["M", "F"] | None = None
+    alias: str | None = None  # name used in the bioengineer's brief (ASTRO_01 ...)
     schedule: list[ActivityBlock]
     physiology: PhysiologySpec | None = None  # None -> CrewConfig.physiology
 

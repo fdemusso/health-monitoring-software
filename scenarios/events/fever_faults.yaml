@@ -1,0 +1,10 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_04 (med): fever +1.5 C core 11:00-17:00. hr +8.5 bpm/C [P8]; resp, skin, hrv ESTIMATE.
+faults:
+  - id: med_fever
+    type: medical
+    targets: [med]
+    start_s: 3600
+    duration_s: 21600
+    params: {"hr_delta": 13, "resp_delta": 3, "skin_temp_delta": 1.0, "hrv_factor": 0.8, "ramp_s": 3600}
+    anomaly_type: fever
+    priority: 6

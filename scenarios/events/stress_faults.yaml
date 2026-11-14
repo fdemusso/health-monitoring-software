@@ -1,0 +1,10 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_01 (cmd): acute stress 10:00-12:00. Magnitudes ESTIMATE.
+faults:
+  - id: cmd_stress
+    type: medical
+    targets: [cmd]
+    start_s: 7200
+    duration_s: 7200
+    params: {"hr_delta": 10, "resp_delta": 2, "hrv_factor": 0.6, "ramp_s": 600}
+    anomaly_type: acute_stress
+    priority: 5

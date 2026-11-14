@@ -1,0 +1,13 @@
+# PLACEHOLDER - event scenario. ASTRO_01 (cmd): acute stress 10:00-12:00. Magnitudes ESTIMATE.
+name: evt_stress
+seed: 42
+dt_s: 1.0
+duration_days: 0.250000000     # 6 h
+start_time_of_day_h: 8.0
+environment: ../environments/orbital_station.yaml
+environment_overrides:
+  atmosphere: {pressure_kpa: 101.06, o2_fraction: 0.21, co2_ppm: 2500}   # Luca's STATION profiles: 758 mmHg, 21.0 % O2, 0.25 % CO2
+layout: [../base_layout.yaml, ../sensors_placeholder.yaml, ../actuators_placeholder.yaml]
+crew: ../crew.yaml
+faults: stress_faults.yaml
+export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

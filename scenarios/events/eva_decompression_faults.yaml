@@ -1,0 +1,24 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_04 (med): explosive decompression of the EVA volume at 10:10 (350 -> 50 mmHg in one tick), suit ECLSS off. Vitals follow the environment (not Luca's 172/88).
+faults:
+  - id: eva_decompression
+    type: leak
+    targets: [eva]
+    start_s: 4200
+    duration_s: 1
+    params: {"rate_per_s": 0.857}
+    anomaly_type: eva_decompression
+    priority: 10
+  - id: eva_eclss_off
+    type: actuator_offline
+    targets: [scrubber_eva, o2gen_eva, press_eva, thermo_eva]
+    start_s: 4200
+    duration_s: 1200
+    anomaly_type: eclss_offline
+    priority: 9
+  - id: med_decompression_label
+    type: medical
+    targets: [med]
+    start_s: 4200
+    duration_s: 1200
+    anomaly_type: eva_decompression
+    priority: 10

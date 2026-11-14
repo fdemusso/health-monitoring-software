@@ -1,0 +1,13 @@
+# PLACEHOLDER - event scenario. hab CO2 scrubber offline 13:00-23:00 (crew keeps producing CO2).
+name: evt_scrubber_failure
+seed: 42
+dt_s: 1.0
+duration_days: 0.583333333     # 14 h
+start_time_of_day_h: 12.0
+environment: ../environments/orbital_station.yaml
+environment_overrides:
+  atmosphere: {pressure_kpa: 101.06, o2_fraction: 0.21, co2_ppm: 2500}   # Luca's STATION profiles: 758 mmHg, 21.0 % O2, 0.25 % CO2
+layout: [../base_layout.yaml, ../sensors_placeholder.yaml, ../actuators_placeholder.yaml]
+crew: ../crew.yaml
+faults: scrubber_failure_faults.yaml
+export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

@@ -1,0 +1,10 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_02 (bot): progressive dehydration 07:00-15:00. Magnitudes ESTIMATE (no quantitative source found).
+faults:
+  - id: bot_dehydration
+    type: medical
+    targets: [bot]
+    start_s: 3600
+    duration_s: 28800
+    params: {"hr_delta": 12, "resp_delta": 1, "hrv_factor": 0.85, "skin_temp_delta": -0.3, "ramp_s": 7200}
+    anomaly_type: dehydration
+    priority: 6

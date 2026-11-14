@@ -1,0 +1,10 @@
+# PLACEHOLDER - awaiting review by Luca. hab slow leak 13:00-19:00 (1e-05 /s of the gas), pressure regulator makes up N2 at 2e-3 mol/s.
+faults:
+  - id: hab_slow_leak
+    type: leak
+    targets: [hab]
+    start_s: 3600
+    duration_s: 21600
+    params: {"rate_per_s": 1e-05}
+    anomaly_type: pressure_leak
+    priority: 9

@@ -1,0 +1,9 @@
+# PLACEHOLDER - awaiting review by Luca. hab CO2 scrubber offline 13:00-23:00 (crew keeps producing CO2).
+faults:
+  - id: scrubber_hab_failure
+    type: actuator_offline
+    targets: [scrubber_hab]
+    start_s: 3600
+    duration_s: 36000
+    anomaly_type: scrubber_failure
+    priority: 5

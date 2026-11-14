@@ -1,0 +1,10 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_03 (eng): suspected atrial fibrillation 11:10-11:25 (Luca: hr 150, spo2 93, 15 min). hr_to/spo2_to are Luca's; hrv_factor, resp_delta ESTIMATE.
+faults:
+  - id: eng_fibrillation
+    type: medical
+    targets: [eng]
+    start_s: 4200
+    duration_s: 900
+    params: {"hr_to": 150, "spo2_to": 93, "hrv_factor": 2.0, "resp_delta": 3, "ramp_s": 60}
+    anomaly_type: atrial_fibrillation_suspected
+    priority: 8

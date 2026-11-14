@@ -1,0 +1,13 @@
+# PLACEHOLDER - event scenario. ASTRO_03 (eng): suspected atrial fibrillation 11:10-11:25 (Luca: hr 150, spo2 93, 15 min). hr_to/spo2_to are Luca's; hrv_factor, resp_delta ESTIMATE.
+name: evt_fibrillation
+seed: 42
+dt_s: 1.0
+duration_days: 0.125000000     # 3 h
+start_time_of_day_h: 10.0
+environment: ../environments/orbital_station.yaml
+environment_overrides:
+  atmosphere: {pressure_kpa: 101.06, o2_fraction: 0.21, co2_ppm: 2500}   # Luca's STATION profiles: 758 mmHg, 21.0 % O2, 0.25 % CO2
+layout: [../base_layout.yaml, ../sensors_placeholder.yaml, ../actuators_placeholder.yaml]
+crew: ../crew.yaml
+faults: fibrillation_faults.yaml
+export: {format: parquet, chunk_hours: 1.0, long: true, wide: true}

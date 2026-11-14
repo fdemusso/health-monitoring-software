@@ -1,0 +1,6 @@
+Altitudine_Metri,Stato_Ipossia,Sintomi_Rilevati,O2_Minimo_Richiesto_Perc,Azione_Megatron
+1000,NOMINALE,Nessuno (Sicurezza),21,Nessuna azione richiesta
+3000,PRE-ALLERTA,Riduzione visione notturna e dispnea da sforzo,27,Monitorare parametri visivi
+"5500,PERICOLO AVANZATO,""Perdita di realta, vertigini e formicolii"",44,Segnalare anomalie di coordinazione"
+7000,CRITICO ELEVATO,Perdita di conoscenza imminente (9-15s),78,ALERT: Richiedere aiuto immediato compagno!
+12000,EMERGENZA SPAZIALE,Vuoto cosmico / Barotrauma polmonare,100,CRITICAL: Attivare pressurizzazione di emergenza tuta!

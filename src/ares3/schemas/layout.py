@@ -22,6 +22,9 @@ class ModuleSpec(BaseModel):
     thermal_mass_j_k: float = Field(default=2.0e5, gt=0)
     ua_w_k: float = Field(default=20.0, ge=0)  # heat loss to the exterior per kelvin
     atmosphere: AtmosphereOverride | None = None  # microclimate (e.g. greenhouse); unset fields = environment value
+    # "occupied": alarm rules are evaluated only while someone is inside (EVA suit / vehicle volumes, whose
+    # atmosphere is not the habitat's and must not alarm when empty)
+    alarm_mode: Literal["always", "occupied"] = "always"
 
 
 class HatchSpec(BaseModel):

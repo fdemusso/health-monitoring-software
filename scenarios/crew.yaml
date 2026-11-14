@@ -1,29 +1,37 @@
 # PLACEHOLDER - awaiting review by Luca (profiles, MET, schedules) and the team. Example data, not validated.
+# `alias` = name in Luca's brief (ASTRO_01..04). Mapping by sex / profession / mass is OUR proposal: Luca to confirm.
+# Aerobic blocks use met 7.0 (HR ~140-145, ~77 % of max) because NASA reports ISS treadmill sessions at ~66-75 % of peak HR;
+# the catalog value 9.7 MET would give HR ~180.
 # Crew: 4 profiles. Schedules are in LOCAL hours (0-24) and must cover the whole day.
 # Activities: sleep | nominal | exercise_aerobic | exercise_resistive | recovery (+ aliases work, rest, meal,
 # exercise). A block can override `met`. Custom classes can be added under `activities:`.
 physiology:
-  kind: "ares3.plugins.physiology.baseline:BaselineModel"   # placeholder, to be replaced by the bioengineer
+  kind: "ares3.plugins.physiology.profile:ProfileModel"   # literature-based baseline (+ absolute episode targets)
   params: {}
 members:
   - id: cmd
+    alias: ASTRO_01            # Luca: man, healthy, hr 67-72 at work, spo2 98.5
     profile: commander
-    body_mass_kg: 84
+    sex: M
+    body_mass_kg: 76
+    physiology: {kind: "ares3.plugins.physiology.profile:ProfileModel", params: {hr_rest: 64}}
     schedule:
       - {from: 0, to: 6, activity: sleep, module: hab}
       - {from: 6, to: 7, activity: meal, module: hab}
       - {from: 7, to: 12, activity: work, module: hab}
       - {from: 12, to: 13, activity: meal, module: hab}
       - {from: 13, to: 17, activity: work, module: hab}
-      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab}
+      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab, met: 7.0}
       - {from: 17.5, to: 18.5, activity: exercise_resistive, module: hab}
       - {from: 18.5, to: 19.5, activity: recovery, module: hab}
       - {from: 19.5, to: 20.5, activity: meal, module: hab}
       - {from: 20.5, to: 22, activity: rest, module: hab}
       - {from: 22, to: 24, activity: sleep, module: hab}
   - id: eng
+    alias: ASTRO_03            # Luca: woman engineer, fibrillation episode (see events/fibrillation)
     profile: engineer
-    body_mass_kg: 80
+    sex: F
+    body_mass_kg: 84
     schedule:
       - {from: 0, to: 6, activity: sleep, module: hab}
       - {from: 6, to: 7, activity: meal, module: hab}
@@ -33,36 +41,45 @@ members:
       - {from: 12, to: 13, activity: meal, module: hab}
       - {from: 13, to: 15, activity: work, module: airlock, met: 3.0}
       - {from: 15, to: 17, activity: work, module: lab, met: 2.0}
-      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab}
+      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab, met: 7.0}
       - {from: 17.5, to: 18.5, activity: exercise_resistive, module: hab}
       - {from: 18.5, to: 19.5, activity: recovery, module: hab}
       - {from: 19.5, to: 20.5, activity: meal, module: hab}
       - {from: 20.5, to: 22, activity: rest, module: hab}
       - {from: 22, to: 24, activity: sleep, module: hab}
   - id: med
+    alias: ASTRO_04            # Luca: woman, EVA 30 min (nominal or emergency); here 10:00-10:30 in module `eva`
     profile: medic
-    body_mass_kg: 70
+    sex: F
+    body_mass_kg: 65
     schedule:
-      - {from: 0, to: 4, activity: work, module: lab}
-      - {from: 4, to: 5, activity: meal, module: hab}
-      - {from: 5, to: 6, activity: rest, module: hab}
-      - {from: 6, to: 14, activity: sleep, module: hab}
-      - {from: 14, to: 15, activity: meal, module: hab}
-      - {from: 15, to: 17, activity: rest, module: hab}
-      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab}
-      - {from: 17.5, to: 18, activity: recovery, module: hab}
-      - {from: 18, to: 24, activity: work, module: lab}
+      - {from: 0, to: 6, activity: sleep, module: hab}
+      - {from: 6, to: 7, activity: meal, module: hab}
+      - {from: 7, to: 9, activity: work, module: lab}
+      - {from: 9, to: 10, activity: work, module: airlock, met: 2.5}        # suit-up / prebreathe
+      - {from: 10, to: 10.5, activity: work, module: eva, met: 5.5}          # EVA (Luca: 30 min, in_allenamento); 5.5 MET ~ hr 125 (NASA EVA mean 131-135)
+      - {from: 10.5, to: 11, activity: recovery, module: airlock}
+      - {from: 11, to: 12, activity: work, module: lab}
+      - {from: 12, to: 13, activity: meal, module: hab}
+      - {from: 13, to: 17, activity: work, module: lab}
+      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab, met: 7.0}
+      - {from: 17.5, to: 18.5, activity: recovery, module: hab}
+      - {from: 18.5, to: 19.5, activity: meal, module: hab}
+      - {from: 19.5, to: 22, activity: rest, module: hab}
+      - {from: 22, to: 24, activity: sleep, module: hab}
   - id: bot
+    alias: ASTRO_02            # Luca: woman (he wrote "uomo"), 61.5 kg, T2 treadmill 45 min -> 17:00-17:45
     profile: botanist
-    body_mass_kg: 62
+    sex: F
+    body_mass_kg: 61.5
     schedule:
       - {from: 0, to: 6.5, activity: sleep, module: hab}
       - {from: 6.5, to: 7.5, activity: meal, module: hab}
       - {from: 7.5, to: 12, activity: work, module: greenhouse, met: 1.8}
       - {from: 12, to: 13, activity: meal, module: hab}
       - {from: 13, to: 17, activity: work, module: greenhouse, met: 1.8}
-      - {from: 17, to: 17.5, activity: exercise_aerobic, module: hab}
-      - {from: 17.5, to: 18.5, activity: recovery, module: hab}
+      - {from: 17, to: 17.75, activity: exercise_aerobic, module: hab, met: 7.0}
+      - {from: 17.75, to: 18.5, activity: recovery, module: hab}
       - {from: 18.5, to: 19.5, activity: meal, module: hab}
       - {from: 19.5, to: 22, activity: rest, module: hab}
       - {from: 22, to: 24, activity: sleep, module: hab}

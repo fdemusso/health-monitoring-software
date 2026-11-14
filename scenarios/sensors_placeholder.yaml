@@ -4,7 +4,8 @@
 # 120 sensors = a few more rules, not 120 entries. Explicit one-off sensors can go under `sensors:`.
 sensor_sets:
   - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [all_modules], metrics: [T]}
-  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [hab], metrics: [ppCO2, pO2, RH, P]}
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [hab], metrics: [ppCO2, pO2, RH, P, PIO2]}
   - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [lab], metrics: [ppCO2, RH]}
   - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [greenhouse], metrics: [ppCO2]}
-  - {target_type: npc,    kind: "ares3.plugins.sensors.standard:WearableSensor", targets: [all_npcs], metrics: [hr, spo2]}
+  - {target_type: npc,    kind: "ares3.plugins.sensors.standard:WearableSensor", targets: [all_npcs], metrics: [hr, spo2, resp_rate, hrv_rmssd, skin_temp_c]}
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [eva], metrics: [ppCO2, pO2, P, PIO2]}
