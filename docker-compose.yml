@@ -1,0 +1,11 @@
+# Run with:  docker compose run --rm ares3 <command>
+# See docs/USO-DOCKER.md for the commands.
+services:
+  ares3:
+    build: .
+    image: ares3
+    volumes:
+      - ./scenarios:/app/scenarios   # edit the YAML on your computer, no rebuild needed
+      - ./output:/app/output         # datasets appear here
+      - ./src:/app/src               # plugins (sensors, actuators, physiology) also editable live
+      - ./tests:/app/tests

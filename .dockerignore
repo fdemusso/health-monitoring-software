@@ -1,0 +1,11 @@
+.git
+.venv
+.claude
+.ruff_cache
+.pytest_cache
+**/__pycache__
+output
+notebooks
+dashboard
+docs
+uv.lock
