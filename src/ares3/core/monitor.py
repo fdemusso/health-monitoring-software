@@ -6,6 +6,11 @@ debounces them per (emergency kind, module): ``suspected`` on the first signal, 
 reported once more in its tick (state ``cleared``) and then dropped. The YAML spec of a detector decides
 the emergency kind and severity; the detector only supplies the evidence.
 
+The whole system is also in one of three modes (``Monitor.mode``): ``passive`` (nothing open), ``alert`` (a problem is
+being recognised) and ``reaction`` (a response is running). The mode is the maximum over the open emergencies; it rises at
+once and falls only after ``mode_hold_s`` of quiet. Each ``Emergency`` carries its ``alert_class`` (emergency / warning /
+caution / advisory) from ``classifier.classes``, so the UI needs no rules of its own.
+
 Responses (playbooks, confirm/timeout) are the next layer and consume ``Emergency`` objects.
 """
 
@@ -13,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ares3.schemas.monitor import ClassifierConfig, DetectorSpec, MonitorConfig
+from ares3.schemas.monitor import ClassifierConfig, DetectorSpec, MonitorConfig, MonitorMode
 from ares3.sdk.base import BaseDetector
 from ares3.sdk.context import StepContext
 from ares3.sdk.registry import resolve
@@ -22,6 +27,7 @@ from ares3.sdk.types import Emergency, MonitorEvent, Observation, Signal
 from .rng import derive
 
 _SEVERITY_RANK = {"warning": 0, "critical": 1}
+_MODE_RANK = {"passive": 0, "alert": 1, "reaction": 2}
 
 
 @dataclass
@@ -64,6 +70,30 @@ class Monitor:
         self._tracks: dict[tuple[str, str, str], _Track] = {}
         self._count = 0
         self._declared: list[MonitorEvent] = []  # events of manual alarms, flushed by the next step
+        self.mode: MonitorMode = "passive"  # state of the whole system after the last step
+        self._mode_high_s = 0.0  # last time something asked for the current mode or a higher one
+
+    def _target_mode(self, open_: list[Emergency]) -> MonitorMode:
+        """The highest mode any open emergency asks for. A confirmed emergency whose class is ``emergency``/``warning``, or
+        that has a playbook, is a REACTION; a suspected one, or a confirmed ``caution``/``advisory`` nobody responds to,
+        is an ALERT."""
+        mode: MonitorMode = "passive"
+        for em in open_:
+            if em.state == "confirmed" and (em.alert_class in ("emergency", "warning") or any(
+                    pb.emergency == em.kind and pb.severity in (None, em.severity) for pb in self.config.playbooks)):
+                return "reaction"
+            mode = "alert"
+        return mode
+
+    def _update_mode(self, t: float, open_: list[Emergency], events: list[MonitorEvent]) -> None:
+        target = self._target_mode(open_)
+        if _MODE_RANK[target] >= _MODE_RANK[self.mode]:
+            self._mode_high_s = t  # going up is immediate
+        elif t - self._mode_high_s < self.config.classifier.mode_hold_s:
+            return  # going down waits for ``mode_hold_s`` of quiet
+        if target != self.mode:
+            events.append(MonitorEvent(t_s=t, kind="mode_changed", message=f"monitoring: {self.mode} -> {target}"))
+            self.mode = target
 
     def forget(self, module_id: str) -> None:
         """A repair was done in ``module_id``: the detectors drop their history there, so the emergency it caused clears
@@ -150,7 +180,8 @@ class Monitor:
             out.append(Emergency(id=tr.id, kind=tr.kind, module_id=tr.module_id, severity=tr.severity, state=state,
                                  t_open_s=tr.t_open_s, t_update_s=t, detectors=tuple(sorted(tr.detectors)),
                                  tres_s=tr.tres_s if key in seen else None, detail=tr.detail, subject=tr.subject,
-                                 cause=tr.cause))
+                                 cause=tr.cause, alert_class=self.config.classifier.alert_class(tr.kind, tr.severity, tr.cause)))
             tr.seen_prev = key in seen
             tr.tres_s, tr.detectors = None, set()  # recomputed from the next tick's signals
+        self._update_mode(t, [e for e in out if e.state != "cleared"], events)
         return tuple(out), tuple(events)

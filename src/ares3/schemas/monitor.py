@@ -16,9 +16,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-EmergencyKind = Literal["depressurization", "fire", "toxic", "medical", "equipment", "sensor_fault"]
+EmergencyKind = Literal["depressurization", "fire", "toxic", "medical", "equipment", "sensor_fault", "anomaly"]
 EmergencyState = Literal["suspected", "confirmed", "cleared"]
 Severity = Literal["warning", "critical"]
+# ISS alert levels [R1][R2]: what the crew sees, derived from (kind, severity, cause) by ``ClassifierConfig.classes``
+AlertClass = Literal["emergency", "warning", "caution", "advisory"]
+# the three states of the monitoring system: nothing open / a problem is being recognised / a response is running
+MonitorMode = Literal["passive", "alert", "reaction"]
 CrewRole = Literal["incident_commander", "systems", "medical", "sensing"]
 ActionKind = Literal["actuator", "hatch", "announce", "ventilation", "extinguish"]
 ActionLevel = Literal["auto", "confirm"]
@@ -35,6 +39,19 @@ class ClassifierConfig(BaseModel):
 
     confirm_s: float = Field(default=5.0, ge=0)
     clear_s: float = Field(default=60.0, ge=0)
+    # The system drops to a lower mode only after this long without anything at the higher one (hysteresis: no flicker
+    # between alert and passive when an emergency clears and the next one opens seconds later). ESTIMATE.
+    mode_hold_s: float = Field(default=60.0, ge=0)
+    # alert class per emergency, keyed ``kind:severity:cause``, ``kind:severity`` or ``kind`` (most specific wins); what is
+    # not listed is ``emergency`` when critical and ``warning`` otherwise
+    classes: dict[str, AlertClass] = {}
+
+    def alert_class(self, kind: str, severity: str, cause: str | None = None) -> AlertClass:
+        keys = ([f"{kind}:{severity}:{cause}"] if cause else []) + [f"{kind}:{severity}", kind]
+        for k in keys:
+            if k in self.classes:
+                return self.classes[k]
+        return "emergency" if severity == "critical" else "warning"
 
 
 class DetectorSpec(BaseModel):

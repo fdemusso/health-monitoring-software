@@ -139,7 +139,7 @@ class Engine:
         )
 
     def _snapshot(self, active_faults: tuple[str, ...], alarms=(), emergencies=(), monitor_events=(),
-                  pending_actions=()) -> SimulationTick:
+                  pending_actions=(), monitor_mode="passive") -> SimulationTick:
         return SimulationTick(
             tick=self.clock.tick, t_sim_s=self.clock.t_s, dt_s=self.clock.dt_s, day=self.clock.day,
             time_of_day_h=self.clock.time_of_day_h,
@@ -148,6 +148,7 @@ class Engine:
             hatches=self.world.snapshot_hatches(), station=self._station, actuators=self._act_telemetry,
             active_faults=active_faults, alarms=alarms,
             emergencies=emergencies, pending_actions=pending_actions, monitor_events=monitor_events,
+            monitor_mode=monitor_mode,
         )
 
     def _ctx(self, tick: SimulationTick, by_target) -> StepContext:
@@ -309,7 +310,7 @@ class Engine:
         emergencies, monitor_events = self.monitor.step(self._ctx(tick, by_target), observations)  # 9
         actions, response_events = self.responder.step(t, emergencies)
         tick = self._snapshot(tuple(f.id for f in active), self.alarms.evaluate(t, tick.modules), emergencies,
-                              (*monitor_events, *response_events), self.responder.pending)
+                              (*monitor_events, *response_events), self.responder.pending, self.monitor.mode)
         if self.crew_response is not None:  # orders take effect on the next tick, like every command
             fires = {m: self._extinguished_t.get(m) for f in active if f.type == "fire" for m in f.targets}
             crew = self.crew_response.step(t, tick, fires)

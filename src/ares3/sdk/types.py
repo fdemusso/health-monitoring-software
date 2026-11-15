@@ -12,7 +12,16 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from ares3.core.constants import MMHG_PER_KPA, inspired_po2_mmhg, psat_kpa
-from ares3.schemas.monitor import ActionKind, ActionLevel, EmergencyKind, EmergencyState, OnTimeout, Severity
+from ares3.schemas.monitor import (
+    ActionKind,
+    ActionLevel,
+    AlertClass,
+    EmergencyKind,
+    EmergencyState,
+    MonitorMode,
+    OnTimeout,
+    Severity,
+)
 
 
 class _Frozen(BaseModel):
@@ -137,6 +146,7 @@ class Emergency(_Frozen):
     detail: str = ""
     subject: str | None = None  # crew member in trouble (medical emergencies)
     cause: str | None = None  # what the sensors say is wrong, e.g. co_poisoning, hypoxia
+    alert_class: AlertClass = "warning"  # colour of the alert, from ``classifier.classes``: the UI has no rules of its own
 
 
 class Action(_Frozen):
@@ -173,6 +183,7 @@ class MonitorEvent(_Frozen):
         "action_expired_executed", "action_expired_discarded", "action_blocked",
         "crew_alerted", "crew_gathered", "crew_evacuating", "crew_assisting", "crew_command_passed",
         "crew_stood_down", "crew_repairing", "crew_repaired", "crew_sealed",
+        "mode_changed",
     ]
     message: str
     emergency_id: str | None = None
@@ -199,6 +210,7 @@ class SimulationTick(_Frozen):
     emergencies: tuple[Emergency, ...] = ()
     pending_actions: tuple[PendingAction, ...] = ()
     monitor_events: tuple[MonitorEvent, ...] = ()  # events produced during this tick only
+    monitor_mode: MonitorMode = "passive"
 
 
 class Observation(_Frozen):

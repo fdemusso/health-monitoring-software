@@ -1,0 +1,417 @@
+{
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\.claude\\settings.json": {
+    "mtime": 1793875530.8982003,
+    "ast_hash": "7ee23e69c737a3a13e6f215e47b4d1a4",
+    "semantic_hash": "7ee23e69c737a3a13e6f215e47b4d1a4"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\.claude\\settings.local.json": {
+    "mtime": 1794648130.0050232,
+    "ast_hash": "538bf9d0ca1023fea11cf8604bbbdcb0",
+    "semantic_hash": "538bf9d0ca1023fea11cf8604bbbdcb0"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\.oxlintrc.json": {
+    "mtime": 1790940556.0,
+    "ast_hash": "029f4905006c1fffd96bc863e2d98d3e",
+    "semantic_hash": "029f4905006c1fffd96bc863e2d98d3e"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\package.json": {
+    "mtime": 1794649792.998234,
+    "ast_hash": "126f67be9abb4a1136bae30fba615605",
+    "semantic_hash": "126f67be9abb4a1136bae30fba615605"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\App.tsx": {
+    "mtime": 1790943633.0,
+    "ast_hash": "cc2d27ab86eb7bf11cab50e70fac54a4",
+    "semantic_hash": "cc2d27ab86eb7bf11cab50e70fac54a4"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\components\\BodyHologram\\BodyHologram.tsx": {
+    "mtime": 1790942817.0,
+    "ast_hash": "713adc212ce939795f4dc20e40315e54",
+    "semantic_hash": "713adc212ce939795f4dc20e40315e54"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\components\\BodyHologram\\BodyHologram.types.ts": {
+    "mtime": 1790943625.0,
+    "ast_hash": "1b20f041a30ed2b215a05558b534f53e",
+    "semantic_hash": "1b20f041a30ed2b215a05558b534f53e"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\components\\BodyHologram\\index.ts": {
+    "mtime": 1790943610.0,
+    "ast_hash": "85d9862ed70b4dc55e2739762e7414d7",
+    "semantic_hash": "85d9862ed70b4dc55e2739762e7414d7"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\components\\BodyHologram\\organVisuals.ts": {
+    "mtime": 1790942733.0,
+    "ast_hash": "03d94338ea4b88070e4dd69548403001",
+    "semantic_hash": "03d94338ea4b88070e4dd69548403001"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\components\\BodyHologram\\useBodyHologram.ts": {
+    "mtime": 1790943621.0,
+    "ast_hash": "cc9b3c6c3f63f181c07f8b5512bb17e5",
+    "semantic_hash": "cc9b3c6c3f63f181c07f8b5512bb17e5"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\components\\BodyHologram\\vitals.ts": {
+    "mtime": 1790942745.0,
+    "ast_hash": "00c2457d5c17cddfb511c09838c0d944",
+    "semantic_hash": "00c2457d5c17cddfb511c09838c0d944"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\components\\index.ts": {
+    "mtime": 1790943614.0,
+    "ast_hash": "8007a9a8f99796c91a5fe81969a42218",
+    "semantic_hash": "8007a9a8f99796c91a5fe81969a42218"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\data\\anatomy.json": {
+    "mtime": 1790940951.0,
+    "ast_hash": "fdb380a94b66d5ae5f5bdfb7951a6f98",
+    "semantic_hash": "fdb380a94b66d5ae5f5bdfb7951a6f98"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\data\\anatomy.ts": {
+    "mtime": 1790942756.0,
+    "ast_hash": "7335d6ff54489f032099da79833afdf3",
+    "semantic_hash": "7335d6ff54489f032099da79833afdf3"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\main.tsx": {
+    "mtime": 1790940556.0,
+    "ast_hash": "787e5a07efeb2bf6209d5937195f2f68",
+    "semantic_hash": "787e5a07efeb2bf6209d5937195f2f68"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\telemetry\\contracts.ts": {
+    "mtime": 1794649811.4014523,
+    "ast_hash": "7c5120f9246657f626e2fc0eff0e6d3a",
+    "semantic_hash": "7c5120f9246657f626e2fc0eff0e6d3a"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\telemetry\\index.ts": {
+    "mtime": 1794649812.3561258,
+    "ast_hash": "9ae55aace4e33009665556b4b08992fe",
+    "semantic_hash": "9ae55aace4e33009665556b4b08992fe"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\telemetry\\types.ts": {
+    "mtime": 1794649807.7274363,
+    "ast_hash": "812f07ad11e16d8b55d7d63f109974dc",
+    "semantic_hash": "812f07ad11e16d8b55d7d63f109974dc"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\types\\anatomy.ts": {
+    "mtime": 1790942752.0,
+    "ast_hash": "29988bcfc594c61c786694a423f88946",
+    "semantic_hash": "29988bcfc594c61c786694a423f88946"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\tsconfig.app.json": {
+    "mtime": 1790940556.0,
+    "ast_hash": "5f2dafd737dea8a4ddcbb10f5113ac5a",
+    "semantic_hash": "5f2dafd737dea8a4ddcbb10f5113ac5a"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\tsconfig.json": {
+    "mtime": 1790940556.0,
+    "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
+    "semantic_hash": "a3d39fa780ebff65444de257f291ce6c"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\tsconfig.node.json": {
+    "mtime": 1790940556.0,
+    "ast_hash": "f9cb81ddcea69ffdab672fc8c48dca66",
+    "semantic_hash": "f9cb81ddcea69ffdab672fc8c48dca66"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\typedoc.json": {
+    "mtime": 1790942777.0,
+    "ast_hash": "b99165c3a51ae1cdcb74bbed9e043939",
+    "semantic_hash": "b99165c3a51ae1cdcb74bbed9e043939"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\vite.config.ts": {
+    "mtime": 1790940556.0,
+    "ast_hash": "5d54447744c19ccd28638a5c668d15ea",
+    "semantic_hash": "5d54447744c19ccd28638a5c668d15ea"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\__init__.py": {
+    "mtime": 1794647632.1229992,
+    "ast_hash": "9cf6aa54a2d126f11be36ab21a356b95",
+    "semantic_hash": "9cf6aa54a2d126f11be36ab21a356b95"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\cli.py": {
+    "mtime": 1794647913.0843432,
+    "ast_hash": "f7ca50f41194142f92e2ef60f047e010",
+    "semantic_hash": "f7ca50f41194142f92e2ef60f047e010"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\__init__.py": {
+    "mtime": 1794647906.150183,
+    "ast_hash": "a801b1c3eac07d83eabdca1f977b12a0",
+    "semantic_hash": "a801b1c3eac07d83eabdca1f977b12a0"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\alarms.py": {
+    "mtime": 1794647826.6636596,
+    "ast_hash": "77744eb70aa9eefe2a88d03b555632b5",
+    "semantic_hash": "77744eb70aa9eefe2a88d03b555632b5"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\clock.py": {
+    "mtime": 1794647641.4882321,
+    "ast_hash": "2b41f30c156f093f64a5199b0174d2e5",
+    "semantic_hash": "2b41f30c156f093f64a5199b0174d2e5"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\constants.py": {
+    "mtime": 1794647636.7057288,
+    "ast_hash": "885029d8647813831f193daae252253b",
+    "semantic_hash": "885029d8647813831f193daae252253b"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\engine.py": {
+    "mtime": 1794648130.116137,
+    "ast_hash": "390a6babf5b6a4ca4362df3dc0db3110",
+    "semantic_hash": "390a6babf5b6a4ca4362df3dc0db3110"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\faults.py": {
+    "mtime": 1794647822.4492798,
+    "ast_hash": "c448d1b23c30d9591d4ce572527b0e94",
+    "semantic_hash": "c448d1b23c30d9591d4ce572527b0e94"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\metabolism.py": {
+    "mtime": 1794647788.7711315,
+    "ast_hash": "620e18ed0fc8904cdfa8916920ee3e3a",
+    "semantic_hash": "620e18ed0fc8904cdfa8916920ee3e3a"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\npc.py": {
+    "mtime": 1794647791.672733,
+    "ast_hash": "f5dfc9f32b758c8d43c43630999067e4",
+    "semantic_hash": "f5dfc9f32b758c8d43c43630999067e4"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\rng.py": {
+    "mtime": 1794647638.6905377,
+    "ast_hash": "164ef60372d631a071f7df2250200513",
+    "semantic_hash": "164ef60372d631a071f7df2250200513"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\core\\world.py": {
+    "mtime": 1794647942.7498043,
+    "ast_hash": "e4a6c3514049f22e9ec3a7199c9afac2",
+    "semantic_hash": "e4a6c3514049f22e9ec3a7199c9afac2"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\export\\__init__.py": {
+    "mtime": 1794648437.689316,
+    "ast_hash": "ba89601fd38699ddbab51285f65778be",
+    "semantic_hash": "ba89601fd38699ddbab51285f65778be"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\export\\writers.py": {
+    "mtime": 1794647904.6375709,
+    "ast_hash": "7a29e623424ffac5827a2efffd5f38e1",
+    "semantic_hash": "7a29e623424ffac5827a2efffd5f38e1"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\plugins\\__init__.py": {
+    "mtime": 1794647866.8810246,
+    "ast_hash": "41924dead991fbe26a9b9367b0baa1f7",
+    "semantic_hash": "41924dead991fbe26a9b9367b0baa1f7"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\plugins\\actuators\\__init__.py": {
+    "mtime": 1794647866.8873148,
+    "ast_hash": "ea32fdf2fe0d4a2124906c6e6a8ad673",
+    "semantic_hash": "ea32fdf2fe0d4a2124906c6e6a8ad673"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\plugins\\actuators\\life_support.py": {
+    "mtime": 1794648408.1909606,
+    "ast_hash": "8c6f8670db65063c3d2a272093978192",
+    "semantic_hash": "8c6f8670db65063c3d2a272093978192"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\plugins\\physiology\\__init__.py": {
+    "mtime": 1794647866.8873148,
+    "ast_hash": "92d3b2d342ded1978120324ee21b00f4",
+    "semantic_hash": "92d3b2d342ded1978120324ee21b00f4"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\plugins\\physiology\\baseline.py": {
+    "mtime": 1794648409.0418139,
+    "ast_hash": "5da27dbe0cdfbc863fb093899427978b",
+    "semantic_hash": "5da27dbe0cdfbc863fb093899427978b"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\plugins\\sensors\\__init__.py": {
+    "mtime": 1794647866.886809,
+    "ast_hash": "3fa9204693c08f5e97f1691e6bc1fb0e",
+    "semantic_hash": "3fa9204693c08f5e97f1691e6bc1fb0e"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\plugins\\sensors\\standard.py": {
+    "mtime": 1794648406.6102293,
+    "ast_hash": "6bc46a0cb06f23eb4f0ab13df648fabd",
+    "semantic_hash": "6bc46a0cb06f23eb4f0ab13df648fabd"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\schemas\\__init__.py": {
+    "mtime": 1794648437.689316,
+    "ast_hash": "1ddca9b8d800397fc0d07fa5be76a229",
+    "semantic_hash": "1ddca9b8d800397fc0d07fa5be76a229"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\schemas\\crew.py": {
+    "mtime": 1794647775.39795,
+    "ast_hash": "f9cc5ca958247d961e360433607608b1",
+    "semantic_hash": "f9cc5ca958247d961e360433607608b1"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\schemas\\environment.py": {
+    "mtime": 1794647942.7487993,
+    "ast_hash": "e87667eb45054732db794f9ab0984be9",
+    "semantic_hash": "e87667eb45054732db794f9ab0984be9"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\schemas\\faults.py": {
+    "mtime": 1794647677.5587454,
+    "ast_hash": "f5dc04e2bf7af17b2d8a617636f5dcd4",
+    "semantic_hash": "f5dc04e2bf7af17b2d8a617636f5dcd4"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\schemas\\layout.py": {
+    "mtime": 1794648389.9289663,
+    "ast_hash": "8237a651190aae0d15dd697139f8856d",
+    "semantic_hash": "8237a651190aae0d15dd697139f8856d"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\schemas\\scenario.py": {
+    "mtime": 1794648354.7611113,
+    "ast_hash": "859a3463b96d01886450941c8983d980",
+    "semantic_hash": "859a3463b96d01886450941c8983d980"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\sdk\\__init__.py": {
+    "mtime": 1794648437.689316,
+    "ast_hash": "e2f1c59000e539437856e020749605b4",
+    "semantic_hash": "e2f1c59000e539437856e020749605b4"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\sdk\\base.py": {
+    "mtime": 1794647724.41691,
+    "ast_hash": "1f0b5bc13ec70f688f0d2d97d3518fbb",
+    "semantic_hash": "1f0b5bc13ec70f688f0d2d97d3518fbb"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\sdk\\context.py": {
+    "mtime": 1794647714.9826918,
+    "ast_hash": "3160e330e290ce5123f62af57a03a541",
+    "semantic_hash": "3160e330e290ce5123f62af57a03a541"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\sdk\\metrics.py": {
+    "mtime": 1794647778.4200492,
+    "ast_hash": "e698e6747566e499bc1d00870b349ee2",
+    "semantic_hash": "e698e6747566e499bc1d00870b349ee2"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\sdk\\registry.py": {
+    "mtime": 1794647726.8994231,
+    "ast_hash": "9404d0487f1a24eeb6e6f60e48ae8649",
+    "semantic_hash": "9404d0487f1a24eeb6e6f60e48ae8649"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\src\\ares3\\sdk\\types.py": {
+    "mtime": 1794647712.3687687,
+    "ast_hash": "c20cd240ca46b39b7d3b561d5044637d",
+    "semantic_hash": "c20cd240ca46b39b7d3b561d5044637d"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\tests\\conftest.py": {
+    "mtime": 1794648090.4222054,
+    "ast_hash": "8f821ede7a1001a040e4a0650c64e704",
+    "semantic_hash": "8f821ede7a1001a040e4a0650c64e704"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\tests\\test_architecture.py": {
+    "mtime": 1794648105.8392563,
+    "ast_hash": "09a25e5456c973e906af18bcc1492293",
+    "semantic_hash": "09a25e5456c973e906af18bcc1492293"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\tests\\test_engine.py": {
+    "mtime": 1794648437.691662,
+    "ast_hash": "26124271d220a973559d1cfa6ec78b56",
+    "semantic_hash": "26124271d220a973559d1cfa6ec78b56"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\CLAUDE.md": {
+    "mtime": 1794650275.5252101,
+    "ast_hash": "101e242c6bbe152d1f82be29cec63a43",
+    "semantic_hash": "101e242c6bbe152d1f82be29cec63a43"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\README.md": {
+    "mtime": 1794649857.6873903,
+    "ast_hash": "9af2edd2a0e70e8c3d276779c1608649",
+    "semantic_hash": "9af2edd2a0e70e8c3d276779c1608649"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\README.md": {
+    "mtime": 1790940556.0,
+    "ast_hash": "10495bfcc6c568eca4dab6dd5df795d3",
+    "semantic_hash": "10495bfcc6c568eca4dab6dd5df795d3"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\THIRD_PARTY_NOTICES.md": {
+    "mtime": 1794649792.7848647,
+    "ast_hash": "2195050b844643458bf7f6e262546268",
+    "semantic_hash": "2195050b844643458bf7f6e262546268"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\index.html": {
+    "mtime": 1790940557.0,
+    "ast_hash": "6cd11d61d1fba95c59c5d36e0e2800f4",
+    "semantic_hash": "6cd11d61d1fba95c59c5d36e0e2800f4"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\docker-compose.yml": {
+    "mtime": 1794650007.230813,
+    "ast_hash": "e7f210d85762a472a2388694aad98b24",
+    "semantic_hash": "e7f210d85762a472a2388694aad98b24"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\docs\\USO-DOCKER.md": {
+    "mtime": 1794650018.763163,
+    "ast_hash": "c36405c89b45a2b0363215e8be7942a7",
+    "semantic_hash": "c36405c89b45a2b0363215e8be7942a7"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\docs\\reference\\ambientmonitor\\punti-aperti.md": {
+    "mtime": 1794647631.9651284,
+    "ast_hash": "09237f06b2f513118852e16319f8a925",
+    "semantic_hash": "09237f06b2f513118852e16319f8a925"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\docs\\reference\\ambientmonitor\\verifica-dati.md": {
+    "mtime": 1794647631.9580672,
+    "ast_hash": "c2cae330de41d21ec944d24e1fc5bf03",
+    "semantic_hash": "c2cae330de41d21ec944d24e1fc5bf03"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\actuators_placeholder.yaml": {
+    "mtime": 1794648677.8663604,
+    "ast_hash": "c06307b35c3d517c80bd7a349981e3a8",
+    "semantic_hash": "c06307b35c3d517c80bd7a349981e3a8"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\base_layout.yaml": {
+    "mtime": 1794648677.8658547,
+    "ast_hash": "c5fcbe153b9172c5f2a2d7f3c4f5f8eb",
+    "semantic_hash": "c5fcbe153b9172c5f2a2d7f3c4f5f8eb"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\crew.yaml": {
+    "mtime": 1794648677.8668592,
+    "ast_hash": "d8f916c252c28496cc615138ecd05184",
+    "semantic_hash": "d8f916c252c28496cc615138ecd05184"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\emergency.yaml": {
+    "mtime": 1794648677.867361,
+    "ast_hash": "b6171b242160089b46b63311c9c319dd",
+    "semantic_hash": "b6171b242160089b46b63311c9c319dd"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\environments\\mars_surface.yaml": {
+    "mtime": 1794648677.8648422,
+    "ast_hash": "ebc218ff05d3a7eb8d714dd36d88f78c",
+    "semantic_hash": "ebc218ff05d3a7eb8d714dd36d88f78c"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\environments\\orbital_station.yaml": {
+    "mtime": 1794648677.8648422,
+    "ast_hash": "853622e00edf666fcdcfb4fc8823e886",
+    "semantic_hash": "853622e00edf666fcdcfb4fc8823e886"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\faults.yaml": {
+    "mtime": 1794648677.867361,
+    "ast_hash": "57a4b5c43f68c9db1a1683b223124f06",
+    "semantic_hash": "57a4b5c43f68c9db1a1683b223124f06"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\nominal.yaml": {
+    "mtime": 1794650116.121674,
+    "ast_hash": "d8ddeebcecb723a8ed3f7b2e6e947b56",
+    "semantic_hash": "d8ddeebcecb723a8ed3f7b2e6e947b56"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\scenarios\\sensors_placeholder.yaml": {
+    "mtime": 1794648677.8663604,
+    "ast_hash": "552b18ddd8a14167c31b2c737213b8e4",
+    "semantic_hash": "552b18ddd8a14167c31b2c737213b8e4"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\public\\favicon.svg": {
+    "mtime": 1790940556.0,
+    "ast_hash": "7e840862161341271697daa99a40d76b",
+    "semantic_hash": "7e840862161341271697daa99a40d76b"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\public\\icons.svg": {
+    "mtime": 1790940556.0,
+    "ast_hash": "3b4fcfcf393eca4d264dca4a4663bc37",
+    "semantic_hash": "3b4fcfcf393eca4d264dca4a4663bc37"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\assets\\hero.png": {
+    "mtime": 1790940556.0,
+    "ast_hash": "aead493361b27e7510691c5d7072dfc1",
+    "semantic_hash": "aead493361b27e7510691c5d7072dfc1"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\assets\\react.svg": {
+    "mtime": 1790940556.0,
+    "ast_hash": "f0402b67b6ce880f65666bb49e841696",
+    "semantic_hash": "f0402b67b6ce880f65666bb49e841696"
+  },
+  "C:\\Users\\flavi\\Desktop\\health-monitoring-software\\dashboard\\src\\assets\\vite.svg": {
+    "mtime": 1790940556.0,
+    "ast_hash": "9960a24288958394ac50e57ff638b036",
+    "semantic_hash": "9960a24288958394ac50e57ff638b036"
+  }
+}

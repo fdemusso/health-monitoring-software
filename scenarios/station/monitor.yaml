@@ -5,7 +5,17 @@
 # Model: ISS emergency response (NASA SpaceOps 2023): immediate reversible safing is `auto`; heavier steps are `confirm`
 # (any crew member or the UI can approve; on timeout `execute` for life-saving steps, `discard` otherwise).
 # Thresholds are ESTIMATES unless a source is given.
-classifier: {confirm_s: 5, clear_s: 60}
+# mode_hold_s: the monitoring mode (passive / alert / reaction) falls only after this long without the higher one.
+# classes: what the crew sees (emergency red, warning orange, caution yellow, advisory blue); not listed: critical -> emergency,
+# warning -> warning. ISS levels [R1][R2]: a high CO2 mean is a caution; a fever of a crew member is a warning.
+classifier:
+  confirm_s: 5
+  clear_s: 60
+  mode_hold_s: 60
+  classes:
+    equipment: caution
+    anomaly: caution
+    sensor_fault: caution
 
 detectors:
   # Loss of cabin air. The ISS grades it by rate [ICES-2025-126, NASA]: rapid depressurization >= 0.87 mmHg/min, fast leak
