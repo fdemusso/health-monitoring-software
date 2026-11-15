@@ -275,3 +275,10 @@ def test_history_and_frames_carry_what_the_wearables_read(station):
     assert frame["wearables"][crew]["hr"] != frame["tick"]["npcs"][crew]["vitals"]["hr"]  # measured (noisy), not the ground truth
     s.advance(7 * 3600)
     assert len(json.loads(s.history())["vitals"]) == 2160
+
+
+def test_hello_carries_the_procedure_catalog(station):
+    s = Session(station, paused=True)
+    procs = json.loads(s.hello())["procedures"]
+    assert procs and all({"id", "emergency", "cause", "title", "steps"} <= p.keys() for p in procs)
+    assert all(st["kind"] in {"instruction", "action", "check", "question", "escalate"} for p in procs for st in p["steps"])

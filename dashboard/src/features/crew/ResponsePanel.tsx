@@ -6,9 +6,8 @@ import { sortCrewIds } from '@/domain/crewConfig'
 import { cn } from '@/lib/utils'
 import { emergencyTitle, phaseLabel } from '@/domain/emergencyText'
 import type { Emergency, SimulationTick } from '@/telemetry'
-import { GuidedSteps } from './GuidedSteps'
+import { EmergencyProtocol, RoutineCheck } from './ProcedureView'
 import { PendingActionCard } from './PendingActionCard'
-import { pickProtocol } from './protocols'
 
 /** Response column. `crewId` scopes it to one astronaut; `emergencyIds` to module-level emergencies. */
 export function ResponsePanel({ tick, crewId, emergency, className }: { tick: SimulationTick; crewId?: string; emergency?: Emergency | null; className?: string }) {
@@ -17,8 +16,6 @@ export function ResponsePanel({ tick, crewId, emergency, className }: { tick: Si
   const mine = emergency ? [emergency] : live.filter((e) => (crewId ? e.subject === crewId || (!e.subject && tick.npcs[crewId]?.module_id === e.module_id) : false))
   const ids = new Set(mine.map((e) => e.id))
   const pending = tick.pending_actions.filter((p) => ids.has(p.action.emergency_id))
-  const npc = crewId ? tick.npcs[crewId] : undefined
-  const protocol = pickProtocol(npc, mine)
   return (
     <aside aria-label="Response" className={cn('flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-card p-4', className)}>
       <div>
@@ -31,7 +28,7 @@ export function ResponsePanel({ tick, crewId, emergency, className }: { tick: Si
           {pending.map((p) => <PendingActionCard key={p.action.id} pa={p} tSim={tick.t_sim_s} />)}
         </div>
       )}
-      <GuidedSteps key={`${crewId}-${protocol.id}`} protocol={protocol} />
+      {mine.length ? <EmergencyProtocol key={mine[0].id} tick={tick} emergency={mine[0]} compact /> : <RoutineCheck key={crewId} />}
       <Button variant="outline" onClick={() => setEarth(true)}>Contact Earth</Button>
       {live.length > 0 && (
         <div>

@@ -53,6 +53,12 @@ su un passo non attivo risponde `ok: false`.
 
 Eventi nuovi in `monitor_events`: `procedure_started`, `step_done`, `step_failed`, `procedure_done`, `procedure_escalated`.
 
+La procedura giusta per un'emergenza ancora solo `suspected` (nessuna procedura gira) la propone la UI dal CATALOGO: `hello.procedures`
+(`id, emergency, cause, severity, title, steps[{id, kind, text, role}]`, statico, con `{subject}` e `{module}` ancora nei testi). La
+scelta replica `ProcedureRunner._choose` (tipo, poi causa, poi gravità; chi nomina la causa batte quella generica):
+`dashboard/src/domain/procedures.ts`. Appena l'emergenza è confermata il backend avvia la procedura vera (`tick.procedures`) e la UI
+passa alla checklist viva.
+
 ## Procedure mediche e avviso
 
 Contratto per la UI (solo documento: nessun campo nuovo in `sdk/types.py`, nessuna modifica a `dashboard/`). Il contenuto clinico è in

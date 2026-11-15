@@ -234,6 +234,16 @@ export interface ProcedureState {
   t_end_s: number | null;
 }
 
+/** A procedure of the catalog the backend sends in `hello` (static): `{subject}` and `{module}` are still in the texts. */
+export interface ProcedureSpec {
+  id: string;
+  emergency: EmergencyKind;
+  cause: string | null;
+  severity: string | null;
+  title: string;
+  steps: { id: string; kind: StepKind; text: string; role: string | null }[];
+}
+
 export interface MonitorEvent {
   t_s: number;
   kind:

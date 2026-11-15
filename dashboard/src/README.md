@@ -15,7 +15,7 @@ Dependencies point down: `app` -> `features` -> `components` / `domain` / `lib` 
 | Alarm list rows (shared by the page, the dialog and the menu) | `features/status/alertRows.tsx` |
 | **Crew page**: overview cards, detail with hologram, response column | `features/crew/` (`CrewPage`, `CrewColumn`, `CrewDetail`, `ResponsePanel`) |
 | Action the monitor asks to confirm (popover and card) | `features/crew/PendingPopover.tsx`, `PendingActionCard.tsx`, `pendingKinds.ts` |
-| Procedures shown as steps | `features/crew/protocols.ts`, `GuidedSteps.tsx` |
+| Procedures (the protocol of an emergency, live checklist, library) | `features/crew/ProcedureView.tsx`, `ProtocolsDialog.tsx`, `domain/procedures.ts` |
 | Module map dialog | `features/modules/ModulesDialog.tsx` |
 | Event history sheet | `features/log/EventLogSheet.tsx` |
 | Debug sheet (dev, or `?debug`) | `features/debug/` |

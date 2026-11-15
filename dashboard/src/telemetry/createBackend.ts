@@ -14,7 +14,7 @@ const socketUrl = token ? `${BACKEND_URL.replace(/\/$/, '')}/?token=${encodeURIC
 /** One instance: VitalsSource and command client at once. */
 export const backend = new WebSocketBackend({
   url: socketUrl,
-  onHello: (h) => setState({ scenario: h.scenario, paused: h.paused, speed: h.speed }),
+  onHello: (h) => setState({ scenario: h.scenario, paused: h.paused, speed: h.speed, catalog: h.procedures ?? [] }),
   onHistory: ingestHistory,
   onStatus: (s) => setState({ paused: s.paused, speed: s.speed }),
   onWarming: (w) => (w ? ingestWarming(w) : endWarming()),

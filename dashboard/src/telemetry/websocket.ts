@@ -3,7 +3,7 @@
  * and a client for the commands the backend accepts. Protocol: `src/ares3/serve/session.py` (module docstring).
  */
 import type { VitalsSource } from './contracts';
-import type { EmergencyKind, FaultSpec, HistorySample, SimulationTick, VitalsSample } from './types';
+import type { EmergencyKind, FaultSpec, HistorySample, ProcedureSpec, SimulationTick, VitalsSample } from './types';
 
 /** What the UI can ask of the running simulation (python: `sdk/control.py::ControlAPI`, plus pacing). */
 export type ControlCommand =
@@ -25,6 +25,8 @@ export interface BackendHello {
   speed: number;
   /** `warming`: the server is running the simulation ahead (`--warmup-h`); no ticks and no commands until `ready`. */
   state: 'warming' | 'live';
+  /** The crew procedures of the scenario (static). */
+  procedures?: ProcedureSpec[];
 }
 
 /** Progress of the server's warm-up, sent about four times a second while `state` is `warming`. */

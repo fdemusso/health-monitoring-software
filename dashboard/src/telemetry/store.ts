@@ -1,7 +1,7 @@
 import { isFrozen, whenThawed } from '@/lib/dragFreeze'
 import { pio2Mmhg, ppco2Mmhg, rhPercent } from '@/domain/units'
 import type { WarmupProgress } from './websocket'
-import type { HistorySample, ModuleState, MonitorEvent, SimulationTick, VitalsSample } from './types'
+import type { HistorySample, ModuleState, ProcedureSpec, MonitorEvent, SimulationTick, VitalsSample } from './types'
 
 /** Modules: one sample per simulated minute, 6 h (mirror of `HISTORY_STEP_S` / `HISTORY_LEN` in serve/session.py). */
 const MODULE_STEP_S = 60
@@ -36,6 +36,8 @@ export interface TelemetryState {
   connected: boolean
   /** Seconds to add to `t_sim_s` to get the time of day on board (the charts label their time axis with it). */
   clockOffsetS: number
+  /** Every crew procedure of the scenario, from `hello`. */
+  catalog: ProcedureSpec[]
   warming: WarmupState | null
   paused: boolean
   speed: number
@@ -48,7 +50,7 @@ export interface TelemetryState {
 }
 
 let state: TelemetryState = {
-  tick: null, lastTickAt: 0, connected: false, clockOffsetS: 0, warming: null, paused: false, speed: 0, scenario: null, url: '',
+  tick: null, lastTickAt: 0, connected: false, clockOffsetS: 0, catalog: [], warming: null, paused: false, speed: 0, scenario: null, url: '',
   crewHistory: {}, moduleHistory: {}, eventLog: [], commandError: null,
 }
 const listeners = new Set<() => void>()

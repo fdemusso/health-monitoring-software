@@ -15,6 +15,7 @@ const EMPTY_P: PendingAction[] = []
 export const useTick = () => useStore((s) => s.tick)
 export const useEmergencies = () => useStore((s) => s.tick?.emergencies ?? EMPTY_E)
 export const usePendingActions = () => useStore((s) => s.tick?.pending_actions ?? EMPTY_P)
+export const useCatalog = () => useStore((s) => s.catalog)
 export const useEventLog = () => useStore((s) => s.eventLog)
 export const useCrewHistory = (id: string) => useStore((s) => s.crewHistory[id])
 export const useAllCrewHistory = () => useStore((s) => s.crewHistory)
@@ -51,6 +52,8 @@ export function useCommands() {
   }, [])
   return useMemo(() => ({
     approve: (action_id: string) => run(backend.send({ cmd: 'approve_action', args: { action_id, by: 'ui' } })),
+    /** Closes the active step of a procedure (`answer` only for a question). */
+    ackStep: (procedure_id: string, step_id: string, answer?: 'yes' | 'no') => run(backend.send({ cmd: 'ack_step', args: { procedure_id, step_id, by: 'ui', ...(answer ? { answer } : {}) } })),
     reject: (action_id: string) => run(backend.send({ cmd: 'reject_action', args: { action_id, by: 'ui' } })),
     inject: (fault: FaultSpec) => run(backend.send({ cmd: 'inject_event', args: { fault } })),
     stopEvent: (fault_id: string) => run(backend.send({ cmd: 'stop_event', args: { fault_id } })),

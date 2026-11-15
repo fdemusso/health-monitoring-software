@@ -13,6 +13,9 @@ export type {
   MonitorEvent,
   NPCState,
   PendingAction,
+  ProcedureSpec,
+  ProcedureState,
+  ProcedureStepState,
   SimulationTick,
   VitalName,
 } from './types';

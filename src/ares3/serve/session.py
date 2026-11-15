@@ -6,7 +6,8 @@ Everything runs on one asyncio loop, so the engine is never touched from two pla
 
 Server -> client (JSON text frames):
   {"type": "hello", "scenario": str, "dt_s": float, "paused": bool, "speed": float, "role": "operator" | "viewer",
-   "state": "warming" | "live"}
+   "state": "warming" | "live", "procedures": [{id, emergency, cause, severity, title, steps: [{id, kind, text, role}]}]}
+      ``procedures`` is the catalog of crew procedures (static): the UI proposes the right one before the emergency is confirmed.
       a viewer (connected without the server's token) gets the frames but every command is refused. ``state`` is "warming" while the
       server runs the simulation ahead (``--warmup-h``): the port is open from the start so a UI can show progress instead of a dead
       page. No ``tick`` or ``history`` is sent and every command is refused until the state is "live".
@@ -148,7 +149,15 @@ class Session:
 
     def hello(self, role: str = "operator") -> str:
         return json.dumps({"type": "hello", "scenario": self.scenario.file.name, "dt_s": self.scenario.file.dt_s,
-                           "paused": self.paused, "speed": self.speed, "role": role, "state": self.state})
+                           "paused": self.paused, "speed": self.speed, "role": role, "state": self.state,
+                           "procedures": self._catalog()})
+
+    def _catalog(self) -> list[dict[str, Any]]:
+        """Every crew procedure of the scenario (static): the UI shows the right one before the emergency is confirmed, and as a library.
+        ``{subject}`` and ``{module}`` are left in the texts (the running procedures in ``tick.procedures`` have them filled in)."""
+        return [{"id": p.id, "emergency": p.emergency, "cause": p.cause, "severity": p.severity, "title": p.title,
+                 "steps": [{"id": st.id, "kind": st.do, "text": st.text, "role": st.role} for st in p.steps]}
+                for p in self.scenario.monitor.procedures]
 
     async def run(self, emit: Callable[[str], None]) -> None:
         """Pace the engine to the wall clock until cancelled; ``emit`` receives each frame (at most ``max_fps`` per second)."""
