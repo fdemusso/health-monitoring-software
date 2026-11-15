@@ -9,30 +9,52 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), h
 
 /**
  * Lets a floating panel be moved by its corner handles (mouse or finger: Pointer Events + pointer capture).
- * `ref` goes on the panel, `offset` is how far it was moved from where it is laid out (px), `handleProps` go on the handles.
+ * `ref` goes on the panel, `style` (its `translate`) goes on the panel too, `handleProps` go on the handles.
+ * `centered`: the panel is centred with `left/top: 50%` and needs the -50 % shift in its `translate` as well.
+ *
+ * While a finger is down the panel is moved straight on the DOM, once per frame (`translate` is composited: no layout, no React render
+ * of the panel's content, which in the alarms list is hundreds of nodes updated ten times a second). React gets the final position on release.
  * The panel cannot leave the screen. The position goes back to the layout one when `resetKey` changes (e.g. a dialog opens)
  * and when the screen width changes (rotation), so a panel is never stranded off-screen.
  */
-export function useDraggable<T extends HTMLElement>(resetKey?: unknown) {
+export function useDraggable<T extends HTMLElement>(resetKey?: unknown, { centered = false }: { centered?: boolean } = {}) {
   const ref = useRef<T>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
+  const live = useRef({ x: 0, y: 0 }) // where the panel is right now (the state only changes on release)
+  const frame = useRef(0)
   const drag = useRef<{ px: number; py: number; ox: number; oy: number; rect: DOMRect } | null>(null)
 
-  useEffect(() => { setOffset({ x: 0, y: 0 }) }, [resetKey])
+  const translate = (x: number, y: number) => (centered ? `calc(-50% + ${x}px) calc(-50% + ${y}px)` : `${x}px ${y}px`)
+  const place = (x: number, y: number) => { live.current = { x, y }; setOffset({ x, y }) }
+
+  useEffect(() => { place(0, 0) }, [resetKey])
   useEffect(() => {
     let w = window.innerWidth
-    const onResize = () => { if (window.innerWidth !== w) { w = window.innerWidth; setOffset({ x: 0, y: 0 }) } }
+    const onResize = () => { if (window.innerWidth !== w) { w = window.innerWidth; place(0, 0) } }
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    return () => { window.removeEventListener('resize', onResize); cancelAnimationFrame(frame.current) }
   }, [])
+
+  const end = () => {
+    if (!drag.current) return
+    drag.current = null
+    cancelAnimationFrame(frame.current)
+    const el = ref.current
+    if (el) el.style.willChange = ''
+    document.body.style.userSelect = ''
+    setOffset({ ...live.current }) // React takes over from the DOM position
+    setDragging(false)
+  }
 
   const handleProps = {
     onPointerDown: (e: PointerEvent<HTMLElement>) => {
       const el = ref.current
       if (!el) return
       e.currentTarget.setPointerCapture(e.pointerId)
-      drag.current = { px: e.clientX, py: e.clientY, ox: offset.x, oy: offset.y, rect: el.getBoundingClientRect() }
+      drag.current = { px: e.clientX, py: e.clientY, ox: live.current.x, oy: live.current.y, rect: el.getBoundingClientRect() }
+      el.style.willChange = 'translate'
+      document.body.style.userSelect = 'none'
       setDragging(true)
       e.preventDefault()
     },
@@ -41,12 +63,17 @@ export function useDraggable<T extends HTMLElement>(resetKey?: unknown) {
       if (!d) return
       const dx = clamp(e.clientX - d.px, MARGIN - d.rect.left, window.innerWidth - MARGIN - d.rect.right)
       const dy = clamp(e.clientY - d.py, MARGIN - d.rect.top, window.innerHeight - MARGIN - d.rect.bottom)
-      setOffset({ x: d.ox + dx, y: d.oy + dy })
+      live.current = { x: d.ox + dx, y: d.oy + dy }
+      if (frame.current) return // one write per frame, with the latest position
+      frame.current = requestAnimationFrame(() => {
+        frame.current = 0
+        if (ref.current) ref.current.style.translate = translate(live.current.x, live.current.y)
+      })
     },
-    onPointerUp: () => { drag.current = null; setDragging(false) },
-    onPointerCancel: () => { drag.current = null; setDragging(false) },
+    onPointerUp: end,
+    onPointerCancel: end,
   }
-  return { ref, offset, dragging, handleProps }
+  return { ref, style: { translate: translate(offset.x, offset.y) }, dragging, handleProps }
 }
 
 /** The two move handles, top-left and bottom-right, half outside the panel's corners (the panel must be `relative` or `fixed`). */
