@@ -248,12 +248,15 @@ def rows_hash(out_dir: str | Path) -> str:
 
 
 def features_hash(out_dir: str | Path) -> str:
-    """Hash of the VALUES of ``features.parquet`` and ``crew.parquet`` of a features job (what to compare between two machines)."""
+    """Hash of the VALUES of ``features.parquet`` and ``crew.parquet`` of a features job (what to compare between two machines). The float64
+    columns (the ``truth|`` ones) are rounded to 9 decimals: Windows and macOS differ in their last bits (~1e-13), the float32 features do not."""
     import pandas as pd
 
     h = hashlib.sha256()
     for name in ("features.parquet", "crew.parquet"):
         df = pd.read_parquet(Path(out_dir) / name)
+        f64 = df.select_dtypes("float64").columns
+        df[f64] = df[f64].round(9)
         h.update(name.encode())
         h.update(pd.util.hash_pandas_object(df, index=False).to_numpy().tobytes())
     return h.hexdigest()
