@@ -59,15 +59,22 @@ uv run python tools/demo_client.py --url wss://ares-api.daado.dev --token <ARES3
 cd dashboard
 pnpm install
 VITE_ARES_WS_URL=wss://ares-api.daado.dev pnpm build
-npx wrangler login          # apre il browser
-npx wrangler deploy         # pubblica ./dist (wrangler.jsonc: il progetto si chiama `body-hologram`, si può cambiare)
+npx wrangler login                                   # una volta: apre il browser
+npx wrangler deploy -c wrangler.production.jsonc     # pubblica ./dist come Worker `ares-dashboard` E collega il dominio ares.daado.dev
 ```
 
-Poi nel dashboard di Cloudflare: **Workers & Pages** → il progetto → **Settings** → **Domains & Routes** → **Add** → **Custom domain**
-→ `ares.daado.dev`.
+`dashboard/wrangler.production.jsonc` dichiara il dominio personalizzato (`routes: ares.daado.dev, custom_domain`): il deploy crea da solo
+il record DNS e il certificato. Il `wrangler.jsonc` del team (progetto `body-hologram`, senza dominio) resta com'è per chi pubblica sul
+proprio account.
 
-Il branch della UI deve contenere `dashboard/src/lib/utils.ts` (la regola `lib/` del `.gitignore` lo escludeva: va aggiunto
-`!dashboard/src/lib/` e committato, altrimenti la build fallisce su un clone pulito) e `types.ts` / `websocket.ts` / `store.ts` aggiornati
+Dopo il deploy controllare che NESSUNA applicazione di Cloudflare Access copra `ares.daado.dev` e `ares-api.daado.dev`
+(Zero Trust -> Access controls -> Applications): una applicazione senza policy manda tutti a una pagina di login e il WebSocket
+non si collega. Per un hostname pubblico serve una policy `Bypass` per `Everyone`, oppure nessuna applicazione.
+
+Se il browser mostra "Backend unreachable" subito dopo la creazione dei record, e solo su una rete, il resolver DNS di quella rete sta
+ancora ricordando "nome inesistente" (TTL negativo fino a 30 minuti): provare da un'altra rete o svuotare la cache del resolver.
+
+La UI deve contenere `dashboard/src/lib/utils.ts` (il `.gitignore` ora lo lascia passare), `types.ts` / `websocket.ts` / `store.ts`
 (storia, `ack_step`, ruolo).
 
 Licenza: la UI contiene `anatomy.json` derivato da gganatogram (GPL-2). Pubblicarla la distribuisce: tenere un link ai sorgenti

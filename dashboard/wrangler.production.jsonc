@@ -1,0 +1,12 @@
+{
+  // Production deploy of the dashboard on ares.daado.dev:  npx wrangler deploy -c wrangler.production.jsonc
+  // (build first: VITE_ARES_WS_URL=wss://ares-api.daado.dev pnpm build). The team's wrangler.jsonc is left as it was.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ares-dashboard",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [{ "pattern": "ares.daado.dev", "custom_domain": true }]
+}
