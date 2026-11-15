@@ -6,12 +6,60 @@
 classifier: {confirm_s: 5, clear_s: 60}
 
 detectors:
-  # slow leak: pressure under the limit. Fast leak: dP/dt over a window, plus TRes (time to 490 mmHg, the ISS minimum).
-  - id: depress_rate
+  # Loss of cabin air. The ISS grades it by rate [ICES-2025-126, NASA]: rapid depressurization >= 0.87 mmHg/min, fast leak
+  # 0.4-0.87, slow leak < 0.4. The window decides how small a rate stands out of the sensor noise (the P probe has 0.05 kPa of
+  # noise, so a 60 s window moves by +-1 mmHg/min on a normal day: measured over 24 h on the station profile, 3x margin kept):
+  #   30 s -> breach (>= 8 mmHg/min), 300 s -> rapid (the ISS 0.87), 30 min -> fast (the ISS 0.4), 2 h -> slow (0.1),
+  #   6 h -> trend (0.03).
+  # Rapid and breach are CRITICAL (the crew retreats); fast and slow are warnings (the crew finds and patches the leak).
+  # TRes (ISS reserve time to 490 mmHg) is reported by all of them; the shortest one reaches the crew response.
+  - id: leak_breach
     kind: "ares3.plugins.monitor.detectors:PressureDrop"
     emergency: depressurization
     metric: P
-    params: {window_s: 10, min_drop_kpa_s: 0.05, tres_floor_kpa: 65.3}   # 65.3 kPa = 490 mmHg [ISS TRes]
+    params: {window_s: 30, min_drop_mmhg_min: 8.0}
+  - id: leak_rapid
+    kind: "ares3.plugins.monitor.detectors:PressureDrop"
+    emergency: depressurization
+    metric: P
+    params: {window_s: 300, min_drop_mmhg_min: 0.87}   # ISS rapid depressurization threshold
+    confirm_s: 30
+    clear_s: 300
+  - id: leak_fast
+    kind: "ares3.plugins.monitor.detectors:PressureDrop"
+    emergency: depressurization
+    severity: warning
+    metric: P
+    params: {window_s: 1800, min_drop_mmhg_min: 0.4}   # ISS fast leak threshold
+    confirm_s: 300
+    clear_s: 600
+  - id: leak_slow
+    kind: "ares3.plugins.monitor.detectors:PressureDrop"
+    emergency: depressurization
+    severity: warning
+    metric: P
+    params: {window_s: 7200, min_drop_mmhg_min: 0.1}   # ESTIMATE: ~6 mmHg/h, like the 2020 ISS intermediate-chamber leak (7-9 mmHg/h)
+    confirm_s: 600
+    clear_s: 900
+  - id: leak_trend
+    kind: "ares3.plugins.monitor.detectors:PressureDrop"
+    emergency: depressurization
+    severity: warning
+    metric: P
+    params: {window_s: 21600, min_drop_mmhg_min: 0.03}   # ESTIMATE: ~2 mmHg/h, seen only as a trend over hours (the ISS sees 2 mmHg/day)
+    confirm_s: 1800
+    clear_s: 1800
+  # Pressure LEVEL: a leak that bleeds a module towards vacuum slows down (the flow is proportional to the pressure), so the
+  # rate alone would clear it. Only the hard floor: a higher "low pressure" level would hold the emergency open after the leak
+  # is gone, with the make-up gas forced off by the playbook and so no way for the pressure to recover. The EVA volume is left
+  # out: its suit atmosphere (~47 kPa) is below 490 mmHg by design.
+  - id: pressure_minimum
+    kind: "ares3.plugins.monitor.detectors:Threshold"
+    emergency: depressurization
+    metric: P
+    targets: [hab, lab, greenhouse, airlock, lifeboat]
+    params: {min: 65.3}   # 490 mmHg: the ISS Pminimum [ICES-2025-126]
+    clear_s: 120
   # High CO2 is an equipment problem (scrubber), not a toxic spill. Same limit AND same meaning as the profile alarm
   # `ppco2_1h` (NASA-STD-3001 [V2 6004], [S6]): max 3 mmHg as a 1-hour MEAN. Keep both in sync with the environment profile.
   - id: ppco2_mean_1h
@@ -89,22 +137,34 @@ crew_response:
   gather_on: [depressurization, fire, toxic]
   react_delay_s: [2, 6]
   asleep_extra_delay_s: 30
-  evacuate_tres_s: 120
+  evacuate_tres_s: 600   # ISS: at 10 minutes of reserve time the crew stops leak isolation and retreats [ICES-2025-126]
+  seal_vehicle: true     # all aboard -> the escape vehicle's hatches are closed
+  repair_leak_s: 1800    # ESTIMATE: time to find and patch a leak that is only a warning
   stand_down_delay_s: 120
   npc_approves_actions: false   # true: the acting commander approves pending steps once at the safe haven
 
 playbooks:
+  # Rapid depressurization (critical). The ISS vehicle response [ICES-2025-126]: stop gas introduction (so the crew can
+  # measure the leak rate), fans off (so they can hear and feel the leak), isolate the affected module. The escape vehicle's
+  # hatch is NOT opened here: it stays closed until the crew retreats into it (crew_response), so it keeps its air.
   - emergency: depressurization
+    severity: critical
     actions:
-      # ISS automatic safing: stop gas introduction so the crew can measure the leak rate
       - {do: actuator, target: "press_{module}", command: "off", level: auto, reason: stop make-up gas to measure the leak}
       - {do: actuator, target: "o2gen_{module}", command: "off", level: auto, reason: stop gas introduction}
+      - {do: ventilation, target: "{module}", command: "off", level: auto, reason: fans off to hear and feel the leak}
       - {do: announce, target: crew, command: depressurization, level: auto}
       # heavy step: seal the leaking module from the hab. Never a hatch between the crew and the lifeboat.
       - {do: hatch, target: "hab:{module}", command: close, level: confirm, confirm_timeout_s: 20, on_timeout: execute,
          reversible: false, reason: isolate the leaking module}
-      - {do: hatch, target: "hab:lifeboat", command: open, level: confirm, confirm_timeout_s: 15, on_timeout: execute,
-         reason: open the escape vehicle}
+  # Fast or slow leak (warning): no group alarm and gas introduction stays on (it makes up the loss while the crew looks for it).
+  # The crew checks the leak by closing the hatch to the suspect module; nothing is forced if nobody answers.
+  - emergency: depressurization
+    severity: warning
+    actions:
+      - {do: announce, target: crew, command: leak_check, level: auto}
+      - {do: hatch, target: "hab:{module}", command: close, level: confirm, confirm_timeout_s: 300, on_timeout: discard,
+         reason: leak check - close the hatch to see which side is leaking}
   - emergency: equipment
     actions:
       - {do: announce, target: crew, command: equipment_alert, level: auto}

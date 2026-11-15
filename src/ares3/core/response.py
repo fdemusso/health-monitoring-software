@@ -12,9 +12,13 @@ engine applies them on the next tick. Nothing here touches the world.
 * Medical: a confirmed ``medical`` emergency (the monitor's, from the wearables) sends the medic to the crew member in
   trouble, with or without a group alarm; the cause the sensors found is in the log line.
 * Repair: a confirmed ``equipment`` emergency sends the engineer (role ``systems``) to that module; after ``repair_s``
-  there the engine brings the offline actuators of the module back.
+  there the engine brings the offline actuators of the module back. A leak that is only a warning (fast or slow, no
+  group alarm) sends the engineer too; after ``repair_leak_s`` the engine stops the leak.
 * Evacuate: when TRes drops under ``evacuate_tres_s``, or the extinguisher was discharged ``fire_evacuate_s`` ago and
   the fire still burns, everyone enters the return vehicle (latched). The all-clear brings them back.
+* Seal: once everyone capable is aboard the return vehicle the crew closes its hatches (``seal_vehicle``), so the
+  vehicle keeps its air while the station loses its own. The hatch stays closed after the all-clear, as in nominal ops.
+* Only CRITICAL emergencies of the ``gather_on`` kinds raise the group alarm: a warning is handled where the crew is.
 * Stand down: ``stand_down_delay_s`` after the last emergency clears, the schedules resume.
 
 An incapacitated member (health state 3 or 4) is frozen where they are and holds no role. Moving between
@@ -44,7 +48,9 @@ class CrewOrders:
     phases: dict[str, str] = field(default_factory=dict)
     approvals: list[tuple[str, str]] = field(default_factory=list)  # (action id, npc id)
     open_hatches: list[tuple[str, str]] = field(default_factory=list)  # return-vehicle hatches the crew opens
+    close_hatches: list[tuple[str, str]] = field(default_factory=list)  # ... and closes once everyone is aboard
     repairs: list[str] = field(default_factory=list)  # modules where the engineer has finished the repair
+    leak_repairs: list[str] = field(default_factory=list)  # modules where the engineer has patched the leak
     events: list[MonitorEvent] = field(default_factory=list)
 
 
@@ -64,6 +70,7 @@ class CrewResponse:
         self._clear_t: float | None = None
         self._react_at: dict[str, float] = {}
         self._evacuating = False
+        self._sealed = False
         self._haven: str | None = None
         self._gathered_at: str | None = None
         self._acting: str | None = None
@@ -127,7 +134,7 @@ class CrewResponse:
 
     def _reset(self) -> None:
         self._alarm_t = self._clear_t = self._haven = self._gathered_at = self._acting = None
-        self._evacuating = False
+        self._evacuating = self._sealed = False
         self._react_at.clear()
         self._assisting.clear()
         self._approved.clear()
@@ -153,8 +160,13 @@ class CrewResponse:
                 out.events.append(ev)
 
     def _repair(self, t: float, tick: SimulationTick, out: CrewOrders) -> None:
-        """No group alarm: the engineer goes to the module with a confirmed equipment emergency and fixes it."""
-        todo = [e for e in tick.emergencies if e.kind == "equipment" and e.state == "confirmed" and e.id not in self._repaired]
+        """No group alarm: the engineer goes to the module with a confirmed equipment emergency (or a leak that is only
+        a warning) and fixes it."""
+        def leak(e: Emergency) -> bool:
+            return e.kind == "depressurization"
+
+        todo = [e for e in tick.emergencies if e.state == "confirmed" and e.id not in self._repaired
+                and (e.kind == "equipment" or (leak(e) and e.severity == "warning"))]
         engineer = next((nid for nid in sorted(tick.npcs) if self.cfg.roles.get(self.profiles[nid]) == "systems"
                          and tick.npcs[nid].vitals.get("health_state", 0.0) < _INCAPACITATED), None)
         if not todo or engineer is None:
@@ -164,20 +176,22 @@ class CrewResponse:
         out.phases[engineer], out.roles[engineer] = "repair", "systems"
         if tick.npcs[engineer].module_id != em.module_id:
             return
+        what, needs = ("the leak", self.cfg.repair_leak_s) if leak(em) else ("the equipment", self.cfg.repair_s)
         if em.id not in self._repair_since:
             self._repair_since[em.id] = t
             out.events.append(MonitorEvent(t_s=t, kind="crew_repairing", emergency_id=em.id,
-                                           message=f"{engineer} starts repairing the equipment in {em.module_id}"))
-        if t - self._repair_since[em.id] >= self.cfg.repair_s:
+                                           message=f"{engineer} starts repairing {what} in {em.module_id}"))
+        if t - self._repair_since[em.id] >= needs:
             self._repaired.add(em.id)
-            out.repairs.append(em.module_id)
+            (out.leak_repairs if leak(em) else out.repairs).append(em.module_id)
 
     # ---- one tick --------------------------------------------------------------------------------
     def step(self, t: float, tick: SimulationTick, fires: dict[str, float | None] | None = None) -> CrewOrders:
         """``fires``: modules where a fire burns now -> when the extinguisher was last discharged there (None: not yet)."""
         fires = fires or {}
         out = CrewOrders()
-        active: list[Emergency] = [e for e in tick.emergencies if e.state == "confirmed" and e.kind in self.cfg.gather_on]
+        active: list[Emergency] = [e for e in tick.emergencies if e.state == "confirmed" and e.severity == "critical"
+                                   and e.kind in self.cfg.gather_on]
         hazards = {e.module_id for e in active}
 
         if active:
@@ -259,8 +273,16 @@ class CrewResponse:
             out.events.append(MonitorEvent(t_s=t, kind="crew_gathered",
                                            message=f"headcount complete in {dest}: {', '.join(sorted(capable))}"))
 
-        if dest in self.vehicles:  # the crew opens the vehicle's hatches when they retreat into it
-            out.open_hatches += [(h.a, h.b) for h in tick.hatches if not h.open and dest in (h.a, h.b)]
+        if dest in self.vehicles:
+            aboard = bool(capable) and len(at_dest) == len(capable)
+            if self.cfg.seal_vehicle and not self._sealed and aboard:
+                self._sealed = True  # everyone is aboard: the vehicle keeps its own air from now on
+                out.close_hatches += [(h.a, h.b) for h in tick.hatches if h.open and dest in (h.a, h.b)]
+                out.events.append(MonitorEvent(t_s=t, kind="crew_sealed", message=f"all aboard {dest}: its hatches are closed"))
+            elif not self._sealed:  # the crew opens the vehicle's hatches to retreat into it: only while someone passes
+                in_transit = any(nid in ready and tick.npcs[nid].module_id != dest for nid in capable)
+                if in_transit or not self.cfg.seal_vehicle:
+                    out.open_hatches += [(h.a, h.b) for h in tick.hatches if not h.open and dest in (h.a, h.b)]
 
         if self.cfg.npc_approves_actions and self._acting is not None and tick.npcs[self._acting].module_id == dest:
             for pa in tick.pending_actions:

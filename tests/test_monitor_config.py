@@ -9,8 +9,10 @@ from ares3.sdk.types import Action
 def test_scenarios_load_the_monitor_config(station):
     mon = station.monitor
     assert {d.emergency for d in mon.detectors} == {"depressurization", "equipment", "fire", "medical"}
-    depress = next(p for p in mon.playbooks if p.emergency == "depressurization")
-    assert [a.level for a in depress.actions] == ["auto", "auto", "auto", "confirm", "confirm"]
+    depress = next(p for p in mon.playbooks if p.emergency == "depressurization" and p.severity == "critical")
+    assert [a.level for a in depress.actions] == ["auto", "auto", "auto", "auto", "confirm"]  # safing first, isolation last
+    leak = next(p for p in mon.playbooks if p.emergency == "depressurization" and p.severity == "warning")
+    assert not any(a.do == "actuator" for a in leak.actions)  # a slow leak keeps the make-up gas on
     fire = next(p for p in mon.playbooks if p.emergency == "fire")
     assert [a.do for a in fire.actions if a.level == "auto"][:2] == ["ventilation", "actuator"]  # attack oxygen first
     assert [a.do for a in fire.actions if a.level == "confirm"] == ["extinguish"]
@@ -45,7 +47,7 @@ def test_dangling_playbook_references_fail_at_load(station):
     with pytest.raises(ValueError, match="unknown actuator"):
         validate_references(bad)
     bad = station.model_copy(deep=True)
-    bad.monitor.playbooks[0].actions[3].target = "hab:greenhouse2"
+    bad.monitor.playbooks[0].actions[4].target = "hab:greenhouse2"
     with pytest.raises(ValueError, match="no hatch"):
         validate_references(bad)
 

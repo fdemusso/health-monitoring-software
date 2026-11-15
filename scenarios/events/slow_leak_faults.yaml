@@ -5,6 +5,7 @@ faults:
     targets: [hab]
     start_s: 3600
     duration_s: 21600
-    params: {"rate_per_s": 1e-05}
+    # repairable: false keeps the 6 h event as designed: the engineer finds the leak but cannot patch it (the physiology report needs the whole drop)
+    params: {"rate_per_s": 1e-05, "repairable": false}
     anomaly_type: pressure_leak
     priority: 9

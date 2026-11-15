@@ -45,29 +45,36 @@ def test_auto_safing_runs_on_confirmation_and_is_restored_on_clear(station):
 
 def test_confirm_steps_are_proposed_then_run_on_timeout_if_life_saving(station):
     eng = _eng_with_leak(station, "lab")
-    res, _ = _run_until(eng, lambda r: len(r.tick.pending_actions) == 2)
-    targets = {pa.action.target for pa in res.tick.pending_actions}
-    assert targets == {"hab:lab", "hab:lifeboat"}
-    assert all(pa.on_timeout == "execute" and pa.deadline_s > pa.t_proposed_s for pa in res.tick.pending_actions)
+    res, _ = _run_until(eng, lambda r: len(r.tick.pending_actions) == 1)
+    pa = res.tick.pending_actions[0]
+    assert pa.action.target == "hab:lab" and pa.on_timeout == "execute" and pa.deadline_s > pa.t_proposed_s
     assert _hatch(eng, "hab", "lab").open
     _, log = _run_until(eng, lambda r: not r.tick.pending_actions and not _hatch(eng, "hab", "lab").open)
     assert {e.kind for e in log} >= {"action_expired_executed"}
-    assert _hatch(eng, "hab", "lifeboat").open  # the escape vehicle was opened too
 
 
-def test_anyone_can_approve_and_reject(station):
+def test_anyone_can_approve(station):
     eng = _eng_with_leak(station, "lab")
-    res, _ = _run_until(eng, lambda r: len(r.tick.pending_actions) == 2)
-    by_target = {pa.action.target: pa.action.id for pa in res.tick.pending_actions}
-    eng.approve_action(by_target["hab:lifeboat"], by="bot")  # not the commander: the monitor is open to all
-    eng.reject_action(by_target["hab:lab"], by="med")
+    # approved once the crew has left the lab: the ISS rule would block the hatch while anyone is still inside
+    res, _ = _run_until(eng, lambda r: len(r.tick.pending_actions) == 1
+                        and all(n.module_id != "lab" for n in r.tick.npcs.values()))
+    eng.approve_action(res.tick.pending_actions[0].action.id, by="bot")  # not the commander: the monitor is open to all
     _, log = _run_until(eng, lambda r: not r.tick.pending_actions)
     approved = [e for e in log if e.kind == "action_approved"]
-    assert [(e.by, e.action_id) for e in approved] == [("bot", by_target["hab:lifeboat"])]
+    assert [(e.by, e.action_id) for e in approved] == [("bot", res.tick.pending_actions[0].action.id)]
+    next(iter(eng.run(2)))
+    assert not _hatch(eng, "hab", "lab").open
+
+
+def test_anyone_can_reject_and_the_step_does_not_come_back(station):
+    eng = _eng_with_leak(station, "lab")
+    res, _ = _run_until(eng, lambda r: len(r.tick.pending_actions) == 1)
+    eng.reject_action(res.tick.pending_actions[0].action.id, by="med")
+    _, log = _run_until(eng, lambda r: not r.tick.pending_actions)
     assert [e.by for e in log if e.kind == "action_rejected"] == ["med"]
     for _ in eng.run(60):  # the rejected step must not come back on its deadline
         pass
-    assert _hatch(eng, "hab", "lifeboat").open and _hatch(eng, "hab", "lab").open
+    assert _hatch(eng, "hab", "lab").open
 
 
 def test_hatch_is_never_closed_on_someone_cut_off_from_the_escape_vehicle(station):

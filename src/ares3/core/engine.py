@@ -270,7 +270,16 @@ class Engine:
             for action_id, by in crew.approvals:
                 self.responder.approve(action_id, by)
             self._queued_hatches += [(a, b, True) for a, b in crew.open_hatches]
+            self._queued_hatches += [(a, b, False) for a, b in crew.close_hatches]
             events = list(crew.events)
+            for mid in crew.leak_repairs:  # the engineer patches the hole: the leak stops
+                sealed = [f.id for f in self.injector.active(t)
+                          if f.type == "leak" and mid in f.targets and f.params.get("repairable", True)]
+                for fid in sealed:
+                    self.injector.stop(fid, t)
+                if sealed:
+                    events.append(MonitorEvent(t_s=t, kind="crew_repaired", message=f"leak patched in {mid}: {', '.join(sealed)}"))
+                    self.monitor.forget(mid)
             for mid in crew.repairs:  # the engineer brings the offline actuators of the module back
                 acts = {a.id for a in self.scenario.layout.actuators if a.module == mid}
                 fixed = [f.id for f in self.injector.active(t) if f.type == "actuator_offline" and acts & set(f.targets)]
@@ -278,6 +287,7 @@ class Engine:
                     self.injector.stop(fid, t)
                 if fixed:
                     events.append(MonitorEvent(t_s=t, kind="crew_repaired", message=f"repaired in {mid}: {', '.join(fixed)}"))
+                    self.monitor.forget(mid)
             if events:
                 tick = tick.model_copy(update={"monitor_events": (*tick.monitor_events, *events)})
         if self.agent is not None:

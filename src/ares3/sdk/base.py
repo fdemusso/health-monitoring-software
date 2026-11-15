@@ -115,3 +115,8 @@ class BaseDetector(Component):
 
     @abstractmethod
     def detect(self, ctx: StepContext, observations: list[Observation]) -> list[Signal]: ...
+
+    def forget(self, entity_id: str) -> None:
+        """The crew fixed the cause of the evidence on ``entity_id``: drop what was seen there so far. A detector that
+        keeps a history (trend, mean over a window) overrides this; otherwise the old evidence would hold the
+        emergency open for the length of its window after the repair."""

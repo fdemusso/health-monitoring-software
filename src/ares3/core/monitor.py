@@ -65,6 +65,12 @@ class Monitor:
         self._count = 0
         self._declared: list[MonitorEvent] = []  # events of manual alarms, flushed by the next step
 
+    def forget(self, module_id: str) -> None:
+        """A repair was done in ``module_id``: the detectors drop their history there, so the emergency it caused clears
+        after its ``clear_s`` instead of when the evidence has slid out of a window that may span hours."""
+        for det in self.detectors:
+            det.forget(module_id)
+
     def _timing(self, spec: DetectorSpec) -> tuple[float, float]:
         c: ClassifierConfig = self.config.classifier
         return (c.confirm_s if spec.confirm_s is None else spec.confirm_s,

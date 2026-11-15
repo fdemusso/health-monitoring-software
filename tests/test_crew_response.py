@@ -2,7 +2,7 @@ from ares3.core.engine import Engine
 from ares3.schemas.faults import FaultSpec
 
 
-def _leak(module, rate=0.002):
+def _leak(module, rate=0.0003):  # ~13 mmHg/min: TRes ~25 min, above the 10 min that sends the crew to the escape vehicle
     return FaultSpec(id="debug_leak", type="leak", targets=[module], start_s=0, params={"rate_per_s": rate},
                      anomaly_type="slow_leak", priority=5)
 
@@ -45,13 +45,18 @@ def test_crew_leaves_the_leaking_module_and_gathers_at_the_safe_haven(station):
     assert roles["cmd"] == "incident_commander" and roles["eng"] == "systems" and roles["med"] == "medical"
 
 
-def test_leak_in_the_hub_sends_the_crew_into_the_escape_vehicle_and_opens_its_hatch(station):
+def test_leak_in_the_hub_sends_the_crew_into_the_escape_vehicle_which_is_then_sealed(station):
     eng = _engine(station)
-    eng.inject(_leak("hab"))
-    _until(eng, lambda r: set(_where(r).values()) == {"lifeboat"})
-    next(iter(eng.run(2)))
     hatch = next(h for h in eng.world.hatches if {h.a, h.b} == {"hab", "lifeboat"})
-    assert hatch.open
+    assert not hatch.open  # the vehicle is closed in nominal ops and stays so until the crew needs it
+    eng.inject(_leak("hab"))
+    res, _ = _until(eng, lambda r: any(e.kind == "crew_sealed" for e in r.tick.monitor_events), 600)
+    assert set(_where(res).values()) == {"lifeboat"}
+    for last in eng.run(300):  # the hatch is closed behind the crew and the vehicle keeps its air while the hub empties
+        pass
+    assert not hatch.open
+    p = {m: s.pressure_kpa for m, s in last.tick.modules.items()}
+    assert p["lifeboat"] > 100.0 and p["hab"] < 95.0
 
 
 def test_low_tres_triggers_evacuation(station):

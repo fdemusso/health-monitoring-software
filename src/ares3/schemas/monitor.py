@@ -74,9 +74,14 @@ class ActionSpec(BaseModel):
 
 
 class Playbook(BaseModel):
+    """The steps for one kind of emergency. ``severity`` limits it to emergencies at that severity (``None``: any), so
+    a slow leak (warning) and a rapid depressurization (critical) can have different responses. An emergency that
+    worsens runs the playbook of its new severity too, on top of what already ran."""
+
     model_config = ConfigDict(extra="forbid")
 
     emergency: EmergencyKind
+    severity: Severity | None = None
     actions: list[ActionSpec]
 
 
@@ -88,15 +93,24 @@ class CrewResponseConfig(BaseModel):
 
     roles: dict[str, CrewRole]  # profile -> role
     succession: list[str]  # profiles, in the order they take command when the commander is incapacitated
-    gather_on: list[EmergencyKind] = ["depressurization", "fire", "toxic"]  # kinds that make the crew retreat
+    # kinds that make the crew retreat; only CRITICAL ones do (a slow leak or a warning is handled at the desk)
+    gather_on: list[EmergencyKind] = ["depressurization", "fire", "toxic"]
     react_delay_s: tuple[float, float] = (2.0, 6.0)  # each NPC notices the alarm after a delay drawn in this range
     asleep_extra_delay_s: float = Field(default=30.0, ge=0)  # added for a sleeping crew member
-    evacuate_tres_s: float = Field(default=120.0, gt=0)  # everyone enters the return vehicle when TRes falls below this
+    # everyone enters the return vehicle when TRes falls below this: the ISS crew stops leak isolation and retreats at
+    # 10 minutes of reserve time [ICES-2025-126]
+    evacuate_tres_s: float = Field(default=600.0, gt=0)
     stand_down_delay_s: float = Field(default=120.0, ge=0)  # after the last emergency clears, schedules resume
     # the extinguisher was discharged and the fire still burns after this long: everyone goes to the return vehicle
     fire_evacuate_s: float = Field(default=45.0, gt=0)
+    # once everyone capable is inside the return vehicle the crew closes its hatches, so the vehicle keeps its air while
+    # the station loses its own ("close the appropriate hatch(es) to isolate the affected area" [ICES-2025-126])
+    seal_vehicle: bool = True
     # the engineer (role ``systems``) goes to a module with a confirmed ``equipment`` emergency and needs this long to fix it
     repair_s: float = Field(default=600.0, gt=0)
+    # same for a leak that is not an emergency yet (warning severity: fast/slow leak): they find it and patch it. ESTIMATE:
+    # the ISS Zvezda leaks took days of checks and repeated sealing, and not all repairs held
+    repair_leak_s: float = Field(default=1800.0, gt=0)
     gather_met: float = Field(default=2.0, gt=0)  # effort while moving to the safe haven
     # when true an NPC (the acting commander, once at the safe haven) approves pending actions after
     # ``approve_delay_s``; when false only the UI does, and life-saving steps run on their timeout

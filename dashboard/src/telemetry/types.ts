@@ -160,7 +160,7 @@ export interface MonitorEvent {
     | 'action_executed' | 'action_proposed' | 'action_approved' | 'action_rejected'
     | 'action_expired_executed' | 'action_expired_discarded' | 'action_blocked'
     | 'crew_alerted' | 'crew_gathered' | 'crew_evacuating' | 'crew_assisting' | 'crew_command_passed'
-    | 'crew_stood_down' | 'crew_repairing' | 'crew_repaired';
+    | 'crew_stood_down' | 'crew_repairing' | 'crew_repaired' | 'crew_sealed';
   message: string;
   emergency_id: string | null;
   action_id: string | null;

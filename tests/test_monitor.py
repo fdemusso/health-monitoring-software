@@ -34,8 +34,8 @@ def test_injected_leak_is_detected_confirmed_with_tres_and_cleared(station):
 
     eng.stop_event("debug_leak")
     cleared = False
-    for res in eng.run(600):
-        cleared = cleared or any(e.state == "cleared" for e in res.tick.emergencies)
+    for res in eng.run(900):  # the 300 s rate window still holds the leak: it takes about 10 minutes to clear
+        cleared = cleared or any(e.state == "cleared" and e.module_id == "hab" for e in res.tick.emergencies)
     assert cleared
 
 

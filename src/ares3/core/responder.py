@@ -23,12 +23,12 @@ Guard = Callable[[Action], str | None]  # returns the reason to block an action,
 class Responder:
     def __init__(self, playbooks: list[Playbook], actuators: set[str], hatches: set[frozenset[str]],
                  guard: Guard, modules: set[str] = frozenset()) -> None:
-        self.playbooks = {p.emergency: p for p in playbooks}
+        self.playbooks = playbooks
         self.actuators = actuators
         self.hatches = hatches
         self.modules = modules
         self.guard = guard
-        self._started: set[str] = set()  # emergency ids whose playbook already ran
+        self._started: set[tuple[str, str]] = set()  # (emergency id, severity) whose playbooks already ran
         self._pending: dict[str, tuple[PendingAction, ActionSpec]] = {}
         self._forced: dict[str, list[tuple[str, str]]] = {}  # emergency id -> (kind, target) forced, restored on clear
         self._approved: dict[str, str | None] = {}
@@ -56,8 +56,8 @@ class Responder:
         events: list[MonitorEvent] = []
 
         for em in emergencies:
-            if em.state == "confirmed" and em.id not in self._started:
-                self._started.add(em.id)
+            if em.state == "confirmed" and (em.id, em.severity) not in self._started:
+                self._started.add((em.id, em.severity))  # a worse severity later runs its own playbook once more
                 self._start(t, em, run, events)
             elif em.state == "cleared":
                 self._finish(t, em, run, events)
@@ -94,13 +94,15 @@ class Responder:
         return f"{a.kind} {a.target} -> {a.command}" + (f" ({a.reason})" if a.reason else "")
 
     def _start(self, t: float, em: Emergency, run: list[Action], events: list[MonitorEvent]) -> None:
-        pb = self.playbooks.get(em.kind)
-        if pb is None:
-            return
-        for spec in pb.actions:
+        specs = [s for pb in self.playbooks if pb.emergency == em.kind and pb.severity in (None, em.severity)
+                 for s in pb.actions]
+        for spec in specs:
+            target = spec.target.replace(MODULE_TEMPLATE, em.module_id)
+            if spec.do == "hatch" and len(set(target.split(":"))) == 1:
+                continue  # "hab:hab": the playbook step is about the hatch between this module and another: none here
             self._n += 1
             action = Action(id=f"a{self._n}", emergency_id=em.id, kind=spec.do,
-                            target=spec.target.replace(MODULE_TEMPLATE, em.module_id), command=spec.command,
+                            target=target, command=spec.command,
                             value=spec.value, level=spec.level, reversible=spec.reversible, reason=spec.reason)
             problem = self._unknown_target(action)
             if problem:
