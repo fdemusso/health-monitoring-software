@@ -22,3 +22,10 @@ distributed under the GNU General Public License v2 (this `dashboard/` folder) â
 [`LICENSE`](./LICENSE). If you need a non-GPL license, replace
 `dashboard/src/data/anatomy.json` and `anatomy.ts` with your own
 silhouette/organ artwork first.
+
+## UI stack
+
+- [Tailwind CSS](https://tailwindcss.com) and `tw-animate-css` (MIT)
+- shadcn/ui conventions (MIT): `src/components/ui/*` follow its look and `cva` pattern
+- `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react` (MIT / ISC)
+- `@fontsource-variable/inter` (Inter typeface, SIL Open Font License 1.1)

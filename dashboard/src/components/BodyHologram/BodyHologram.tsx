@@ -36,8 +36,8 @@ export function BodyHologram({
     >
       <defs>
         <radialGradient id={model.baseGradientId} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(94,211,255,0.9)" />
-          <stop offset="100%" stopColor="rgba(94,211,255,0)" />
+          <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.5} />
+          <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
         </radialGradient>
       </defs>
 

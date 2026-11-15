@@ -3,9 +3,9 @@ import {
   BodyHologram,
   RESTING_HEART_RATE_BPM,
   RESTING_RESPIRATORY_RATE,
-} from './components/BodyHologram';
-import { ORGAN_KEYS, type OrganKey, type OrganVitals, type Sex } from './types/anatomy';
-import './App.css';
+} from '../components/BodyHologram';
+import { ORGAN_KEYS, type OrganKey, type OrganVitals, type Sex } from '../types/anatomy';
+import './HologramHarness.css';
 
 const ORGAN_LABELS: Record<OrganKey, string> = {
   heart: 'Cuore',
@@ -38,7 +38,7 @@ const SLIDER_CONFIG: Record<OrganKey, SliderConfig> = {
   stomach: { min: 0, max: 1, step: 0.01, unit: '%', format: (v) => `${Math.round(v * 100)}%` },
 };
 
-function App() {
+export default function HologramHarness() {
   const [sex, setSex] = useState<Sex>('male');
   const [organs, setOrgans] = useState<OrganVitals>({
     heart: RESTING_HEART_RATE_BPM,
@@ -110,5 +110,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
