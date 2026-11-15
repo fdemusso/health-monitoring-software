@@ -3,19 +3,21 @@ import { Dialog as DialogPrimitive } from 'radix-ui'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { DragHandles, useDraggable } from '@/lib/useDraggable'
+import { useDraggable } from '@/lib/useDraggable'
 
-/** Centered dialog (shadcn Dialog on Radix): scrim, focus trap, Esc to close. Movable by its corner handles. */
+/** Centered dialog (shadcn Dialog on Radix): scrim, focus trap, Esc to close. Press and hold it to move it. */
 export function Dialog({ open, onClose, title, children, className, width = 640 }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; className?: string; width?: number
 }) {
-  const { ref, style: moved, dragging, handleProps } = useDraggable<HTMLDivElement>(open, { centered: true })
+  const { ref, style: moved, dragging, panelProps } = useDraggable<HTMLDivElement>(open, { centered: true })
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-scrim data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-(--duration-enter) data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-(--duration-exit)" />
         <DialogPrimitive.Content
           ref={ref}
+          data-drag-active={dragging || undefined}
+          {...panelProps}
           aria-describedby={undefined}
           // `translate` (not `transform`, which the open/close animations use) carries both the centring and the move
           style={{ width: `${width / 16}rem`, ...moved }}
@@ -32,7 +34,6 @@ export function Dialog({ open, onClose, title, children, className, width = 640 
             </DialogPrimitive.Close>
           </div>
           <div className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</div>
-          <DragHandles handleProps={handleProps} dragging={dragging} />
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

@@ -201,6 +201,12 @@ html, body, #root { height: 100%; margin: 0; }
  */
 /* a panel is being dragged (lib/dragFreeze.ts): nothing else may repaint */
 html[data-dragging] *, html[data-dragging] *::before, html[data-dragging] *::after { animation-play-state: paused !important; transition: none !important; }
+/* a panel picked up by press-and-hold (lib/useDraggable.tsx): thicker, brighter border, lifted */
+[data-drag-active] {
+  border-color: var(--chart-1) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--chart-1) 75%, white), 0 18px 48px -12px oklch(0 0 0 / 45%);
+  -webkit-touch-callout: none;
+}
 html { font-size: clamp(16px, min(calc(16px + (100dvh - 810px) * 0.008), calc(100vw / 67.5)), 22px); }
 body {
   font-family: var(--font-sans);

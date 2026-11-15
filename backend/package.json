@@ -3,6 +3,6 @@
   "private": true,
   "description": "Wrapper so turbo can start the Python simulator (ares3 serve) next to the dashboard. The code lives in ../src.",
   "scripts": {
-    "dev": "uv run --project .. --extra serve ares3 serve ../scenarios/station/nominal.yaml --speed 10 --warmup-h 4"
+    "dev": "uv run --project .. --extra serve ares3 serve ../scenarios/station/nominal.yaml --host 0.0.0.0 --speed 10 --warmup-h 4"
   }
 }
