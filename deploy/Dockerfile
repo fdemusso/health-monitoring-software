@@ -18,7 +18,8 @@ RUN pip install -e ".[serve,ml]"
 COPY scenarios ./scenarios
 COPY models ./models
 
-RUN useradd --system --no-create-home ares
+# Warm-up cache (--warmup-cache): the only writable path. Owned by `ares` so that a NAMED volume mounted here inherits it.
+RUN useradd --system --no-create-home ares && mkdir /cache && chown ares /cache
 USER ares
 
 EXPOSE 8765

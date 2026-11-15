@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hmac
 import json
+from collections.abc import Callable
 from urllib.parse import parse_qs, urlsplit
 
 from .session import Session
@@ -14,7 +15,8 @@ MAX_CLIENT_MESSAGE = 64 * 1024  # bytes: a command is a few hundred
 
 async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, ready: asyncio.Future | None = None, *,
                 token: str | None = None, origins: list[str] | None = None, max_clients: int = 100,
-                guest_commands: frozenset[str] = frozenset(), warmup_s: float = 0.0) -> None:
+                guest_commands: frozenset[str] = frozenset(), warmup_s: float = 0.0,
+                warmup_done: Callable[[], None] | None = None) -> None:
     """Serve until cancelled. Every client gets the same frames. ``ready`` (optional) receives the port.
 
     Without ``token`` every client may send commands (local development). With one, a client that connects with ``?token=<token>`` is
@@ -23,7 +25,8 @@ async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, rea
     (scripts) are let in, a browser always sends one. At most ``max_clients`` connections at a time. A viewer may still send the
     commands named in ``guest_commands`` (e.g. ``approve_action``, ``ack_step``: the crew-facing ones, so a visitor can take part in
     the response without being able to inject faults, reset or change the speed). With ``warmup_s`` the port opens at once and the
-    simulation runs that many seconds ahead while the clients get ``warming`` frames (see ``session.py``)."""
+    simulation runs that many seconds ahead while the clients get ``warming`` frames (see ``session.py``); ``warmup_done`` is called
+    once it ends (the CLI saves the warm-up cache there)."""
     from websockets.asyncio.server import broadcast
     from websockets.asyncio.server import serve as ws_serve
 
@@ -74,6 +77,8 @@ async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, rea
 
         if warmup_s > 0:
             await session.warm_up_async(warmup_s, emit)
+            if warmup_done is not None:
+                warmup_done()
         runner = asyncio.create_task(session.run(emit))
         try:
             await server.serve_forever()
