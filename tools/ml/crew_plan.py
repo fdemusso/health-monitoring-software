@@ -213,7 +213,7 @@ def _job(plan: dict, name: str, event: str, spec: dict, seed: int, split: str, o
         job["scenario"] = str(md.EVENTS / f"{catalog_ids[0]}.yaml") if not anchor else str(md.NOMINAL)
         per_fault: dict = {}
         for i, fid in enumerate(catalog_ids):
-            drawn = md.draw_catalog(fid, seed + 1000 * i, ranges)  # the second fault of a pair: another seed, like the combos
+            drawn = md.draw_catalog(fid, seed + 1000 * i, ranges, stable=True)  # the second fault of a pair: another seed, like the combos
             for entry in drawn.values():
                 if start_s is not None:
                     entry["start_s"] = round(start_s, 3)  # together with the person's event
@@ -260,7 +260,7 @@ def build_plan_jobs(plan: dict, wave: int, out: Path, ticks: int | None = None) 
         if group.get("regenerate"):
             ranges_seeds = [seed for _, seed in _seeds(group)]
             for job in md.build_jobs(ranges_seeds, float(group["days"]), None, out, nominal=False, features=True, randomize=True,
-                                     combos=bool(group.get("combos"))):
+                                     combos=bool(group.get("combos")), stable=True):
                 event = Path(job["scenario"]).stem + "".join("+" + e for e in job.get("extra_faults", []))
                 job |= {"name": f"crew-{name}-{event}", "group": name, "split": _split_of(group, job["seed"]), "event": event,
                         "npc": None, "activity_at_start": None, "module": None}

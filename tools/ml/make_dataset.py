@@ -302,9 +302,10 @@ def parse_seeds(text: str) -> list[int]:
     return seeds
 
 
-def draw_catalog(fid: str, seed: int, ranges: dict) -> dict[str, dict]:
+def draw_catalog(fid: str, seed: int, ranges: dict, stable: bool = False) -> dict[str, dict]:
     """The values of ONE run of catalog fault ``fid``: a start time in [6 h, 30 h] and a value in each range of the sheet. Drawn
-    from (seed, fault id), so the same job is the same job everywhere. Returns ``{fault id: {start_s, params, scale}}``."""
+    from (seed, fault id), so the same job is the same job everywhere (``stable``: the choice of a subset of modules uses only uniform draws, the
+    same on every numpy version; the crew plan asks for it, the older datasets keep ``choice``). Returns ``{fault id: {start_s, params, scale}}``."""
     import numpy as np
 
     rng = np.random.default_rng([int(seed), zlib.crc32(fid.encode())])
@@ -316,7 +317,10 @@ def draw_catalog(fid: str, seed: int, ranges: dict) -> dict[str, dict]:
             entry["scale"] = float(rng.uniform(knob["min"], knob["max"]))
         elif "choose" in knob:  # a subset of the modules
             n = int(rng.integers(round(knob["min"]), round(knob["max"]) + 1))
-            pick = sorted(rng.choice(knob["from"], size=n, replace=False).tolist())
+            if stable:  # ``choice`` without replacement is not the same stream in numpy 2.4 and 2.5; ``random`` is
+                pick = sorted(np.asarray(knob["from"])[np.argsort(rng.random(len(knob["from"])))[:n]].tolist())
+            else:
+                pick = sorted(rng.choice(knob["from"], size=n, replace=False).tolist())
             entry.setdefault("params", {})[knob["choose"].removeprefix("params.")] = pick
         else:
             v = float(rng.uniform(knob["min"], knob["max"])) * float(knob.get("factor", 1.0))
@@ -328,11 +332,11 @@ def draw_catalog(fid: str, seed: int, ranges: dict) -> dict[str, dict]:
 
 def build_jobs(seeds: list[int], days: float, only: list[str] | None, out: Path, nominal: bool,
                ticks: int | None = None, features: bool = False, randomize: bool = False, medical: bool = False,
-               combos: bool = False) -> list[dict]:
+               combos: bool = False, stable: bool = False) -> list[dict]:
     """One job per (fault, seed); ``only`` restricts the faults (ids as in ``scenarios/station/events``); ``nominal`` adds the
     fault-free run of each seed (the twin of every fault with that seed, and the detector's baseline); ``randomize`` draws the start
     and the parameters of each run from the ranges of the workbook; ``medical`` adds the medical events on the station crew;
-    ``combos`` the pairs of faults."""
+    ``combos`` the pairs of faults; ``stable`` draws the subsets with ``draw_catalog(stable=True)``."""
     import yaml
 
     available = {p.stem: p for p in sorted(EVENTS.glob("*.yaml"))}
@@ -363,9 +367,9 @@ def build_jobs(seeds: list[int], days: float, only: list[str] | None, out: Path,
             if randomize:
                 fid = Path(spec["scenario"]).stem
                 if fid in available:
-                    job["per_fault"] = draw_catalog(fid, seed, ranges)
+                    job["per_fault"] = draw_catalog(fid, seed, ranges, stable)
                     for second in spec.get("extra_faults", []):
-                        job["per_fault"].update(draw_catalog(second, seed + 1000, ranges))
+                        job["per_fault"].update(draw_catalog(second, seed + 1000, ranges, stable))
                 if spec.get("faults_file"):  # amplitude +-30 %, start between 6 and 30 h (D2)
                     import numpy as np
 
