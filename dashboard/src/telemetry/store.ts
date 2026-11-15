@@ -1,3 +1,4 @@
+import { isFrozen, whenThawed } from '@/lib/dragFreeze'
 import { pio2Mmhg, ppco2Mmhg, rhPercent } from '@/domain/units'
 import type { WarmupProgress } from './websocket'
 import type { HistorySample, ModuleState, MonitorEvent, SimulationTick, VitalsSample } from './types'
@@ -59,9 +60,14 @@ export function subscribe(l: () => void) {
   listeners.add(l)
   return () => { listeners.delete(l) }
 }
+let missed = false // a change arrived while the UI was frozen (a panel is being dragged)
+const notify = () => { for (const l of listeners) l() }
+whenThawed(() => { if (missed) { missed = false; notify() } })
+
 export function setState(patch: Partial<TelemetryState>) {
   state = { ...state, ...patch }
-  for (const l of listeners) l()
+  if (isFrozen()) missed = true
+  else notify()
 }
 
 const eventKey = (e: MonitorEvent) => `${e.t_s}|${e.kind}|${e.emergency_id}|${e.action_id}`

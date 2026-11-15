@@ -1,5 +1,6 @@
 import { Move } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { setFrozen } from '@/lib/dragFreeze'
 import { cn } from '@/lib/utils'
 
 /** Distance kept between a moved panel (handles included) and the screen edge, px. */
@@ -33,7 +34,7 @@ export function useDraggable<T extends HTMLElement>(resetKey?: unknown, { center
     let w = window.innerWidth
     const onResize = () => { if (window.innerWidth !== w) { w = window.innerWidth; place(0, 0) } }
     window.addEventListener('resize', onResize)
-    return () => { window.removeEventListener('resize', onResize); cancelAnimationFrame(frame.current) }
+    return () => { window.removeEventListener('resize', onResize); cancelAnimationFrame(frame.current); setFrozen(false) }
   }, [])
 
   const end = () => {
@@ -43,6 +44,7 @@ export function useDraggable<T extends HTMLElement>(resetKey?: unknown, { center
     const el = ref.current
     if (el) el.style.willChange = ''
     document.body.style.userSelect = ''
+    setFrozen(false)
     setOffset({ ...live.current }) // React takes over from the DOM position
     setDragging(false)
   }
@@ -55,6 +57,7 @@ export function useDraggable<T extends HTMLElement>(resetKey?: unknown, { center
       drag.current = { px: e.clientX, py: e.clientY, ox: live.current.x, oy: live.current.y, rect: el.getBoundingClientRect() }
       el.style.willChange = 'translate'
       document.body.style.userSelect = 'none'
+      setFrozen(true)
       setDragging(true)
       e.preventDefault()
     },

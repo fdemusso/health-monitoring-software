@@ -199,6 +199,8 @@ html, body, #root { height: 100%; margin: 0; }
  * the height is what limits it) and grows slowly: 16 px on an iPad 9 (1080x810 CSS px), ~18 on an iPad Air 13" (1376x1032) and on a 1080p
  * monitor, ~21 on a 1440p ultrawide. Never below 16 (the 44 px touch targets), never so large that 67 rem of width do not fit.
  */
+/* a panel is being dragged (lib/dragFreeze.ts): nothing else may repaint */
+html[data-dragging] *, html[data-dragging] *::before, html[data-dragging] *::after { animation-play-state: paused !important; transition: none !important; }
 html { font-size: clamp(16px, min(calc(16px + (100dvh - 810px) * 0.008), calc(100vw / 67.5)), 22px); }
 body {
   font-family: var(--font-sans);
