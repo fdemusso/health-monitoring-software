@@ -111,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
         ser = run_series(crew, run)
         a_al = all_alarms(crew, ser)
         n_a = sum(len(x) for x in a_al.values())
-        b_al = b_alarms(diag, v, confirm, None)
+        b_al = [al for al in b_alarms(diag, v, confirm, None) if al["subject"] is not None]  # the live detector drops a diagnosis that names no person
         for al in b_al:
             if al["subject"] in ser:
                 s = ser[al["subject"]]

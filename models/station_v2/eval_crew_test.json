@@ -1,0 +1,1647 @@
+{
+ "opened_at": "2026-11-15T18:38:30",
+ "split": "test",
+ "model": "C:\\Users\\flavi\\Desktop\\hms-fase2\\models\\station_v2\\crew_baseline.joblib",
+ "info": {
+  "kind": "regressor",
+  "train_seeds": [
+   101,
+   102,
+   103,
+   104,
+   105,
+   106,
+   107,
+   108,
+   109,
+   110,
+   111,
+   112,
+   113,
+   114,
+   115,
+   116,
+   117,
+   118,
+   119,
+   120,
+   121,
+   122,
+   123,
+   124
+  ],
+  "val_seeds": [
+   131,
+   132,
+   133,
+   134,
+   135,
+   136
+  ],
+  "event_val_seeds": [
+   131,
+   132,
+   133,
+   134,
+   135,
+   136,
+   137,
+   138
+  ],
+  "train_rows": 273600,
+  "val_rows": 68400,
+  "margin": 2.0,
+  "fast_factor": 1.5,
+  "tau_s": 300.0,
+  "memory_tau_min": [
+   30.0,
+   120.0,
+   360.0
+  ],
+  "regressor": "HistGradientBoostingRegressor(absolute_error, depth 3, 200 it) on the context and the memory of the programme",
+  "limit_floors": {
+   "z": 3.0,
+   "d2": 30.0,
+   "fast": 4.0
+  },
+  "limit_cap_z": 9.5,
+  "test_seeds_read": false,
+  "ares3": "0.1.0",
+  "sklearn": "1.9.1",
+  "numpy": "2.4.6",
+  "python": "3.11.15",
+  "trained_at": "2026-11-15"
+ },
+ "nominal": {
+  "runs": 15,
+  "days": 44.98958333333334,
+  "alarms": 6,
+  "per_person": {
+   "cmd": 0,
+   "eng": 0,
+   "med": 3,
+   "bot": 3
+  },
+  "per_day_crew": 0.13336420467700855,
+  "upper95_crew": 0.26322527960924924,
+  "upper95_person": {
+   "cmd": 0.06658724201462907,
+   "eng": 0.06658724201462907,
+   "med": 0.17234337269774058,
+   "bot": 0.17234337269774058
+  },
+  "during_exercise": 3
+ },
+ "alarms": [
+  {
+   "run": "crew-N2-nominal_s144_d3_f",
+   "npc": "med",
+   "start_s": 17400.0,
+   "confirm_s": 18000.0,
+   "end_s": 18600.0
+  },
+  {
+   "run": "crew-N2-nominal_s144_d3_f",
+   "npc": "med",
+   "start_s": 103860.0,
+   "confirm_s": 104460.0,
+   "end_s": 105000.0
+  },
+  {
+   "run": "crew-N2-nominal_s144_d3_f",
+   "npc": "med",
+   "start_s": 190260.0,
+   "confirm_s": 190860.0,
+   "end_s": 191400.0
+  },
+  {
+   "run": "crew-N2-nominal_s149_d3_f",
+   "npc": "bot",
+   "start_s": 65700.0,
+   "confirm_s": 66300.0,
+   "end_s": 87240.0
+  },
+  {
+   "run": "crew-N2-nominal_s149_d3_f",
+   "npc": "bot",
+   "start_s": 152160.0,
+   "confirm_s": 152760.0,
+   "end_s": 173400.0
+  },
+  {
+   "run": "crew-N2-nominal_s149_d3_f",
+   "npc": "bot",
+   "start_s": 238620.0,
+   "confirm_s": 239220.0,
+   "end_s": 259140.0
+  }
+ ],
+ "events": {
+  "n": 72,
+  "detected": 72,
+  "recall": 1.0,
+  "wilson95": [
+   0.9493470601886036,
+   1.0
+  ],
+  "per_event": {
+   "abnormal_exertion": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     18.0,
+     16.5,
+     20.0
+    ],
+    "delay_p90_min": [
+     20.9,
+     18.0,
+     23.0
+    ],
+    "slow": 8,
+    "fast": 4,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   },
+   "acute_stress": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     20.5,
+     19.0,
+     21.5
+    ],
+    "delay_p90_min": [
+     25.0,
+     20.6,
+     32.0
+    ],
+    "slow": 8,
+    "fast": 1,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   },
+   "atrial_fibrillation_suspected": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     4.0,
+     2.5,
+     12.0
+    ],
+    "delay_p90_min": [
+     12.3,
+     5.699999999999998,
+     13.0
+    ],
+    "slow": 8,
+    "fast": 6,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   },
+   "bradycardia": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     12.5,
+     8.0,
+     27.0
+    ],
+    "delay_p90_min": [
+     34.49999999999999,
+     15.845000000000002,
+     52.0
+    ],
+    "slow": 8,
+    "fast": 6,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   },
+   "dehydration": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     68.5,
+     29.437500000000004,
+     95.0
+    ],
+    "delay_p90_min": [
+     98.6,
+     70.0,
+     107.0
+    ],
+    "slow": 8,
+    "fast": 2,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   },
+   "fever": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     17.5,
+     16.0,
+     22.0
+    ],
+    "delay_p90_min": [
+     22.9,
+     18.0,
+     25.0
+    ],
+    "slow": 8,
+    "fast": 2,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   },
+   "respiratory_infection": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     14.0,
+     13.0,
+     15.0
+    ],
+    "delay_p90_min": [
+     15.0,
+     14.0,
+     15.0
+    ],
+    "slow": 8,
+    "fast": 3,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   },
+   "space_motion_sickness": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     16.5,
+     16.0,
+     17.5
+    ],
+    "delay_p90_min": [
+     18.3,
+     16.6,
+     19.0
+    ],
+    "slow": 8,
+    "fast": 1,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   },
+   "svt_suspected": {
+    "detected": 8,
+    "n": 8,
+    "recall": 1.0,
+    "wilson95": [
+     0.6755843804891231,
+     1.0
+    ],
+    "delay_median_min": [
+     3.0,
+     2.5,
+     3.0
+    ],
+    "delay_p90_min": [
+     4.799999999999999,
+     3.0,
+     9.0
+    ],
+    "slow": 8,
+    "fast": 8,
+    "wrong_person": 0,
+    "other_alarms": 0,
+    "visible_from": [
+     "twin"
+    ]
+   }
+  },
+  "events": [
+   {
+    "run": "crew-M1-fever_s141_d1.5_f",
+    "event": "fever",
+    "npc": "eng",
+    "start_s": 39757.81,
+    "end_s": 82528.44099999999,
+    "visible_s": 40440.0,
+    "detected": true,
+    "delay_s": 1020.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M1-fever_s142_d1.5_f",
+    "event": "fever",
+    "npc": "med",
+    "start_s": 40273.336,
+    "end_s": 63284.149000000005,
+    "visible_s": 41160.0,
+    "detected": true,
+    "delay_s": 1200.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M1-fever_s143_d1.5_f",
+    "event": "fever",
+    "npc": "bot",
+    "start_s": 41865.882,
+    "end_s": 69941.717,
+    "visible_s": 42780.0,
+    "detected": true,
+    "delay_s": 840.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M1-fever_s144_d1.5_f",
+    "event": "fever",
+    "npc": "cmd",
+    "start_s": 72833.99,
+    "end_s": 94575.60500000001,
+    "visible_s": 73380.0,
+    "detected": true,
+    "delay_s": 1320.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M1-fever_s145_d1.5_f",
+    "event": "fever",
+    "npc": "eng",
+    "start_s": 82290.208,
+    "end_s": 114515.437,
+    "visible_s": 82860.0,
+    "detected": true,
+    "delay_s": 1080.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M1-fever_s146_d1.5_f",
+    "event": "fever",
+    "npc": "med",
+    "start_s": 62360.808,
+    "end_s": 100048.57699999999,
+    "visible_s": 62940.0,
+    "detected": true,
+    "delay_s": 960.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M1-fever_s147_d1.5_f",
+    "event": "fever",
+    "npc": "bot",
+    "start_s": 65048.815,
+    "end_s": 103858.148,
+    "visible_s": 65520.0,
+    "detected": true,
+    "delay_s": 1020.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M1-fever_s148_d1.5_f",
+    "event": "fever",
+    "npc": "cmd",
+    "start_s": 54244.906,
+    "end_s": 73667.907,
+    "visible_s": 54900.0,
+    "detected": true,
+    "delay_s": 1500.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M2-dehydration_s141_d1.5_f",
+    "event": "dehydration",
+    "npc": "eng",
+    "start_s": 41967.337,
+    "end_s": 67510.581,
+    "visible_s": 43800.0,
+    "detected": true,
+    "delay_s": 1320.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M2-dehydration_s142_d1.5_f",
+    "event": "dehydration",
+    "npc": "med",
+    "start_s": 39615.443,
+    "end_s": 72390.225,
+    "visible_s": 41700.0,
+    "detected": true,
+    "delay_s": 1920.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M2-dehydration_s143_d1.5_f",
+    "event": "dehydration",
+    "npc": "bot",
+    "start_s": 40229.256,
+    "end_s": 70242.166,
+    "visible_s": 41880.0,
+    "detected": true,
+    "delay_s": 1620.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M2-dehydration_s144_d1.5_f",
+    "event": "dehydration",
+    "npc": "cmd",
+    "start_s": 57935.487,
+    "end_s": 92731.82699999999,
+    "visible_s": 58920.0,
+    "detected": true,
+    "delay_s": 4020.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M2-dehydration_s145_d1.5_f",
+    "event": "dehydration",
+    "npc": "eng",
+    "start_s": 81037.598,
+    "end_s": 110729.637,
+    "visible_s": 83220.0,
+    "detected": true,
+    "delay_s": 4920.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M2-dehydration_s146_d1.5_f",
+    "event": "dehydration",
+    "npc": "med",
+    "start_s": 66571.109,
+    "end_s": 92893.723,
+    "visible_s": 69120.0,
+    "detected": true,
+    "delay_s": 6420.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M2-dehydration_s147_d1.5_f",
+    "event": "dehydration",
+    "npc": "bot",
+    "start_s": 58092.267,
+    "end_s": 85882.779,
+    "visible_s": 59340.0,
+    "detected": true,
+    "delay_s": 4200.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M2-dehydration_s148_d1.5_f",
+    "event": "dehydration",
+    "npc": "cmd",
+    "start_s": 22833.821,
+    "end_s": 46904.971000000005,
+    "visible_s": 25620.0,
+    "detected": true,
+    "delay_s": 5700.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M3-atrial_fibrillation_suspected_s141_d1.5_f",
+    "event": "atrial_fibrillation_suspected",
+    "npc": "eng",
+    "start_s": 40118.159,
+    "end_s": 40771.816,
+    "visible_s": 40200.0,
+    "detected": true,
+    "delay_s": 720.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M3-atrial_fibrillation_suspected_s142_d1.5_f",
+    "event": "atrial_fibrillation_suspected",
+    "npc": "med",
+    "start_s": 40328.124,
+    "end_s": 43626.369000000006,
+    "visible_s": 40380.0,
+    "detected": true,
+    "delay_s": 780.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M3-atrial_fibrillation_suspected_s143_d1.5_f",
+    "event": "atrial_fibrillation_suspected",
+    "npc": "bot",
+    "start_s": 40181.841,
+    "end_s": 41648.918,
+    "visible_s": 40260.0,
+    "detected": true,
+    "delay_s": 720.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M3-atrial_fibrillation_suspected_s144_d1.5_f",
+    "event": "atrial_fibrillation_suspected",
+    "npc": "cmd",
+    "start_s": 60788.244,
+    "end_s": 62627.566999999995,
+    "visible_s": 60840.0,
+    "detected": true,
+    "delay_s": 300.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M3-atrial_fibrillation_suspected_s145_d1.5_f",
+    "event": "atrial_fibrillation_suspected",
+    "npc": "eng",
+    "start_s": 67369.038,
+    "end_s": 68943.409,
+    "visible_s": 67440.0,
+    "detected": true,
+    "delay_s": 180.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M3-atrial_fibrillation_suspected_s146_d1.5_f",
+    "event": "atrial_fibrillation_suspected",
+    "npc": "med",
+    "start_s": 79543.205,
+    "end_s": 82665.671,
+    "visible_s": 79620.0,
+    "detected": true,
+    "delay_s": 120.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M3-atrial_fibrillation_suspected_s147_d1.5_f",
+    "event": "atrial_fibrillation_suspected",
+    "npc": "bot",
+    "start_s": 59388.036,
+    "end_s": 60695.686,
+    "visible_s": 59460.0,
+    "detected": true,
+    "delay_s": 120.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M3-atrial_fibrillation_suspected_s148_d1.5_f",
+    "event": "atrial_fibrillation_suspected",
+    "npc": "cmd",
+    "start_s": 87983.683,
+    "end_s": 89765.243,
+    "visible_s": 88020.0,
+    "detected": true,
+    "delay_s": 180.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M4-space_motion_sickness_s141_d1.5_f",
+    "event": "space_motion_sickness",
+    "npc": "eng",
+    "start_s": 40134.303,
+    "end_s": 46237.820999999996,
+    "visible_s": 40380.0,
+    "detected": true,
+    "delay_s": 960.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M4-space_motion_sickness_s142_d1.5_f",
+    "event": "space_motion_sickness",
+    "npc": "med",
+    "start_s": 40372.654,
+    "end_s": 50355.771,
+    "visible_s": 40560.0,
+    "detected": true,
+    "delay_s": 1020.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M4-space_motion_sickness_s143_d1.5_f",
+    "event": "space_motion_sickness",
+    "npc": "bot",
+    "start_s": 39912.042,
+    "end_s": 46495.727,
+    "visible_s": 40020.0,
+    "detected": true,
+    "delay_s": 960.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M4-space_motion_sickness_s144_d1.5_f",
+    "event": "space_motion_sickness",
+    "npc": "cmd",
+    "start_s": 58702.319,
+    "end_s": 64451.469000000005,
+    "visible_s": 58800.0,
+    "detected": true,
+    "delay_s": 960.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M4-space_motion_sickness_s145_d1.5_f",
+    "event": "space_motion_sickness",
+    "npc": "eng",
+    "start_s": 75595.501,
+    "end_s": 84755.822,
+    "visible_s": 75720.0,
+    "detected": true,
+    "delay_s": 1080.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M4-space_motion_sickness_s146_d1.5_f",
+    "event": "space_motion_sickness",
+    "npc": "med",
+    "start_s": 63941.456,
+    "end_s": 74392.276,
+    "visible_s": 64020.0,
+    "detected": true,
+    "delay_s": 1020.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M4-space_motion_sickness_s147_d1.5_f",
+    "event": "space_motion_sickness",
+    "npc": "bot",
+    "start_s": 58292.326,
+    "end_s": 65784.25200000001,
+    "visible_s": 58380.0,
+    "detected": true,
+    "delay_s": 1140.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M4-space_motion_sickness_s148_d1.5_f",
+    "event": "space_motion_sickness",
+    "npc": "cmd",
+    "start_s": 25505.377,
+    "end_s": 30031.541,
+    "visible_s": 25620.0,
+    "detected": true,
+    "delay_s": 600.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M5-acute_stress_s141_d1.5_f",
+    "event": "acute_stress",
+    "npc": "eng",
+    "start_s": 39878.802,
+    "end_s": 43606.521,
+    "visible_s": 40200.0,
+    "detected": true,
+    "delay_s": 1920.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M5-acute_stress_s142_d1.5_f",
+    "event": "acute_stress",
+    "npc": "med",
+    "start_s": 40426.461,
+    "end_s": 49059.688,
+    "visible_s": 40740.0,
+    "detected": true,
+    "delay_s": 1140.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M5-acute_stress_s143_d1.5_f",
+    "event": "acute_stress",
+    "npc": "bot",
+    "start_s": 41847.257,
+    "end_s": 47490.202999999994,
+    "visible_s": 42240.0,
+    "detected": true,
+    "delay_s": 1260.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M5-acute_stress_s144_d1.5_f",
+    "event": "acute_stress",
+    "npc": "cmd",
+    "start_s": 63918.752,
+    "end_s": 74138.433,
+    "visible_s": 64080.0,
+    "detected": true,
+    "delay_s": 1140.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M5-acute_stress_s145_d1.5_f",
+    "event": "acute_stress",
+    "npc": "eng",
+    "start_s": 60071.766,
+    "end_s": 64803.654,
+    "visible_s": 60300.0,
+    "detected": true,
+    "delay_s": 1260.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M5-acute_stress_s146_d1.5_f",
+    "event": "acute_stress",
+    "npc": "med",
+    "start_s": 63343.683,
+    "end_s": 72965.14499999999,
+    "visible_s": 63600.0,
+    "detected": true,
+    "delay_s": 1200.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M5-acute_stress_s147_d1.5_f",
+    "event": "acute_stress",
+    "npc": "bot",
+    "start_s": 60891.053,
+    "end_s": 68556.462,
+    "visible_s": 61140.0,
+    "detected": true,
+    "delay_s": 1320.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M5-acute_stress_s148_d1.5_f",
+    "event": "acute_stress",
+    "npc": "cmd",
+    "start_s": 109302.65,
+    "end_s": 113372.38699999999,
+    "visible_s": 109500.0,
+    "detected": true,
+    "delay_s": 540.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M6-svt_suspected_s141_d1.5_f",
+    "event": "svt_suspected",
+    "npc": "eng",
+    "start_s": 42089.912,
+    "end_s": 42609.558,
+    "visible_s": 42120.0,
+    "detected": true,
+    "delay_s": 180.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M6-svt_suspected_s142_d1.5_f",
+    "event": "svt_suspected",
+    "npc": "med",
+    "start_s": 40441.362,
+    "end_s": 41579.603,
+    "visible_s": 40500.0,
+    "detected": true,
+    "delay_s": 540.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M6-svt_suspected_s143_d1.5_f",
+    "event": "svt_suspected",
+    "npc": "bot",
+    "start_s": 41457.299,
+    "end_s": 42459.915,
+    "visible_s": 41520.0,
+    "detected": true,
+    "delay_s": 120.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M6-svt_suspected_s144_d1.5_f",
+    "event": "svt_suspected",
+    "npc": "cmd",
+    "start_s": 57937.206,
+    "end_s": 59630.534,
+    "visible_s": 57960.0,
+    "detected": true,
+    "delay_s": 180.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M6-svt_suspected_s145_d1.5_f",
+    "event": "svt_suspected",
+    "npc": "eng",
+    "start_s": 63088.955,
+    "end_s": 64904.351,
+    "visible_s": 63120.0,
+    "detected": true,
+    "delay_s": 180.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M6-svt_suspected_s146_d1.5_f",
+    "event": "svt_suspected",
+    "npc": "med",
+    "start_s": 71791.755,
+    "end_s": 73006.905,
+    "visible_s": 71820.0,
+    "detected": true,
+    "delay_s": 180.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M6-svt_suspected_s147_d1.5_f",
+    "event": "svt_suspected",
+    "npc": "bot",
+    "start_s": 68110.992,
+    "end_s": 68814.522,
+    "visible_s": 68160.0,
+    "detected": true,
+    "delay_s": 120.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M6-svt_suspected_s148_d1.5_f",
+    "event": "svt_suspected",
+    "npc": "cmd",
+    "start_s": 32439.764,
+    "end_s": 34350.839,
+    "visible_s": 32460.0,
+    "detected": true,
+    "delay_s": 180.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M7-bradycardia_s141_d1.5_f",
+    "event": "bradycardia",
+    "npc": "eng",
+    "start_s": 39678.042,
+    "end_s": 41599.422,
+    "visible_s": 39780.0,
+    "detected": true,
+    "delay_s": 720.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M7-bradycardia_s142_d1.5_f",
+    "event": "bradycardia",
+    "npc": "med",
+    "start_s": 40209.23,
+    "end_s": 45936.693,
+    "visible_s": 40320.0,
+    "detected": true,
+    "delay_s": 480.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M7-bradycardia_s143_d1.5_f",
+    "event": "bradycardia",
+    "npc": "bot",
+    "start_s": 39610.406,
+    "end_s": 44114.861000000004,
+    "visible_s": 39720.0,
+    "detected": true,
+    "delay_s": 480.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M7-bradycardia_s144_d1.5_f",
+    "event": "bradycardia",
+    "npc": "cmd",
+    "start_s": 83653.169,
+    "end_s": 88580.58499999999,
+    "visible_s": 83760.0,
+    "detected": true,
+    "delay_s": 780.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M7-bradycardia_s145_d1.5_f",
+    "event": "bradycardia",
+    "npc": "eng",
+    "start_s": 58064.0,
+    "end_s": 60169.149,
+    "visible_s": 58200.0,
+    "detected": true,
+    "delay_s": 1620.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M7-bradycardia_s146_d1.5_f",
+    "event": "bradycardia",
+    "npc": "med",
+    "start_s": 61699.913,
+    "end_s": 67141.748,
+    "visible_s": 61860.0,
+    "detected": true,
+    "delay_s": 3120.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M7-bradycardia_s147_d1.5_f",
+    "event": "bradycardia",
+    "npc": "bot",
+    "start_s": 71655.205,
+    "end_s": 76143.077,
+    "visible_s": 71820.0,
+    "detected": true,
+    "delay_s": 1500.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M7-bradycardia_s148_d1.5_f",
+    "event": "bradycardia",
+    "npc": "cmd",
+    "start_s": 50144.416,
+    "end_s": 52363.292,
+    "visible_s": 50280.0,
+    "detected": true,
+    "delay_s": 300.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M8-respiratory_infection_s141_d1.5_f",
+    "event": "respiratory_infection",
+    "npc": "eng",
+    "start_s": 39719.564,
+    "end_s": 65558.554,
+    "visible_s": 40140.0,
+    "detected": true,
+    "delay_s": 840.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M8-respiratory_infection_s142_d1.5_f",
+    "event": "respiratory_infection",
+    "npc": "med",
+    "start_s": 40453.545,
+    "end_s": 70064.002,
+    "visible_s": 40920.0,
+    "detected": true,
+    "delay_s": 840.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M8-respiratory_infection_s143_d1.5_f",
+    "event": "respiratory_infection",
+    "npc": "bot",
+    "start_s": 40284.03,
+    "end_s": 78466.447,
+    "visible_s": 40800.0,
+    "detected": true,
+    "delay_s": 840.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M8-respiratory_infection_s144_d1.5_f",
+    "event": "respiratory_infection",
+    "npc": "cmd",
+    "start_s": 75211.853,
+    "end_s": 98629.75200000001,
+    "visible_s": 75720.0,
+    "detected": true,
+    "delay_s": 900.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M8-respiratory_infection_s145_d1.5_f",
+    "event": "respiratory_infection",
+    "npc": "eng",
+    "start_s": 83001.622,
+    "end_s": 109685.05,
+    "visible_s": 83580.0,
+    "detected": true,
+    "delay_s": 780.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M8-respiratory_infection_s146_d1.5_f",
+    "event": "respiratory_infection",
+    "npc": "med",
+    "start_s": 59624.577,
+    "end_s": 85214.448,
+    "visible_s": 60120.0,
+    "detected": true,
+    "delay_s": 780.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M8-respiratory_infection_s147_d1.5_f",
+    "event": "respiratory_infection",
+    "npc": "bot",
+    "start_s": 65717.408,
+    "end_s": 105802.111,
+    "visible_s": 66240.0,
+    "detected": true,
+    "delay_s": 900.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M8-respiratory_infection_s148_d1.5_f",
+    "event": "respiratory_infection",
+    "npc": "cmd",
+    "start_s": 24615.316,
+    "end_s": 62794.708,
+    "visible_s": 25080.0,
+    "detected": true,
+    "delay_s": 780.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M9-abnormal_exertion_s141_d1.5_f",
+    "event": "abnormal_exertion",
+    "npc": "eng",
+    "start_s": 40048.702,
+    "end_s": 42673.878,
+    "visible_s": 40260.0,
+    "detected": true,
+    "delay_s": 1020.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M9-abnormal_exertion_s142_d1.5_f",
+    "event": "abnormal_exertion",
+    "npc": "med",
+    "start_s": 39648.873,
+    "end_s": 41810.373,
+    "visible_s": 39840.0,
+    "detected": true,
+    "delay_s": 1080.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M9-abnormal_exertion_s143_d1.5_f",
+    "event": "abnormal_exertion",
+    "npc": "bot",
+    "start_s": 41804.049,
+    "end_s": 45523.445999999996,
+    "visible_s": 41880.0,
+    "detected": true,
+    "delay_s": 1080.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M9-abnormal_exertion_s144_d1.5_f",
+    "event": "abnormal_exertion",
+    "npc": "cmd",
+    "start_s": 40323.252,
+    "end_s": 44336.107,
+    "visible_s": 40440.0,
+    "detected": true,
+    "delay_s": 1080.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M9-abnormal_exertion_s145_d1.5_f",
+    "event": "abnormal_exertion",
+    "npc": "eng",
+    "start_s": 41047.012,
+    "end_s": 43854.639,
+    "visible_s": 41220.0,
+    "detected": true,
+    "delay_s": 960.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M9-abnormal_exertion_s146_d1.5_f",
+    "event": "abnormal_exertion",
+    "npc": "med",
+    "start_s": 39849.697,
+    "end_s": 43866.359,
+    "visible_s": 40020.0,
+    "detected": true,
+    "delay_s": 1380.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   },
+   {
+    "run": "crew-M9-abnormal_exertion_s147_d1.5_f",
+    "event": "abnormal_exertion",
+    "npc": "bot",
+    "start_s": 41484.73,
+    "end_s": 44881.097,
+    "visible_s": 41640.0,
+    "detected": true,
+    "delay_s": 840.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": true
+    }
+   },
+   {
+    "run": "crew-M9-abnormal_exertion_s148_d1.5_f",
+    "event": "abnormal_exertion",
+    "npc": "cmd",
+    "start_s": 40305.762,
+    "end_s": 42349.526000000005,
+    "visible_s": 40440.0,
+    "detected": true,
+    "delay_s": 1200.0,
+    "wrong_person": 0,
+    "other_alarms_same_person": 0,
+    "visible_how": "twin",
+    "by_mode": {
+     "slow": true,
+     "fast": false
+    }
+   }
+  ]
+ },
+ "criteria": [
+  {
+   "criterion": "crew false alarms <= 0.1 / day (95 % upper bound)",
+   "passed": null,
+   "measured": "6 alarms in 45 d = 0.133/d, upper bound 0.263/d (fewer than 45 days: not judged)"
+  },
+  {
+   "criterion": "no signal during nominal exercise",
+   "passed": false,
+   "measured": "3 signals"
+  },
+  {
+   "criterion": "overall event recall >= 0.8",
+   "passed": true,
+   "measured": "72/72 = 1.00 [0.95-1.00]"
+  },
+  {
+   "criterion": "atrial_fibrillation_suspected >= 6/8",
+   "passed": true,
+   "measured": "8/8 [0.68-1.00]"
+  },
+  {
+   "criterion": "svt_suspected >= 6/8",
+   "passed": true,
+   "measured": "8/8 [0.68-1.00]"
+  },
+  {
+   "criterion": "bradycardia >= 6/8",
+   "passed": true,
+   "measured": "8/8 [0.68-1.00]"
+  },
+  {
+   "criterion": "fever >= 6/8",
+   "passed": true,
+   "measured": "8/8 [0.68-1.00]"
+  }
+ ]
+}
