@@ -5,6 +5,7 @@ import { EmergencyDialog } from '@/features/crew/EmergencyDialog'
 import { PendingPopover } from '@/features/crew/PendingPopover'
 import { ProtocolsDialog } from '@/features/crew/ProtocolsDialog'
 import { DebugPanel } from '@/features/debug/DebugPanel'
+import { EvacuationScreen } from '@/features/status/EvacuationScreen'
 import { EventLogSheet } from '@/features/log/EventLogSheet'
 import { ModulesDialog } from '@/features/modules/ModulesDialog'
 import { AlertsDialog } from '@/features/status/AlertsDialog'
@@ -41,6 +42,7 @@ export function Shell() {
       <Pager labels={PAGES.map((p) => p.label)} />
       <DebugPanel />
       <EventLogSheet />
+      <EvacuationScreen />
       <CrewDetailDialog />
       <EmergencyDialog />
       <AlertsDialog />

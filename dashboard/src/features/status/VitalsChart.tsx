@@ -1,6 +1,7 @@
 import { Clock } from 'lucide-react'
 import { memo, useMemo, useRef, useState } from 'react'
 import { crewIdentity, sortCrewIds } from '@/domain/crewConfig'
+import { emergencyTitle } from '@/domain/emergencyText'
 import { fmtHms } from '@/domain/units'
 import { ToggleGroup } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
@@ -96,7 +97,10 @@ export const VitalsChart = memo(function VitalsChart() {
   }, [history, ids, key, win, meta, PW, PH, PADL, PADT, off, ui])
 
   // Emergencies as spans on the time axis (opened ... cleared, or still open).
+  const hideT = useRef(0)
+  const titles = useRef(new Map<string, string>())
   const spans = useMemo<Span[]>(() => {
+    for (const e of emergencies ?? []) titles.current.set(e.id, emergencyTitle(e))
     const byId = new Map(emergencies?.map((e) => [e.id, e]))
     const open = new Map<string, Span>()
     const out: Span[] = []
@@ -104,7 +108,7 @@ export const VitalsChart = memo(function VitalsChart() {
       if (!e.emergency_id) continue
       if (e.kind === 'emergency_opened') {
         const live = byId.get(e.emergency_id)
-        const sp: Span = { id: e.emergency_id, t0: e.t_s, t1: null, text: e.message, color: CLASS_COLOR[live?.alert_class ?? 'warning'] }
+        const sp: Span = { id: e.emergency_id, t0: e.t_s, t1: null, text: titles.current.get(e.emergency_id) ?? 'Alert', color: CLASS_COLOR[live?.alert_class ?? 'warning'] }
         open.set(e.emergency_id, sp); out.push(sp)
       } else if (e.kind === 'emergency_cleared') {
         const sp = open.get(e.emergency_id)
@@ -163,8 +167,11 @@ export const VitalsChart = memo(function VitalsChart() {
       <div ref={boxRef} className={cn('relative min-h-[200px] flex-1', !model && 'hidden')}>
         {model && <>
           <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block" role="img" aria-label={`Crew ${meta.label.toLowerCase()}`}
-            style={{ touchAction: 'pan-y' }}
-            onPointerDown={onMove} onPointerMove={onMove} onPointerLeave={() => setCursor(null)} onPointerCancel={() => setCursor(null)}>
+            style={{ touchAction: 'none' }}
+            onPointerDown={(e) => { if (e.pointerType !== 'mouse') window.clearTimeout(hideT.current); e.currentTarget.setPointerCapture(e.pointerId); onMove(e) }}
+            onPointerMove={onMove}
+            onPointerUp={(e) => { if (e.pointerType !== 'mouse') { window.clearTimeout(hideT.current); hideT.current = window.setTimeout(() => setCursor(null), 4000) } }}
+            onPointerLeave={(e) => { if (e.pointerType === 'mouse') setCursor(null) }}>
             {/* normal band + danger zone */}
             <rect x={PADL} y={model.y(Math.min(meta.normal[1], model.hi))} width={PW} height={Math.max(0, model.y(meta.normal[0]) - model.y(Math.min(meta.normal[1], model.hi)))} fill="var(--status-live)" fillOpacity={0.09} />
             {(() => {

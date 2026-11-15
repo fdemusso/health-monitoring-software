@@ -35,6 +35,7 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
         <CornerBrackets />
         <StatusDot status="ok" className="size-3" />
         <span className="font-heading text-4xl font-bold">Crew stable</span>
+        {pending > 0 && <PendingPill n={pending} />}
         <div className="ml-auto flex gap-2">{crewList.map((id) => <CrewChip key={id} id={id} />)}</div>
       </div>
     )
@@ -87,7 +88,7 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button size="lg" onClick={open}>Open response →</Button>
             <ContactEarthButton key={`earth-${primary.id}`} size="lg" />
-            {pending > 0 && <button type="button" onClick={ui.reopenPending} className="h-6 rounded-full bg-status-warning-soft px-3 text-xs font-medium text-status-warning-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{pending} {pending === 1 ? 'action' : 'actions'} awaiting confirmation</button>}
+            {pending > 0 && <PendingPill n={pending} />}
           </div>
           {others.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Also: {others.map((e: Emergency) => emergencyTitle(e)).join(' · ')}</p>}
         </div>
@@ -95,6 +96,12 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
       </div>
     </Frame>
   )
+}
+
+/** Actions still waiting for a yes (for example the power of a module to give back): reachable even when no emergency is open. */
+function PendingPill({ n }: { n: number }) {
+  const ui = useUi()
+  return <button type="button" onClick={ui.reopenPending} className="h-6 rounded-full bg-status-warning-soft px-3 text-xs font-medium text-status-warning-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{n} {n === 1 ? 'action' : 'actions'} awaiting confirmation</button>
 }
 
 const lowerFirst = (s: string, lower: boolean) => (lower ? s.charAt(0).toLowerCase() + s.slice(1) : s)
