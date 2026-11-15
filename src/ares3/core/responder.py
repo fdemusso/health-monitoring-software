@@ -17,15 +17,17 @@ from collections.abc import Callable
 from ares3.schemas.monitor import MODULE_TEMPLATE, ActionSpec, Playbook
 from ares3.sdk.types import Action, Emergency, MonitorEvent, PendingAction
 
-Guard = Callable[[Action], str | None]  # returns the reason to block an action, or None
+Guard = Callable[..., str | None]  # (action, also_closed=...) -> the reason to block an action, or None
+ISOLATE = "isolate:"  # hatch target "isolate:USL": close every closable hatch of that module
 
 
 class Responder:
     def __init__(self, playbooks: list[Playbook], actuators: set[str], hatches: set[frozenset[str]],
-                 guard: Guard, modules: set[str] = frozenset()) -> None:
+                 guard: Guard, modules: set[str] = frozenset(), closable: frozenset[frozenset[str]] | None = None) -> None:
         self.playbooks = playbooks
         self.actuators = actuators
         self.hatches = hatches
+        self.closable = hatches if closable is None else closable  # hatches that can be shut (not the vent openings)
         self.modules = modules
         self.guard = guard
         self._started: set[tuple[str, str]] = set()  # (emergency id, severity) whose playbooks already ran
@@ -98,7 +100,7 @@ class Responder:
                  for s in pb.actions]
         for spec in specs:
             target = spec.target.replace(MODULE_TEMPLATE, em.module_id)
-            if spec.do == "hatch" and len(set(target.split(":"))) == 1:
+            if spec.do == "hatch" and not target.startswith(ISOLATE) and len(set(target.split(":"))) == 1:
                 continue  # "hab:hab": the playbook step is about the hatch between this module and another: none here
             self._n += 1
             action = Action(id=f"a{self._n}", emergency_id=em.id, kind=spec.do,
@@ -123,13 +125,36 @@ class Responder:
             return f"no actuator {a.target}"
         if a.kind in ("ventilation", "extinguish") and a.target not in self.modules:
             return f"no module {a.target}"
+        if a.kind == "hatch" and a.target.startswith(ISOLATE):
+            return None if a.target[len(ISOLATE):] in self.modules else f"no module {a.target[len(ISOLATE):]}"
         if a.kind == "hatch":
             ends = a.target.split(":")
             if len(ends) != 2 or frozenset(ends) not in self.hatches:
                 return f"no hatch {a.target}"
         return None
 
+    def _isolate(self, t: float, a: Action, run: list[Action], events: list[MonitorEvent]) -> None:
+        """Close every closable hatch of a module, each one through the guard (the ones already closed by this step count)."""
+        module = a.target[len(ISOLATE):]
+        closed: set[frozenset[str]] = set()
+        for pair in sorted(self.closable, key=sorted):
+            if module not in pair:
+                continue
+            (other,) = pair - {module}
+            sub = a.model_copy(update={"target": f"{module}:{other}", "command": "close"})
+            reason = self.guard(sub, also_closed=frozenset(closed))
+            if reason:
+                events.append(MonitorEvent(t_s=t, kind="action_blocked", emergency_id=a.emergency_id, action_id=a.id,
+                                           message=f"blocked {self._describe(sub)}: {reason}"))
+                continue
+            closed.add(pair)
+            run.append(sub)
+            events.append(MonitorEvent(t_s=t, kind="action_executed", emergency_id=a.emergency_id, action_id=a.id,
+                                       message=self._describe(sub)))
+
     def _execute(self, t: float, a: Action, run: list[Action], events: list[MonitorEvent]) -> None:
+        if a.kind == "hatch" and a.target.startswith(ISOLATE):
+            return self._isolate(t, a, run, events)
         reason = self.guard(a)
         if reason:
             events.append(MonitorEvent(t_s=t, kind="action_blocked", emergency_id=a.emergency_id, action_id=a.id,

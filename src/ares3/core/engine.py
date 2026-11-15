@@ -32,12 +32,14 @@ from .faults import FaultInjector, label_row
 from .metabolism import build_catalog
 from .monitor import Monitor
 from .npc import NPC
+from .orbit import Orbit, flux_swing_w_m2
 from .responder import Responder
 from .response import CrewResponse
 from .rng import derive
 from .world import World
 
 _ZERO = {sp: 0.0 for sp in SPECIES}
+AIR_MOLAR_KG = 0.02896  # dry air [SI]; a leak is quoted in kg of air per day
 
 
 @dataclass(frozen=True)
@@ -58,14 +60,17 @@ class Engine:
         self.catalog = build_catalog(scenario.crew.activities)
         self.injector = FaultInjector(scenario.faults.faults, sf.seed)
         self.alarms = AlarmMonitor(
-            env.alarm_rules, frozenset(m.id for m in scenario.layout.modules if m.alarm_mode == "occupied"))
+            env.alarm_rules, frozenset(m.id for m in scenario.layout.modules if m.alarm_mode == "occupied"),
+            frozenset(m.id for m in scenario.layout.modules if m.alarm_mode == "never"),
+            {m.id: m.alarm_rules for m in scenario.layout.modules if m.alarm_rules is not None})
         self.npcs: dict[str, NPC] = {m.id: NPC.from_spec(m) for m in scenario.crew.members}
         self.monitor = Monitor(scenario.monitor, [m.id for m in scenario.layout.modules], sf.seed,
                                [m.id for m in scenario.crew.members])
         self.responder = Responder(
             scenario.monitor.playbooks, {a.id for a in scenario.layout.actuators},
             {frozenset((h.a, h.b)) for h in scenario.layout.hatches}, self._guard,
-            {m.id for m in scenario.layout.modules})
+            {m.id for m in scenario.layout.modules},
+            frozenset(frozenset((h.a, h.b)) for h in scenario.layout.hatches if h.closable))
         self._queued_fans: list[tuple[str, bool]] = []  # (module, on), applied at the start of the next tick
         self._extinguished_t: dict[str, float] = {}  # module -> when the extinguisher was last discharged
         self._queued_extinguish: list[str] = []  # modules where the crew discharges an extinguisher
@@ -95,6 +100,15 @@ class Engine:
         if sf.agent is not None:
             self.agent = resolve(sf.agent.kind).from_config("agent", sf.agent.params, derive(sf.seed, "agent"))
 
+        self.orbit = Orbit(env.orbit) if env.orbit is not None else None
+        self._station = None  # StationState of the current tick
+        self._load_w = 0.0  # electrical draw of the actuators in the previous tick
+        self._act_telemetry: dict[str, dict[str, float]] = {}
+        self._near_cache: dict[str, frozenset[str]] = {}
+        self._actuator_module = {a.id: a.module for a in scenario.layout.actuators}
+        self._fans = {h.imv: h.key for h in scenario.layout.hatches if h.imv}  # fan actuator id -> hatch id
+        if self.orbit is not None:
+            self._station = self.orbit.step(0.0, 0.0, 0.0)
         self._pending: dict[str, Command] = {}
         self._readings: dict[str, Observation] = {}
         self._last_tick = self._snapshot(active_faults=())
@@ -131,7 +145,8 @@ class Engine:
             time_of_day_h=self.clock.time_of_day_h,
             modules={mid: self.world.snapshot_module(m) for mid, m in self.world.modules.items()},
             npcs={nid: self._npc_state(n) for nid, n in self.npcs.items() if n.block and n.rates},
-            hatches=self.world.snapshot_hatches(), active_faults=active_faults, alarms=alarms,
+            hatches=self.world.snapshot_hatches(), station=self._station, actuators=self._act_telemetry,
+            active_faults=active_faults, alarms=alarms,
             emergencies=emergencies, pending_actions=pending_actions, monitor_events=monitor_events,
         )
 
@@ -144,7 +159,7 @@ class Engine:
         (``start_s`` is overwritten); otherwise its own ``start_s`` is kept. Same effect and labels as a
         fault written in the scenario, so the dataset stays consistent. Returns the fault as scheduled."""
         known = {m.id for m in self.scenario.layout.modules} | set(self.npcs) \
-            | {s.id for s in self.sensors} | {a.id for a in self.actuators}
+            | {s.id for s in self.sensors} | {a.id for a in self.actuators} | set(self.world.hatch_by_id)
         unknown = [t for t in fault.targets if t not in known]
         if unknown:
             raise ValueError(f"unknown targets: {unknown}")
@@ -177,6 +192,8 @@ class Engine:
 
         active = self.injector.active(t)  # 1
         by_target = self.injector.by_target(active)
+        for hid, hatch in w.hatch_by_id.items():
+            hatch.stuck = any(f.type == "hatch_stuck" for f in by_target.get(hid, ()))
         for a, b, open_ in self._queued_hatches:  # monitor actions of the previous tick
             w.set_hatch(a, b, open_)
         self._queued_hatches = []
@@ -193,6 +210,16 @@ class Engine:
             by_target = self.injector.by_target(active)
         self._queued_extinguish = []
         w.begin_tick()
+        if self.orbit is not None:  # orbit: sun, battery, and the heat swing the cabin sees through the insulation
+            self._station = self.orbit.step(t, dt, self._load_w)
+            oc = self.env.orbit
+            swing = flux_swing_w_m2(oc, self._station.sun, self.orbit.f_ecl) * oc.mli_attenuation
+        else:
+            swing = 0.0
+        for m in w.modules.values():
+            if m.spec.base_heat_w or swing:
+                area = m.spec.surface_m2 if m.spec.surface_m2 is not None else 4.6 * m.spec.volume_m3 ** (2.0 / 3.0)
+                w.add_heat(m.id, m.spec.base_heat_w + swing * area)
 
         for npc in self.npcs.values():  # 2
             npc.override = self._orders.get(npc.id)
@@ -207,14 +234,18 @@ class Engine:
             w.add_moles(mid, "h2o", r.h2o_mol_s * g * dt, f"crew:{npc.id}")
             w.book(f"crew:{npc.id}", "sweat_kg", r.sweat_kg_s * g * dt)
             w.add_heat(mid, r.heat_sensible_w * g)
+        for m in w.modules.values():  # 3: the structural leak every real module has
+            if m.spec.leak_kg_day and m.n_total > 0:
+                frac = m.spec.leak_kg_day / 86400.0 / AIR_MOLAR_KG * (m.pressure_kpa / 101.3) / m.n_total * dt
+                for sp in SPECIES:
+                    w.add_moles(m.id, sp, -m.n[sp] * frac, "structural_leak")
         for f in active:  # 3: physical faults
             if f.category != "physical":
                 continue
             for mid in f.targets:
                 if f.type == "leak":
-                    frac = float(f.params.get("rate_per_s", 0.0)) * dt
                     for sp in SPECIES:
-                        w.add_moles(mid, sp, -w.modules[mid].n[sp] * frac, f"fault:{f.id}")
+                        w.add_moles(mid, sp, -w.modules[mid].n[sp] * self._leak_fraction(f, mid, t) * dt, f"fault:{f.id}")
                 elif f.type == "co2_source":
                     w.add_moles(mid, "co2", float(f.params.get("mol_s", 0.0)) * dt, f"fault:{f.id}")
                 elif f.type == "co_source":
@@ -225,13 +256,29 @@ class Engine:
                     self._fire(f, mid, dt)
 
         prev_ctx = self._ctx(self._last_tick, by_target)  # 4: actuators
+        self._load_w = 0.0
+        telemetry: dict[str, dict[str, float]] = {}
         for act in self.actuators:
-            if any(f.type == "actuator_offline" for f in by_target.get(act.id, ())):
+            faults = by_target.get(act.id, ())
+            if any(f.type == "actuator_offline" for f in faults):
+                telemetry[act.id] = act.telemetry_offline()
+                if act.id in self._fans:
+                    w.hatch_by_id[self._fans[act.id]].fan_flow_m3_s = 0.0
                 continue
-            for flow in act.step(dt, prev_ctx, self._pending.get(act.id)):
+            command = self._pending.get(act.id)
+            for f in faults:
+                if f.type == "actuator_stuck":  # a valve that no longer follows its command
+                    command = Command(actuator_id=act.id, action=str(f.params.get("command", "on")),
+                                      value=f.params.get("value"))
+            for flow in act.step(dt, prev_ctx, command):
                 for sp, mol_s in flow.mol_s.items():
                     w.add_moles(flow.module_id, sp, mol_s * dt, f"actuator:{act.id}")
                 w.add_heat(flow.module_id, flow.heat_w)
+                self._load_w += flow.power_w
+            telemetry[act.id] = act.telemetry()
+            if act.id in self._fans:
+                w.hatch_by_id[self._fans[act.id]].fan_flow_m3_s = act.hatch_flow_m3_s() or 0.0
+        self._act_telemetry = telemetry
         self._pending = {}
 
         w.step(dt)  # 5
@@ -250,7 +297,7 @@ class Engine:
             obs = s.step(dt, ctx)
             if obs is None:
                 continue
-            sensed = self.injector.corrupt(s.id, obs.value, by_target.get(s.id, ()), t)
+            sensed = self.injector.corrupt(s.id, obs.value, by_target.get(s.id, ()), t, obs.entity_id, s.sigma)
             if sensed is None:
                 continue
             obs = obs.model_copy(update={"value": sensed})
@@ -308,6 +355,31 @@ class Engine:
         self.clock.advance()
         return StepResult(tick=tick, observations=tuple(observations), rows=tuple(rows))
 
+    def _leak_fraction(self, f: FaultSpec, mid: str, t: float) -> float:
+        """Fraction of the module's gas lost per second by leak fault ``f`` at time ``t``. Quoted as ``rate_per_s``
+        (a fraction), as an air mass flow ``kg_day`` (constant, a linear ramp ``kg_day_to`` over ``ramp_s``, or
+        ``steps`` of [seconds since the start, kg/day]) or as a pressure drop ``kpa_min`` at the current pressure."""
+        p, m = f.params, self.world.modules[mid]
+        n = m.n_total
+        if n <= 0.0:
+            return 0.0
+        if "rate_per_s" in p:
+            return float(p["rate_per_s"])
+        if "kpa_min" in p:  # constant volumetric loss: dP/dt = kpa_min / 60 while the module holds pressure
+            return min(1.0, float(p["kpa_min"]) / 60.0 / max(m.pressure_kpa, 1e-9))
+        kg_day = float(p.get("kg_day", 0.0))
+        rel = t - f.start_s
+        if "steps" in p:
+            for t_rel, rate in p["steps"]:
+                if rel >= float(t_rel):
+                    kg_day = float(rate)
+        elif "kg_day_to" in p:
+            x = min(1.0, rel / float(p.get("ramp_s", 1.0)))
+            kg_day += (float(p["kg_day_to"]) - kg_day) * x
+        # the flow through a hole is proportional to the pressure: it fades as the module empties
+        scale = m.pressure_kpa / float(p.get("ref_kpa", 101.3))
+        return kg_day / 86400.0 / AIR_MOLAR_KG * scale / n
+
     def _fire(self, f: FaultSpec, mid: str, dt: float) -> None:
         """Combustion in module ``mid``: heat, O2 consumed, CO2, CO and smoke released. Intensity follows the ISS fire
         triangle: it falls with the O2 partial pressure (flammability limit), drops when the fans are off (no
@@ -332,7 +404,7 @@ class Engine:
         w.add_contaminant(mid, "smoke_mg", float(p.get("smoke_mg_s", 2.0)) * k * dt)
         self._fire_left_kj[f.id] = left - heat * k * dt / 1000.0 if burned > 0 else left
 
-    def _guard(self, a: Action) -> str | None:
+    def _guard(self, a: Action, also_closed: frozenset[frozenset[str]] = frozenset()) -> str | None:
         """Safety rule of the ISS: never close a hatch that cuts someone off from the return vehicle."""
         if a.kind != "hatch" or a.command != "close":
             return None
@@ -347,7 +419,8 @@ class Engine:
             adj.setdefault(h.a, set())
             adj.setdefault(h.b, set())
             # the vehicle hatch counts as passable: the crew opens it when they retreat
-            if {h.a, h.b} != {x, y} and (h.open or h.a in vehicles or h.b in vehicles):
+            if {h.a, h.b} != {x, y} and frozenset((h.a, h.b)) not in also_closed and (
+                    h.open or h.a in vehicles or h.b in vehicles):
                 adj[h.a].add(h.b)
                 adj[h.b].add(h.a)
         reach, todo = set(vehicles), list(vehicles)
@@ -363,12 +436,17 @@ class Engine:
     def _row(self, obs: Observation, sensor: BaseSensor, tick: SimulationTick, active) -> dict:
         # a fault labels a row when it targets the sensor, the thing measured, the module it is in,
         # or an actuator of that module (e.g. a failed scrubber labels the module's sensors)
-        entities = {sensor.id, obs.entity_id}
         npc = tick.npcs.get(obs.entity_id)
-        module_id = npc.module_id if npc is not None else obs.entity_id
-        entities.add(module_id)
-        entities.update(a.id for a in self.actuators if a.module == module_id)
-        is_anom, a_type, a_ids = label_row(entities, active)
+        if not active:  # the common case: nothing to label
+            is_anom, a_type, a_ids = False, "nominal", ""
+        else:
+            module_id = npc.module_id if npc is not None else self._actuator_module.get(obs.entity_id, obs.entity_id)
+            near = self._near_cache.get(module_id)
+            if near is None:  # the module, its actuators and its hatches: a fault on any of them labels its rows
+                near = self._near_cache[module_id] = frozenset(
+                    [module_id, *(a.id for a in self.actuators if a.module == module_id),
+                     *(h.id for h in self.world.hatches if module_id in (h.a, h.b))])
+            is_anom, a_type, a_ids = label_row({sensor.id, obs.entity_id} | near, active)
         if npc is not None and npc.vitals.get("health_state", 0.0) >= 4.0:  # dead (Luca: label MORTO)
             is_anom, a_type = True, "dead"
         return {

@@ -12,19 +12,21 @@ dei plugin non richiede di ricostruire nulla.**
 
 ## 2. Lanciare una simulazione
 ```
-docker compose run --rm ares3 run scenarios/emergency.yaml --days 2 -o output/prova1
+docker compose run --rm ares3 run scenarios/station/nominal.yaml --days 2 -o output/prova1
 ```
-- `scenarios/emergency.yaml` è lo scenario (usa `nominal.yaml` per quello senza guasti).
+- `scenarios/station/nominal.yaml` è la stazione ufficiale (il modello ISS di Mario) senza guasti; in
+  `scenarios/station/events/` c'è uno scenario per ognuno dei 26 guasti del catalogo (vedi `docs/station.md`).
+  `scenarios/emergency.yaml` e `nominal.yaml` sono il piccolo habitat di prova.
 - `--days 2` sono 2 giorni **dell'ambiente scelto** (su Marte un giorno dura 24 h 39 min).
 - `-o output/prova1` è la cartella dei risultati: la trovi sul tuo computer in `output/prova1/`.
 - Senza `--days` vale `duration_days` dello scenario. Per una corsa senza limite: `--forever` (si ferma con Ctrl+C
   e salva quello che ha fatto).
 
-Ordine di grandezza: 2 giorni simulati richiedono circa 1,5–2 minuti.
+Ordine di grandezza: la stazione ISS (16 volumi, 186 sensori) va a circa 300x il tempo reale: 2 giorni simulati richiedono circa 10 minuti (il piccolo habitat circa 2).
 
 ## 3. Controllare gli YAML senza simulare
 ```
-docker compose run --rm ares3 validate scenarios/emergency.yaml
+docker compose run --rm ares3 validate scenarios/station/nominal.yaml
 ```
 Segnala subito errori di battitura, id inesistenti, orari che non coprono le 24 h, ecc.
 

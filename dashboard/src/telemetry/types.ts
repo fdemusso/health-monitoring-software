@@ -84,8 +84,26 @@ export interface AlarmEvent {
 export interface HatchState {
   a: string;
   b: string;
+  /** Gas exchange now (passive + fan flow while open), m3/s. */
   diffusion_coeff: number;
   open: boolean;
+  /** `H-<a>-<b>` unless the layout names it; faults and commands target it. */
+  id: string;
+  /** False for the ventilated crew-quarters openings. */
+  closable: boolean;
+}
+
+/** Orbit and electrical bus (absent in profiles without an orbit). */
+export interface StationState {
+  /** 1 in sunlight, 0 in eclipse. */
+  sun: number;
+  beta_deg: number;
+  /** 0..1 along the 92.8 min orbit. */
+  orbit_phase: number;
+  /** Battery state of charge, 0..1. */
+  soc: number;
+  p_gen_w: number;
+  p_load_w: number;
 }
 
 /** One simulation step, as pushed by the backend. */
@@ -100,6 +118,9 @@ export interface SimulationTick {
   /** Keyed by astronaut id. */
   npcs: Record<string, NPCState>;
   hatches: HatchState[];
+  station: StationState | null;
+  /** Telemetry channels of each actuator (CDRA bed temperatures, OGA stack voltage, fan speed ...), keyed by actuator id. */
+  actuators: Record<string, Record<string, number>>;
   /** Ids of the faults active in this tick. */
   active_faults: string[];
   alarms: AlarmEvent[];

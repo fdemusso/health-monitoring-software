@@ -55,8 +55,21 @@ class ModuleRT:
 class HatchRT:
     a: str
     b: str
-    diffusion_coeff: float
+    diffusion_coeff: float  # passive exchange, m3/s
     open: bool = True
+    id: str = ""
+    gp_open: float = 0.0  # mol/(s kPa): bulk flow driven by the pressure difference
+    gp_closed: float = 0.0
+    conduction_w_k: float = 0.0
+    closable: bool = True
+    mixing: float = 1.0  # share of the exchange that washes the breathing zone (CO2 only)
+    fan_flow_m3_s: float = 0.0  # IMV / vent fan flow, added to the exchange while open
+    stuck: bool = False  # a fault: open/close commands are ignored
+
+    @property
+    def exchange_m3_s(self) -> float:
+        """Gas exchange now: the passive term plus the fan, only while open."""
+        return self.diffusion_coeff + self.fan_flow_m3_s if self.open else 0.0
 
 
 def initial_inventory(volume_m3: float, atm: Atmosphere) -> tuple[dict[str, float], float]:
@@ -81,7 +94,9 @@ class World:
                 atm = Atmosphere.model_validate({**atm.model_dump(), **spec.atmosphere.model_dump(exclude_none=True)})
             n, temp = initial_inventory(spec.volume_m3, atm)
             self.modules[spec.id] = ModuleRT(spec=spec, temp_c=temp, n=n)
-        self.hatches = [HatchRT(h.a, h.b, h.diffusion_coeff, h.open) for h in layout.hatches]
+        self.hatches = [HatchRT(h.a, h.b, h.diffusion_coeff, h.open, h.key, h.gp_open, h.gp_closed, h.conduction_w_k,
+                                h.closable, h.mixing_efficiency) for h in layout.hatches]
+        self.hatch_by_id = {h.id: h for h in self.hatches}
         # cumulative booking of every transfer, mol (species-keyed) or kg: "<source>:<species>"
         self.ledger: dict[str, float] = {}
 
@@ -109,11 +124,14 @@ class World:
     def set_fans(self, module_id: str, on: bool) -> None:
         self.modules[module_id].fans_on = on
 
-    def set_hatch(self, a: str, b: str, open_: bool) -> None:
+    def set_hatch(self, a: str, b: str, open_: bool) -> bool:
+        """Open or close a hatch; returns False when it did not move (stuck, or not closable)."""
         for h in self.hatches:
             if {h.a, h.b} == {a, b}:
+                if h.stuck or (not open_ and not h.closable):
+                    return False
                 h.open = open_
-                return
+                return True
         raise KeyError(f"no hatch {a}:{b}")
 
     def begin_tick(self) -> None:
@@ -123,6 +141,8 @@ class World:
 
     # ---- physics ---------------------------------------------------------------------------
     def step(self, dt: float) -> None:
+        self._bulk_flow(dt)
+        self._conduct(dt)
         self._diffuse(dt)
         self._decay(dt)
         self._thermal(dt)
@@ -133,25 +153,61 @@ class World:
             for key, tau in CONTAMINANT_TAU_S.items():
                 setattr(m, key, getattr(m, key) * math.exp(-dt / tau))
 
+    def _bulk_flow(self, dt: float) -> None:
+        """Gas moves from the higher to the lower pressure through every hatch (RC-4). Two modules joined by a
+        conductance G relax their pressure difference exponentially at the rate ``k = G (1/C1 + 1/C2)``, with
+        ``C = n / P`` the moles per kPa: the exact solution is applied, so it is stable however small a module is.
+        The mixture that moves has the composition of the module it leaves (it is booked nowhere: it stays inside)."""
+        for h in self.hatches:
+            g = h.gp_open if h.open else h.gp_closed
+            if g <= 0.0:
+                continue
+            a, b = self.modules[h.a], self.modules[h.b]
+            dp = a.pressure_kpa - b.pressure_kpa
+            if dp == 0.0:
+                continue
+            ca = a.spec.volume_m3 * 1000.0 / (R_UNIV * (a.temp_c + KELVIN))
+            cb = b.spec.volume_m3 * 1000.0 / (R_UNIV * (b.temp_c + KELVIN))
+            series = 1.0 / (1.0 / ca + 1.0 / cb)
+            k = g * (1.0 / ca + 1.0 / cb)
+            dn = dp * series * (-math.expm1(-k * dt))  # mol from a to b (negative: b to a)
+            src, dst = (a, b) if dn > 0 else (b, a)
+            amount = abs(dn)
+            total = src.n_total
+            if total <= 0.0:
+                continue
+            for sp in SPECIES:
+                moved = amount * src.n[sp] / total
+                src.n[sp] -= moved
+                dst.n[sp] += moved
+
+    def _conduct(self, dt: float) -> None:
+        for h in self.hatches:
+            if h.conduction_w_k > 0.0:
+                w = h.conduction_w_k * (self.modules[h.a].temp_c - self.modules[h.b].temp_c)
+                self.modules[h.a].heat_in_w -= w
+                self.modules[h.b].heat_in_w += w
+
     def _diffuse(self, dt: float) -> None:
         open_h = [h for h in self.hatches if h.open]
         if not open_h:
             return
         # explicit scheme: split dt so that D*dt/V stays well below 1
-        worst = max(h.diffusion_coeff / min(self.modules[h.a].spec.volume_m3, self.modules[h.b].spec.volume_m3)
+        worst = max(h.exchange_m3_s / min(self.modules[h.a].spec.volume_m3, self.modules[h.b].spec.volume_m3)
                     for h in open_h)
         nsub = max(1, math.ceil(worst * dt / 0.2))
         sub = dt / nsub
         for _ in range(nsub):
             for h in open_h:
                 a, b = self.modules[h.a], self.modules[h.b]
-                coeff = h.diffusion_coeff * (1.0 if a.fans_on and b.fans_on else FANS_OFF_DIFFUSION)
+                coeff = h.exchange_m3_s * (1.0 if a.fans_on and b.fans_on else FANS_OFF_DIFFUSION)
                 for key in CONTAMINANT_TAU_S:
                     flux = coeff * (getattr(a, key) / a.spec.volume_m3 - getattr(b, key) / b.spec.volume_m3) * sub
                     setattr(a, key, getattr(a, key) - flux)
                     setattr(b, key, getattr(b, key) + flux)
                 for sp in SPECIES:
-                    flux = coeff * (a.n[sp] / a.spec.volume_m3 - b.n[sp] / b.spec.volume_m3) * sub
+                    k = coeff * h.mixing if sp == "co2" else coeff  # the pocket around the face is a CO2 pocket
+                    flux = k * (a.n[sp] / a.spec.volume_m3 - b.n[sp] / b.spec.volume_m3) * sub
                     a.n[sp] -= flux
                     b.n[sp] += flux
                 # heat carried by the exchanged air, weighted by the sub-step share of the tick
@@ -190,7 +246,8 @@ class World:
         )
 
     def snapshot_hatches(self) -> tuple[HatchState, ...]:
-        return tuple(HatchState(a=h.a, b=h.b, diffusion_coeff=h.diffusion_coeff, open=h.open) for h in self.hatches)
+        return tuple(HatchState(a=h.a, b=h.b, diffusion_coeff=h.exchange_m3_s if h.open else h.diffusion_coeff, open=h.open,
+                                id=h.id, closable=h.closable) for h in self.hatches)
 
     def total_moles(self, species: str) -> float:
         return sum(m.n[species] for m in self.modules.values())

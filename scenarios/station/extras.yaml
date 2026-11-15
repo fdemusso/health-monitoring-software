@@ -1,0 +1,59 @@
+# What the workbook does not cover and the project needs: OUR additions, awaiting Mario's review.
+#  * lifeboat = the return vehicle (the ISS always has one docked). A Crew Dragon: 9.3 m3 pressurised, 4 seats (SpaceX), docked to
+#    Harmony. Free volume 9.3 x 0.667 = 6.2 m3 (Columbus ratio). Its hatch is normally closed. It has its own life support
+#    (scrubber, oxygen, thermostat, dehumidifier) because the crew must be able to live in it while the station loses its air.
+#  * eva = the suit volume (Luca's brief: EVA of 30 min, 47 kPa, 42 % O2 by our assumption); no hatch: the crew goes Quest -> eva by schedule.
+#  * hatch position switches, smoke and CO sensors in every volume (fire: the workbook leaves "CO and particulates" to RC-1, which the core already has),
+#    and the wearables of the crew.
+modules:
+  - {id: lifeboat, volume_m3: 6.2, thermal_mass_j_k: 1.5e5, ua_w_k: 2.0, alarm_mode: occupied, return_vehicle: true}
+  - id: eva
+    volume_m3: 12
+    ua_w_k: 3
+    alarm_mode: occupied
+    atmosphere: {pressure_kpa: 46.66, o2_fraction: 0.42, co2_ppm: 1500}
+    # the suit is not the cabin: NASA-STD-3001 limits (the cabin band of the profile would alarm at 47 kPa)
+    alarm_rules:
+      - {code: pressure, metric: P, min: 34.5, max: 103, source: "NASA-STD-3001 [S6]"}
+      - {code: ppco2_1h, metric: ppCO2, max: 3, window_s: 3600, source: "NASA-STD-3001 [S6]"}
+      - {code: pio2_1h, metric: PIO2, min: 127, window_s: 3600, source: "NASA-STD-3001 [S20]"}
+      - {code: pio2_abs, metric: PIO2, min: 122, source: "NASA-STD-3001 [S20]"}
+      - {code: pio2_hyper, metric: PIO2, max: 356, severity: warning, source: "NASA-STD-3001 [S20]"}
+      - {code: temperature, metric: T, min: 18, max: 27, source: "NASA-STD-3001 [S6]"}
+      - {code: humidity, metric: RH, min: 25, max: 75, source: "NASA-STD-3001 [S6]"}
+
+hatches:
+  # normally sealed; open bulk flow like the CBM hatches
+  - {id: H-NOD2-DRAGON, a: NOD2, b: lifeboat, diffusion_coeff: 0.03, open: false, gp_open: 10.0, gp_closed: 1.0e-7, conduction_w_k: 10}
+
+sensors:
+  # hatch position switches (the catalog's F-FIS-PORTELLO is detected by comparing the commanded and the measured state)
+  - {id: pos_H-NOD1-USL, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-NOD1-USL", metric: open}
+  - {id: pos_H-USL-NOD2, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-USL-NOD2", metric: open}
+  - {id: pos_H-NOD2-COL, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-NOD2-COL", metric: open}
+  - {id: pos_H-NOD2-JPM, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-NOD2-JPM", metric: open}
+  - {id: pos_H-NOD1-NOD3, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-NOD1-NOD3", metric: open}
+  - {id: pos_H-NOD3-CUP, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-NOD3-CUP", metric: open}
+  - {id: pos_H-NOD1-AL, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-NOD1-AL", metric: open}
+  - {id: pos_H-NOD1-SM, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-NOD1-SM", metric: open}
+  - {id: pos_H-SM-PRK, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-SM-PRK", metric: open}
+  - {id: pos_H-NOD2-DRAGON, kind: "ares3.plugins.sensors.instruments:HatchPosition", target: "hatch:H-NOD2-DRAGON", metric: open}
+
+sensor_sets:
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [lifeboat], metrics: [T, P, ppCO2, pO2, RH, PIO2]}
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [eva], metrics: [T, P, ppCO2, pO2, RH, PIO2]}
+  - {target_type: module, kind: "ares3.plugins.sensors.standard:ModuleSensor", targets: [all_modules], metrics: [smoke, CO]}
+  - {target_type: npc, kind: "ares3.plugins.sensors.standard:WearableSensor", targets: [all_npcs],
+     metrics: [hr, spo2, resp_rate, hrv_rmssd, skin_temp_c, core_temp_c, rr_interval_ms, health_state, cohb_pct]}
+
+actuators:
+  - {id: scrubber_lifeboat, kind: "ares3.plugins.actuators.life_support:CO2Scrubber", module: lifeboat, params: {sensor: lifeboat_ppCO2, removal_mol_s: 1.5e-3}}
+  - {id: o2gen_lifeboat, kind: "ares3.plugins.actuators.life_support:O2Generator", module: lifeboat, params: {sensor: lifeboat_pO2, rate_mol_s: 2.5e-3}}
+  - {id: dehum_lifeboat, kind: "ares3.plugins.actuators.life_support:Dehumidifier", module: lifeboat, params: {sensor: lifeboat_RH}}
+  - {id: thermo_lifeboat, kind: "ares3.plugins.actuators.life_support:Thermostat", module: lifeboat, params: {sensor: lifeboat_T}}
+  # EVA suit ECLSS (Luca: eclss_attivo). Absolute setpoints: the module is far from the environment profile.
+  - {id: scrubber_eva, kind: "ares3.plugins.actuators.life_support:CO2Scrubber", module: eva, params: {sensor: eva_ppCO2, on_mmhg: 0.8, off_mmhg: 0.4, removal_mol_s: 5.0e-4}}
+  - {id: o2gen_eva, kind: "ares3.plugins.actuators.life_support:O2Generator", module: eva, params: {sensor: eva_pO2, setpoint_kpa: 19.60, rate_mol_s: 2.0e-3}}
+  - {id: press_eva, kind: "ares3.plugins.actuators.life_support:PressureRegulator", module: eva, params: {sensor: eva_P, setpoint_kpa: 46.66, band_kpa: 0.3}}
+  - {id: dehum_eva, kind: "ares3.plugins.actuators.life_support:Dehumidifier", module: eva, params: {sensor: eva_RH}}
+  - {id: thermo_eva, kind: "ares3.plugins.actuators.life_support:Thermostat", module: eva, params: {sensor: eva_T}}

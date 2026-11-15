@@ -136,12 +136,25 @@ def validate_references(sc: Scenario) -> None:
             continue
         if kind == "npc" and ident in npcs:
             continue
-        raise ValueError(f"sensor {s.id}: bad target {s.target!r} (use module:<id> or npc:<id>)")
+        if kind == "actuator" and ident in actuators:
+            continue
+        if kind == "station" and sc.environment.orbit is not None:
+            continue
+        if kind == "hatch" and ident in {h.key for h in sc.layout.hatches}:
+            continue
+        raise ValueError(f"sensor {s.id}: bad target {s.target!r} (use module:<id>, npc:<id>, actuator:<id>, hatch:<id> or "
+                         f"station:<id> in a scenario with an orbit)")
     for m in sc.crew.members:
         for b in m.schedule:
             if b.module not in modules:
                 raise ValueError(f"{m.id}: schedule references unknown module {b.module}")
-    known = modules | npcs | sensors | actuators
+    hatch_ids = {h.key for h in sc.layout.hatches}
+    for h in sc.layout.hatches:
+        if h.imv is not None and h.imv not in actuators:
+            raise ValueError(f"hatch {h.key}: unknown fan actuator {h.imv}")
+    if len(hatch_ids) != len(sc.layout.hatches):
+        raise ValueError("hatch ids must be unique")
+    known = modules | npcs | sensors | actuators | hatch_ids
     for f in sc.faults.faults:
         missing = [t for t in f.targets if t not in known]
         if missing:
@@ -176,7 +189,10 @@ def _validate_monitor(sc: Scenario, modules: set[str], actuators: set[str]) -> N
                 raise ValueError(f"playbook {pb.emergency}: unknown module {a.target}")
             if a.do == "actuator" and a.target not in actuators:
                 raise ValueError(f"playbook {pb.emergency}: unknown actuator {a.target}")
-            if a.do == "hatch":
+            if a.do == "hatch" and a.target.startswith("isolate:"):
+                if a.target[len("isolate:"):] not in modules:
+                    raise ValueError(f"playbook {pb.emergency}: unknown module in {a.target!r}")
+            elif a.do == "hatch":
                 ends = a.target.split(":")
                 known = {(h.a, h.b) for h in sc.layout.hatches} | {(h.b, h.a) for h in sc.layout.hatches}
                 if len(ends) != 2 or tuple(ends) not in known:

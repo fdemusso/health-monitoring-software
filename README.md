@@ -6,8 +6,8 @@ conditions, for the ML alert model and the autonomous first-responder agent.
 
 ```
 uv sync --extra dev
-uv run ares3 validate scenarios/emergency.yaml
-uv run ares3 run scenarios/emergency.yaml --days 2 -o output/run1     # or --forever (Ctrl-C to stop)
+uv run ares3 validate scenarios/station/nominal.yaml
+uv run ares3 run scenarios/station/nominal.yaml --days 2 -o output/run1     # or --forever (Ctrl-C to stop)
 uv run pytest
 ```
 
@@ -28,9 +28,8 @@ meant to be edited by Mario or Luca.
 | Data contract and plugin base classes | `src/ares3/sdk`, `schemas` | solid | software |
 | MET -> O2/CO2/heat table (BVAD), NASA-STD-3001 limits | `core/metabolism.py`, `scenarios/environments/*.yaml` | ported from ambientmonitor, sources in `docs/reference/` | software |
 | Environment (Mars / orbit), global rules | `scenarios/environments/` | swap with one line in the scenario; override single values with `environment_overrides` | team |
-| Station layout (modules, hatches) | `scenarios/base_layout.yaml` | **PLACEHOLDER**, layout not defined | team / Mario |
-| Sensors | `scenarios/sensors_placeholder.yaml`, `plugins/sensors` | **PLACEHOLDER**, awaiting review | Mario / Luca |
-| Actuators | `scenarios/actuators_placeholder.yaml`, `plugins/actuators` | **PLACEHOLDER**, awaiting review | Mario |
+| Station: layout, sensors, actuators, telemetry, 26 faults | `scenarios/station/` (generated from `notebooks/mario/*.xlsx` by `tools/build_station.py`, see `docs/station.md`), `plugins/sensors/instruments.py`, `plugins/actuators/eclss.py` | **OFFICIAL** (Mario's ISS model); our additions marked ESTIMATE | Mario / software |
+| Small test habitat (hab, lab, ...) | `scenarios/base_layout.yaml`, `sensors_placeholder.yaml`, `actuators_placeholder.yaml` | fixture of the engine tests and of Luca's report | software |
 | Physiology | `plugins/physiology/baseline.py` | **PLACEHOLDER**, every number an ESTIMATE | Luca |
 | Crew profiles and schedules | `scenarios/crew.yaml` | **PLACEHOLDER** | Luca |
 | Faults | `scenarios/faults.yaml` | **PLACEHOLDER** examples | Mario / Luca |

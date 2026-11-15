@@ -57,8 +57,21 @@ class ModuleState(_Frozen):
 class HatchState(_Frozen):
     a: str
     b: str
-    diffusion_coeff: float
+    diffusion_coeff: float  # passive + fan flow now in effect, m3/s
     open: bool = True
+    id: str = ""
+    closable: bool = True
+
+
+class StationState(_Frozen):
+    """The station as a whole: orbit and electrical bus (``core/orbit.py``). The thermal-control loop is the ``TCS`` actuator."""
+
+    sun: float  # 1 in sunlight, 0 in eclipse
+    beta_deg: float
+    orbit_phase: float  # 0..1
+    soc: float  # battery state of charge, 0..1
+    p_gen_w: float
+    p_load_w: float
 
 
 class NPCState(_Frozen):
@@ -176,6 +189,8 @@ class SimulationTick(_Frozen):
     modules: dict[str, ModuleState]
     npcs: dict[str, NPCState]
     hatches: tuple[HatchState, ...] = ()
+    station: StationState | None = None  # None for profiles without an orbit (Mars)
+    actuators: dict[str, dict[str, float]] = Field(default_factory=dict)  # telemetry channels of each actuator
     active_faults: tuple[str, ...] = ()
     alarms: tuple[AlarmEvent, ...] = ()
     # TODO(dashboard): `emergencies`, `pending_actions`, `monitor_events` and NPCState `role` / `response_phase` must be mirrored by hand in

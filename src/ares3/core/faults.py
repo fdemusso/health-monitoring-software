@@ -6,6 +6,8 @@ actuator and medical faults are applied by the engine / passed to plugins (see s
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from ares3.core.rng import derive
@@ -47,23 +49,29 @@ class FaultInjector:
                 out.setdefault(tgt, []).append(f)
         return {k: tuple(v) for k, v in out.items()}
 
-    def corrupt(self, sensor_id: str, value: float, active_on_sensor: tuple[FaultSpec, ...], t_s: float) -> float | None:
+    def corrupt(self, sensor_id: str, value: float, active_on_sensor: tuple[FaultSpec, ...], t_s: float,
+                entity_id: str = "", sigma: float = 0.0) -> float | None:
         """Apply the sensor faults active on ``sensor_id``. Returns ``None`` for a dropped sample."""
         for f in active_on_sensor:
             if f.category != "sensor":
                 continue
             rng: np.random.Generator = self._rng[f.id]
             if f.type == "dropout":
-                if rng.random() < float(f.params.get("probability", 1.0)):
+                only = f.params.get("entities")  # e.g. the MCA sample line to some modules only
+                if (only is None or entity_id in only) and rng.random() < float(f.params.get("probability", 1.0)):
                     return None
             elif f.type == "bias":
-                value += float(f.params.get("offset", 0.0))
+                tau = f.params.get("decay_tau_s")  # an offset that recovers (condensation on a humidity sensor)
+                decay = 1.0 if not tau else math.exp(-(t_s - f.start_s) / float(tau))
+                value += float(f.params.get("offset", 0.0)) * decay
             elif f.type == "drift":
                 value += float(f.params.get("rate_per_s", 0.0)) * (t_s - f.start_s)
+                value *= 1.0 + float(f.params.get("rel_rate_per_s", 0.0)) * (t_s - f.start_s)
             elif f.type == "stuck":
                 value = self._stuck.setdefault((f.id, sensor_id), value)
             elif f.type == "noise":
-                value += float(rng.normal(0.0, float(f.params.get("std", 0.0))))
+                std = float(f.params["std"]) if "std" in f.params else (float(f.params.get("factor", 1.0)) - 1.0) * sigma
+                value += float(rng.normal(0.0, std))
         return value
 
 

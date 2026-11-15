@@ -1,0 +1,36 @@
+name: iss_station
+description: >
+  The ISS station model (Mario's workbook): sea-level atmosphere, microgravity, 24 h day, a 92.8 min orbit (36 min of
+  eclipse at beta 0) and the alarm limits of sheet 07_LIMITI_ALLARMI.
+gravity_m_s2: 0
+day_length_s: 86400
+exterior_temp_c: -20        # ESTIMATE (effective radiative sink behind the insulation)
+atmosphere:
+  pressure_kpa: 101.3       # 14.7 psia [F1]
+  o2_fraction: 0.209
+  co2_ppm: 2900             # ~2.2 mmHg: where one CDRA settles for 4 people (eta 0.85), under the 7-day goal of 2.5
+  temperature_c: 22         # [F2]
+  rh_percent: 40
+orbit: {}                   # defaults of OrbitConfig: 420 km, beta +-75 deg over 63 d, 140 kW arrays (Mario: 100, too little: see the field), 200 kWh battery
+alarm_rules:
+  # Mario's sheet 07 (decisions applied): warning = outside the nominal band, alarm = emergency level. Evaluated on the TRUE state.
+  # Windows follow the requirement: ppCO2 and PIO2 are 1-hour means, the health goal for CO2 is a 7-day mean [F45][F48].
+  - {code: pressure_warn,  metric: P,     min: 95,   max: 104,  severity: warning, source: "ISS band 97.9-102.7 [F2]; warning [F2]"}
+  - {code: pressure,       metric: P,     min: 70,   max: 110,  source: "emergency levels, sheet 07"}
+  - {code: ppo2_warn,      metric: pO2,   min: 18.5, max: 23.5, severity: warning, source: "ISS band 19.5-23.1 kPa [F2]"}
+  - {code: ppo2,           metric: pO2,   min: 14,   max: 25,   source: "emergency levels, sheet 07"}
+  - {code: pio2_warn,      metric: PIO2,  min: 139,  max: 168,  window_s: 3600, severity: warning, source: "normoxia 145-155 mmHg [F47]"}
+  - {code: pio2_1h,        metric: PIO2,  min: 122,  max: 356,  window_s: 3600, source: "NASA-STD-3001 [F47]"}
+  - {code: ppco2_7d,       metric: ppCO2, max: 2.5,  window_s: 604800, severity: warning, source: "headache incidence < 1 % [F45]"}
+  - {code: ppco2_1h,       metric: ppCO2, max: 3,    window_s: 3600, source: "NASA-STD-3001 [V2 6004] [F48]"}
+  - {code: ppco2_high,     metric: ppCO2, max: 5.3,  source: "old long-term limit, 0.7 % [F48]"}
+  - {code: ppco2_off_nominal, metric: ppCO2, max: 15, source: "ISS off-nominal level, 2 % [F49]"}
+  - {code: ppco2_emergency, metric: ppCO2, max: 20,  source: "ISS emergency level, 2.6 % [F49]"}
+  - {code: humidity_warn,  metric: RH,    min: 20,   max: 75,   severity: warning, source: "ISS band 25-70 % [F2][F8]"}
+  - {code: humidity,       metric: RH,    min: 15,   max: 85,   source: "emergency levels, sheet 07"}
+  - {code: temperature_warn, metric: T,   min: 15,   max: 29,   severity: warning, source: "ISS band 17.8-26.7 degC [F2]"}
+  - {code: temperature,    metric: T,     min: 5,    max: 35,   source: "emergency levels, sheet 07"}
+  - {code: dewpoint_warn,  metric: dewpoint, min: 0, max: 17,   severity: warning, source: "ESTIMATE: cold loop 4.4 degC [F9]"}
+  - {code: dewpoint,       metric: dewpoint, min: -5, max: 20,  source: "ESTIMATE"}
+  - {code: diluent_warn,   metric: N2_fraction, min: 25, max: 82, severity: warning, source: "diluent >= 30 % [F24]"}
+  - {code: diluent,        metric: N2_fraction, max: 85,        source: "sheet 07"}

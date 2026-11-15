@@ -7,7 +7,14 @@ Categories (``FaultSpec.category``):
               ``heat_source``, ``fire``
               (``fire`` params: ``heat_w``, optional ``o2_mol_s``, ``co2_mol_s``, ``co_mol_s``, ``smoke_mg_s``,
               ``fuel_kj``, ``min_po2_kpa``, ``no_airflow_factor``; see ``Engine._fire``)
-* actuator  - ``actuator_offline`` disables an actuator
+* sensor params: ``bias`` {offset, decay_tau_s?}, ``drift`` {rate_per_s | rel_rate_per_s (fraction of the reading)},
+              ``dropout`` {probability, entities? (only samples of these modules are lost: the MCA sample line)},
+              ``noise`` {std | factor (multiplies the sensor's own sigma)}
+* leak      - ``leak`` params: {rate_per_s} fraction of the gas lost per second, or {kg_day} mass flow of air,
+              optionally with {kg_day_to, ramp_s} (linear ramp) or {steps: [[t_rel_s, kg_day], ...]}, or {kpa_min}
+* actuator  - ``actuator_offline`` disables an actuator; ``actuator_degrade`` {fraction, ramp_s?} scales its capacity
+              (linear from 1 to ``fraction`` over ``ramp_s``); ``actuator_stuck`` {command, value?} forces a command
+* hatch     - ``hatch_stuck`` (targets are hatch ids) ignores every open/close command
 * medical   - ``medical`` is passed to the physiology model of the targeted NPC through
               ``StepContext.faults_for(npc_id)``; its ``params`` are model specific
 """
@@ -21,14 +28,16 @@ from pydantic import BaseModel, ConfigDict, Field
 FaultType = Literal[
     "bias", "drift", "stuck", "dropout", "noise",
     "leak", "co2_source", "co_source", "heat_source", "fire",
-    "actuator_offline",
+    "actuator_offline", "actuator_degrade", "actuator_stuck",
+    "hatch_stuck",
     "medical",
 ]
 
 _CATEGORY = {
     "bias": "sensor", "drift": "sensor", "stuck": "sensor", "dropout": "sensor", "noise": "sensor",
     "leak": "physical", "co2_source": "physical", "co_source": "physical", "heat_source": "physical", "fire": "physical",
-    "actuator_offline": "actuator",
+    "actuator_offline": "actuator", "actuator_degrade": "actuator", "actuator_stuck": "actuator",
+    "hatch_stuck": "physical",
     "medical": "medical",
 }
 

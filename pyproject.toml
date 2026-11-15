@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.5"]
+dev = ["pytest>=8", "ruff>=0.5", "openpyxl>=3.1"]
 report = ["matplotlib>=3.8"]
 serve = ["websockets>=13"]
 

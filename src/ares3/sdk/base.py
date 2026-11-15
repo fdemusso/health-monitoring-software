@@ -55,6 +55,8 @@ class BaseSensor(Component):
         self.metric = metric
         self.rate_hz = rate_hz
 
+    sigma: float = 0.0  # the sensor's own noise (its unit); a ``noise`` fault with ``factor`` multiplies it
+
     @property
     def entity_id(self) -> str:
         return self.target.partition(":")[2]
@@ -73,6 +75,20 @@ class BaseActuator(Component):
 
     @abstractmethod
     def step(self, dt: float, ctx: StepContext, command: Command | None) -> list[ModuleFlow]: ...
+
+    def telemetry(self) -> dict[str, float]:
+        """Channels of the device's own telemetry (bed temperature, stack voltage, fan speed, ...), read after ``step``.
+        Sensors with ``target: actuator:<id>`` turn them into observations; the dict goes into ``SimulationTick.actuators``."""
+        return {}
+
+    def hatch_flow_m3_s(self) -> float | None:
+        """A fan that moves air through a hatch returns its volumetric flow here (the core adds it to the hatch's
+        exchange while the hatch is open); ``None`` for every other actuator."""
+        return None
+
+    def telemetry_offline(self) -> dict[str, float]:
+        """Telemetry while the device is offline (``actuator_offline`` fault): zeros unless it knows better."""
+        return {k: 0.0 for k in self.telemetry()}
 
 
 class PhysiologyModel(Component):

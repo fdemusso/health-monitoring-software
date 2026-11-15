@@ -8,6 +8,7 @@ export type {
   FaultSpec,
   GasComposition,
   HatchState,
+  StationState,
   ModuleState,
   MonitorEvent,
   NPCState,
