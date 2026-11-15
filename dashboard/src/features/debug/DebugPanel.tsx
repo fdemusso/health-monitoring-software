@@ -18,7 +18,6 @@ const ALARMS: { kind: EmergencyKind; label: string }[] = [
 /** The lifeboat and the spacewalk volume are not places where things break by themselves. */
 const NOT_A_PLACE = new Set(['LIFEBOAT', 'EVA'])
 
-const debugEnabled = () => import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')
 const clock = (s: number) => `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -56,7 +55,6 @@ export function DebugPanel() {
   const places = useModuleList().filter((m) => !NOT_A_PLACE.has(m.id.toUpperCase()))
   const [place, setPlace] = useState('USL')
   const [person, setPerson] = useState('')
-  if (!debugEnabled()) return null
 
   const where = places.some((m) => m.id === place) ? place : places[0]?.id ?? ''
   const who = crew.some((n) => n.id === person) ? person : crew[0]?.id ?? ''
@@ -65,7 +63,7 @@ export function DebugPanel() {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="fixed bottom-3.5 right-3.5 z-30 rounded-control border border-dashed border-status-warning px-2.5 py-1.5 text-xs font-medium text-status-warning-foreground opacity-60 outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+      <button type="button" onClick={() => setOpen(true)} className="fixed bottom-3.5 right-3.5 z-30 rounded-control border border-status-warning bg-card px-3 py-2 text-sm font-medium text-status-warning-foreground outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
         ⌥ Scenarios
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title="Scenario menu" width={380} modeless className="text-sm">
