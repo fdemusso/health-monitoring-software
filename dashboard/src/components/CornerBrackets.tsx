@@ -1,5 +1,5 @@
 /** Holographic corner brackets; parent must be `relative`. */
-export function CornerBrackets({ color = 'rgb(143 211 255 / .55)' }: { color?: string }) {
+export function CornerBrackets({ color = 'color-mix(in oklab, var(--chart-1) 70%, transparent)' }: { color?: string }) {
   const base = 'pointer-events-none absolute size-4 border-[1.5px]'
   return (
     <>

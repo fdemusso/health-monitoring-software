@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useTick } from '@/telemetry/useTelemetry'
 import { AlertBanner } from './AlertBanner'
 import { AlertList } from './AlertList'
@@ -12,8 +13,8 @@ export function StatusPage() {
     <div className="grid min-h-full grid-cols-1 content-start gap-y-4 px-7 pb-28 pt-[18px]">
       {!tick ? (
         <div className="space-y-4">
-          <div className="h-[90px] rounded-3xl bg-white/[.04]" />
-          <div className="h-32 rounded-3xl bg-white/[.04]" />
+          <Skeleton className="h-[90px]" />
+          <Skeleton className="h-32" />
         </div>
       ) : (
         <>

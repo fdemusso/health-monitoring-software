@@ -16,10 +16,10 @@ export function EventLogSheet() {
           {rows.map((e, i) => {
             const fam = eventFamily(e.kind)
             return (
-              <li key={`${e.t_s}-${e.kind}-${i}`} className="rounded-xl border p-3">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className={cn('font-medium uppercase tracking-wider', fam === 'emergency' ? 'text-crit' : fam === 'action' ? 'text-foreground' : 'text-muted-foreground')}>{eventLabel(e.kind)}</span>
-                  <span className="font-mono text-muted-foreground">{fmtHms(e.t_s)}</span>
+              <li key={`${e.t_s}-${e.kind}-${i}`} className="rounded-lg border border-border bg-card p-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className={cn('font-medium', fam === 'emergency' ? 'text-status-danger-foreground' : fam === 'action' ? 'text-foreground' : 'text-muted-foreground')}>{eventLabel(e.kind)}</span>
+                  <span className="tabular-nums text-muted-foreground">{fmtHms(e.t_s)}</span>
                 </div>
                 <p className="mt-1 text-sm">{e.message}</p>
                 {e.by && <p className="mt-0.5 text-xs text-muted-foreground">da {e.by}</p>}

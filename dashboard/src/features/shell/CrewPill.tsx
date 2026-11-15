@@ -16,13 +16,13 @@ export function CrewPill({ npc, emergencies, onOpen }: { npc: NPCState; emergenc
       onClick={onOpen}
       aria-label={`Apri dettaglio ${crewIdentity(npc.id).label}, ${statusLabel[st].toLowerCase()}`}
       className={cn(
-        'flex min-w-0 items-center gap-3 rounded-full border bg-white/[.02] py-2 pl-2 pr-4 transition active:scale-[.97]',
-        st === 'warn' && 'border-warn/45', st === 'crit' && 'border-crit/70 bg-crit/10',
+        'flex min-w-0 items-center gap-3 rounded-full border border-border bg-card py-2 pl-2 pr-4 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50',
+        st === 'warn' && 'border-status-warning bg-status-warning-soft', st === 'crit' && 'border-status-danger bg-status-danger-soft',
       )}
     >
       <CrewChip id={npc.id} />
-      <span className="font-mono text-xs tabular-nums text-muted-foreground">{fmt0(npc.vitals.hr)} bpm</span>
-      <span className={cn('font-mono text-xs tabular-nums', spo2Crit ? 'text-crit' : 'text-muted-foreground')}>{fmt0(spo2)} %</span>
+      <span className="text-xs tabular-nums text-muted-foreground">{fmt0(npc.vitals.hr)} bpm</span>
+      <span className={cn('text-xs tabular-nums', spo2Crit ? 'font-medium text-status-danger-foreground' : 'text-muted-foreground')}>{fmt0(spo2)} %</span>
       <StatusDot status={st} />
     </button>
   )

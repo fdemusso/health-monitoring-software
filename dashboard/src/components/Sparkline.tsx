@@ -1,12 +1,12 @@
 import { memo } from 'react'
 import { statusColor, type Status } from '@/domain/status'
 
-/** Area sparkline coloured by status (never white). */
+/** Area sparkline: status colour: green nominal, yellow warning, red critical. */
 export const Sparkline = memo(function Sparkline({ values, status = 'ok', height = 34, color }: {
   values: number[]; status?: Status; height?: number; color?: string
 }) {
   const c = color ?? statusColor[status]
-  if (values.length < 2) return <div style={{ height }} className="rounded bg-white/[.04]" aria-hidden />
+  if (values.length < 2) return <div style={{ height }} className="rounded-control bg-muted" aria-hidden />
   const min = Math.min(...values), max = Math.max(...values)
   const span = max - min || 1
   const W = 100

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { CrewChip } from '@/components/CrewChip'
 import { Sparkline } from '@/components/Sparkline'
 import { StatusDot } from '@/components/StatusDot'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { ToggleGroup } from '@/components/ui/toggle-group'
 import { ALARM_METRIC, ENV_METRICS, limitStatus, type EnvMetric } from '@/domain/limits'
 import { maxStatus, primaryEmergency, statusText, type Status } from '@/domain/status'
@@ -21,12 +22,12 @@ function Tile({ metric, tick, moduleId }: { metric: EnvMetric; tick: SimulationT
   for (const a of tick.alarms)
     if (a.module_id === moduleId && ALARM_METRIC[a.metric.toLowerCase()] === metric) st = maxStatus(st, a.severity === 'alarm' ? 'crit' : 'warn')
   return (
-    <div className="min-w-0 border-l border-white/10 px-4 first:border-l-0 first:pl-0">
-      <div className="lbl flex items-center gap-2">{spec.label} <StatusDot status={st} /></div>
-      <div className={cn('num mt-1 text-[34px] leading-none', st !== 'ok' && statusText[st])}>
-        {Number.isFinite(v) ? v.toFixed(spec.decimals) : '—'}<span className="ml-1 text-sm text-muted-foreground">{spec.unit}</span>
+    <div className="min-w-0 border-l border-border px-4 first:border-l-0 first:pl-0">
+      <div className="lbl flex items-center gap-2 font-medium">{spec.label} <StatusDot status={st} /></div>
+      <div className={cn('num mt-1 text-5xl leading-none', st !== 'ok' && statusText[st])}>
+        {Number.isFinite(v) ? v.toFixed(spec.decimals) : '—'}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{spec.unit}</span>
       </div>
-      <div className="mb-1.5 mt-1 text-[11px] text-muted-foreground">{spec.nominal}</div>
+      <div className="mb-1.5 mt-1 text-xs text-muted-foreground">{spec.nominal}</div>
       <Sparkline values={values} status={st} />
     </div>
   )
@@ -50,11 +51,11 @@ export function EnvironmentHead({ tick, chosen, onChoose }: { tick: SimulationTi
   const sorted = Object.keys(tick.modules).sort((a, b) => Number(hot.has(b) || tick.modules[b].occupants.length > 0) - Number(hot.has(a) || tick.modules[a].occupants.length > 0))
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <span className="lbl">Ambiente di</span>
-      <div className="no-scrollbar max-w-full overflow-x-auto"><ToggleGroup className="flex-nowrap" value={moduleId} onChange={onChoose} options={sorted.map((id) => ({ value: id, label: id.toUpperCase() }))} /></div>
-      <span className="lbl ml-2">Occupanti:</span>
+      <span className="text-sm font-medium">Ambiente di</span>
+      <div className="no-scrollbar max-w-full overflow-x-auto"><ToggleGroup joined className="flex-nowrap [&>button]:shrink-0" value={moduleId} onChange={onChoose} options={sorted.map((id) => ({ value: id, label: id.toUpperCase() }))} /></div>
+      <span className="ml-2 text-sm font-medium">Occupanti</span>
       {m.occupants.length ? m.occupants.map((o) => <CrewChip key={o} id={o} />) : <span className="text-xs text-muted-foreground">nessuno</span>}
-      {!m.fans_on && <span className="rounded-full border border-warn/50 px-2.5 py-0.5 text-[11px] text-warn">ventilazione spenta</span>}
+      {!m.fans_on && <StatusBadge status="warn">ventilazione spenta</StatusBadge>}
     </div>
   )
 }

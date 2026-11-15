@@ -6,7 +6,10 @@ import { StatusPage } from '@/features/status/StatusPage'
 import { CrewPage } from '@/features/crew/CrewPage'
 import { PendingPopover } from '@/features/crew/PendingPopover'
 import { EventLogSheet } from '@/features/log/EventLogSheet'
-import { EmergencySheet } from '@/features/log/EmergencySheet'
+import { AlertsDialog } from '@/features/status/AlertsDialog'
+import { ProtocolsDialog } from '@/features/crew/ProtocolsDialog'
+import { ModulesDialog } from '@/features/modules/ModulesDialog'
+import { EmergencyDialog } from '@/features/log/EmergencyDialog'
 import { globalStatus } from '@/domain/status'
 import { startTelemetry } from '@/telemetry/createBackend'
 import { useCrewList, useEmergencies } from '@/telemetry/useTelemetry'
@@ -24,7 +27,7 @@ function Vignette() {
 
 function Toast(): ReactNode {
   const { toast } = useUi()
-  return toast ? <div role="status" className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border bg-card px-5 py-2 text-sm">{toast}</div> : null
+  return toast ? <div role="status" className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border border-border bg-card px-5 py-2 text-sm font-medium animate-in fade-in-0 duration-(--duration-enter)">{toast}</div> : null
 }
 
 function Shell() {
@@ -39,7 +42,10 @@ function Shell() {
       <Pager />
       <DebugPanel />
       <EventLogSheet />
-      <EmergencySheet />
+      <EmergencyDialog />
+      <AlertsDialog />
+      <ProtocolsDialog />
+      <ModulesDialog />
       <PendingPopover />
       <Toast />
     </div>

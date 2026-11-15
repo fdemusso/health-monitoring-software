@@ -25,7 +25,7 @@ export function HologramCallouts({ npc, anchors, width, height }: { npc: NPCStat
           const slot = c.side === 'l' ? li++ : ri++
           const y = slotY[`${c.side}${slot}`] * height + 24
           const x = c.side === 'l' ? 0 : width
-          return <polyline key={i} points={`${x},${y} ${(x + a.x) / 2},${y} ${a.x},${a.y + c.dy}`} fill="none" stroke="rgb(143 211 255 / .5)" strokeWidth={1} />
+          return <polyline key={i} points={`${x},${y} ${(x + a.x) / 2},${y} ${a.x},${a.y + c.dy}`} fill="none" stroke="color-mix(in oklab, var(--chart-1) 60%, transparent)" strokeWidth={1} />
         })}
       </svg>
       {(() => { li = 0; ri = 0; return null })()}
@@ -34,8 +34,8 @@ export function HologramCallouts({ npc, anchors, width, height }: { npc: NPCStat
         const y = slotY[`${c.side}${slot}`] * height
         return (
           <div key={i} className="absolute" style={{ top: y, [c.side === 'l' ? 'left' : 'right']: 0, textAlign: c.side === 'l' ? 'left' : 'right' }}>
-            <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{c.label}</div>
-            <div className={`num text-[40px] leading-none tabular-nums ${c.cls}`}>{c.value}<span className="ml-1 text-sm text-muted-foreground">{c.unit}</span></div>
+            <div className="text-xs font-medium text-muted-foreground">{c.label}</div>
+            <div className={`num text-5xl leading-none tabular-nums ${c.cls}`}>{c.value}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{c.unit}</span></div>
           </div>
         )
       })}

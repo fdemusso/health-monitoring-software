@@ -64,7 +64,8 @@ export function globalStatus(npcs: NPCState[], emergencies: Emergency[]): Status
 }
 
 export const statusLabel: Record<Status, string> = { ok: 'Stabile', warn: 'Attenzione', crit: 'Critico' }
-export const statusText: Record<Status, string> = { ok: 'text-ok', warn: 'text-warn', crit: 'text-crit' }
-export const statusColor: Record<Status, string> = { ok: 'var(--ok)', warn: 'var(--warn)', crit: 'var(--crit)' }
+export const statusText: Record<Status, string> = { ok: 'text-status-live-foreground', warn: 'text-status-warning-foreground', crit: 'text-status-danger-foreground' }
+/** Solid status colours, for dots, bars and chart marks (never behind text). */
+export const statusColor: Record<Status, string> = { ok: 'var(--status-live)', warn: 'var(--status-warning)', crit: 'var(--status-danger)' }
 
 export const RANKED = (s: Status) => RANK[s]

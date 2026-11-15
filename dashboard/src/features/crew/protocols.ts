@@ -29,6 +29,28 @@ const ROUTINE: Protocol = {
   ],
 }
 
+const FIRE: Protocol = {
+  id: 'fire', title: 'Incendio',
+  steps: [
+    { title: 'Spegni ventilazione e immissione di gas', hint: 'Il monitor lo fa in automatico: verifica che sia avvenuto.' },
+    { title: 'Scarica l’estintore', hint: 'Dirigi il getto alla base del fuoco.' },
+    { title: 'Controlla se il fuoco è spento', hint: 'Se persiste, evacua verso il veicolo di rientro.' },
+    { title: 'Evacua se necessario', hint: 'Tutti nel modulo lifeboat, poi chiudi i portelli.' },
+  ],
+}
+const DEPRESSURIZATION: Protocol = {
+  id: 'depressurization', title: 'Perdita di pressione',
+  steps: [
+    { title: 'Isola il modulo', hint: 'Chiudi i portelli solo se nessuno resta senza via di fuga.' },
+    { title: 'Ritirata dell’equipaggio', hint: 'Con tempo residuo breve, vai al veicolo di rientro.' },
+    { title: 'Individua e ripara la perdita', hint: 'Compito dell’ingegnere di sistema.' },
+    { title: 'Ripristina la pressione', hint: 'Riapri l’immissione di gas quando la perdita è chiusa.' },
+  ],
+}
+
+/** Every protocol, for the library. */
+export const PROTOCOLS: Protocol[] = [ROUTINE, HYPOXIA, HEAT, FIRE, DEPRESSURIZATION]
+
 export function pickProtocol(npc: NPCState | undefined, emergencies: Emergency[]): Protocol {
   const e = emergencies.find((x) => x.state !== 'cleared' && x.kind === 'medical' && x.subject === npc?.id)
   if (e && (e.cause === 'hypoxia' || e.cause === 'co_poisoning')) return HYPOXIA

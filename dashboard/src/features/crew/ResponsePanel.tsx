@@ -19,10 +19,10 @@ export function ResponsePanel({ tick, crewId, emergency }: { tick: SimulationTic
   const npc = crewId ? tick.npcs[crewId] : undefined
   const protocol = pickProtocol(npc, mine)
   return (
-    <aside className="flex min-w-0 flex-col gap-4 rounded-3xl border bg-card/50 p-4">
+    <aside className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-card p-4">
       <div>
         <div className="lbl">{mine.length ? 'Risposta all’emergenza' : 'Routine'}</div>
-        {mine.length > 0 && <h2 className="mt-1 text-xl font-light">{emergencyTitle(mine[0])}</h2>}
+        {mine.length > 0 && <h2 className="mt-1 font-heading text-xl font-bold">{emergencyTitle(mine[0])}</h2>}
       </div>
       {pending.length > 0 && (
         <div className="space-y-2">
@@ -31,7 +31,7 @@ export function ResponsePanel({ tick, crewId, emergency }: { tick: SimulationTic
         </div>
       )}
       <GuidedSteps key={`${crewId}-${protocol.id}`} protocol={protocol} />
-      <Button variant="outline" size="sm" onClick={() => setEarth(true)}>Contatta la Terra</Button>
+      <Button variant="outline" onClick={() => setEarth(true)}>Contatta la Terra</Button>
       {live.length > 0 && (
         <div>
           <div className="lbl mb-2">Cosa sta facendo l’equipaggio</div>

@@ -1,10 +1,10 @@
 import { Activity, Bell, ClipboardList, History, Menu, Users, X } from 'lucide-react'
 import { useEffect, useState, type ComponentType } from 'react'
 import { useUi } from '@/app/ui-context'
-import { CREW_ORDER } from '@/domain/crewConfig'
-import { crewStatus, isCriticalConfirmed, primaryEmergency, RANKED } from '@/domain/status'
+import { isCriticalConfirmed, primaryEmergency } from '@/domain/status'
 import { cn } from '@/lib/utils'
-import { useCrewList, useEmergencies, usePendingActions } from '@/telemetry/useTelemetry'
+import { alertRows } from '@/features/status/AlertList'
+import { useEmergencies, usePendingActions, useTick } from '@/telemetry/useTelemetry'
 import { CELL, CELLS, CLIP, TRIGGER, cellOffset, type CellId } from './hexGeometry'
 
 const ICON: Record<CellId, ComponentType<{ size?: number; strokeWidth?: number }>> = {
@@ -13,8 +13,8 @@ const ICON: Record<CellId, ComponentType<{ size?: number; strokeWidth?: number }
 
 function Hex({ w, h, on, children, className }: { w: number; h: number; on?: boolean; children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn('absolute inset-0 block', className)} style={{ width: w, height: h, clipPath: CLIP, background: 'rgb(255 255 255 / .22)' }}>
-      <span className={cn('absolute inset-[1.5px] flex flex-col items-center justify-center gap-1.5', on ? 'bg-[#f2f4f7] text-[#05070a]' : 'bg-[hsl(220_20%_6%)] text-foreground')} style={{ clipPath: CLIP }}>
+    <span className={cn('absolute inset-0 block', className)} style={{ width: w, height: h, clipPath: CLIP, background: 'var(--input)' }}>
+      <span className={cn('absolute inset-[1.5px] flex flex-col items-center justify-center gap-1.5', on ? 'bg-sidebar-active text-sidebar-active-foreground' : 'bg-card text-foreground')} style={{ clipPath: CLIP }}>
         {children}
       </span>
     </span>
@@ -27,7 +27,9 @@ export function HoneycombNav() {
   const [open, setOpen] = useState(false)
   const emergencies = useEmergencies()
   const pending = usePendingActions()
-  const crew = useCrewList()
+  const tick = useTick()
+  // No active alarms: the Allarmi cell is dimmed, like a switched-off light.
+  const noAlerts = !!tick && alertRows(tick).length === 0
   const { primary } = primaryEmergency(emergencies)
   const critical = isCriticalConfirmed(primary)
 
@@ -38,18 +40,13 @@ export function HoneycombNav() {
     return () => window.removeEventListener('keydown', h)
   }, [open])
 
-  const urgentCrew = () => {
-    if (primary?.subject) return primary.subject
-    const worst = [...crew].sort((a, b) => RANKED(crewStatus(b, emergencies)) - RANKED(crewStatus(a, emergencies)))[0]
-    return worst?.id ?? CREW_ORDER[0]
-  }
-
   const act = (id: CellId) => {
     setOpen(false)
     switch (id) {
-      case 'status': case 'alerts': ui.setPage(0); break
+      case 'status': ui.setPage(0); break
+      case 'alerts': ui.setAlertsOpen(true); break
       case 'crew': ui.closeCrew(); ui.setPage(1); break
-      case 'protocols': ui.openCrew(urgentCrew()); break
+      case 'protocols': ui.setProtocolsOpen(true); break
       case 'history': ui.setLogOpen(true); break
     }
   }
@@ -65,22 +62,23 @@ export function HoneycombNav() {
       <div
         aria-hidden
         onClick={() => setOpen(false)}
-        className={cn('absolute inset-0 transition-opacity duration-200', open ? 'pointer-events-auto opacity-100' : 'opacity-0')}
-        style={{ background: 'radial-gradient(circle 680px at 0 100%, rgb(0 0 0 / .94), rgb(0 0 0 / .65) 60%, transparent)' }}
+        className={cn('absolute inset-0 bg-scrim transition-opacity', open ? 'pointer-events-auto opacity-100 duration-(--duration-enter)' : 'opacity-0 duration-(--duration-exit)')}
       />
-      {open && <div aria-hidden className="absolute rounded-full border border-dashed border-holo/25" style={{ left: TRIGGER.cx - 335, bottom: TRIGGER.cy - 335, width: 670, height: 670 }} />}
+      {open && <div aria-hidden className="absolute rounded-full border border-dashed border-border" style={{ left: TRIGGER.cx - 335, bottom: TRIGGER.cy - 335, width: 670, height: 670 }} />}
 
       {CELLS.map((c, k) => {
         const Icon = ICON[c.id]
         const o = cellOffset(k)
+        const disabled = c.id === 'alerts' && noAlerts
         return (
           <button
             key={c.id}
             type="button"
             aria-label={c.label}
-            tabIndex={open ? 0 : -1}
+            disabled={disabled}
+            tabIndex={open && !disabled ? 0 : -1}
             onClick={() => act(c.id)}
-            className={cn('absolute transition-[transform,opacity] duration-200 ease-out active:scale-[.94]', open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0')}
+            className={cn('absolute transition-[transform,opacity] duration-(--duration-enter) ease-out active:scale-[.94]', open && !disabled ? 'pointer-events-auto opacity-100' : open ? 'pointer-events-none opacity-100' : 'pointer-events-none opacity-0')}
             style={{
               width: CELL.w, height: CELL.h,
               left: TRIGGER.cx + o.x - CELL.w / 2, bottom: TRIGGER.cy + o.y - CELL.h / 2,
@@ -88,11 +86,11 @@ export function HoneycombNav() {
               transitionDelay: open ? `${k * 25}ms` : '0ms',
             }}
           >
-            <Hex w={CELL.w} h={CELL.h} on={active(c.id)}>
+            <Hex w={CELL.w} h={CELL.h} on={active(c.id)} className={c.id === 'alerts' && noAlerts ? 'opacity-35' : undefined}>
               <Icon size={28} strokeWidth={1.5} />
-              <span className="text-[10px] font-medium uppercase tracking-[.08em]">{c.label}</span>
+              <span className="text-xs font-medium">{c.label}</span>
             </Hex>
-            {c.id === 'alerts' && critical && <span className="anim-ping absolute right-[22px] top-[18px] size-2.5 rounded-full bg-crit" />}
+            {c.id === 'alerts' && critical && <span className="anim-ping absolute right-[22px] top-[18px] size-2.5 rounded-full bg-status-danger" />}
           </button>
         )
       })}
@@ -107,10 +105,10 @@ export function HoneycombNav() {
       >
         <Hex w={TRIGGER.w} h={TRIGGER.h}>{open ? <X size={26} strokeWidth={1.5} /> : <CurrentIcon size={26} strokeWidth={1.5} />}</Hex>
         {!open && <Menu aria-hidden size={12} className="absolute bottom-[22px] left-1/2 -translate-x-1/2 text-muted-foreground" />}
-        {!open && critical && <span className="anim-ping absolute right-[16px] top-[14px] size-3 rounded-full bg-crit" />}
-        {!open && !critical && primary && <span className="absolute right-[16px] top-[14px] size-3 rounded-full bg-warn" />}
+        {!open && critical && <span className="anim-ping absolute right-[16px] top-[14px] size-3 rounded-full bg-status-danger" />}
+        {!open && !critical && primary && <span className="absolute right-[16px] top-[14px] size-3 rounded-full bg-status-warning" />}
         {!open && pending.length > 0 && (
-          <span className="absolute right-[6px] top-[38px] grid h-5 min-w-5 place-items-center rounded-full bg-warn px-1 text-[11px] font-bold text-black">{pending.length}</span>
+          <span className="absolute right-[6px] top-[38px] grid h-5 min-w-5 place-items-center rounded-full bg-signal px-1 text-xs font-medium text-signal-on">{pending.length}</span>
         )}
       </button>
     </nav>

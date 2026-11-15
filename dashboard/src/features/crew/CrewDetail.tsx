@@ -2,7 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useMemo, useRef } from 'react'
 import { CrewChip } from '@/components/CrewChip'
 import { Sparkline } from '@/components/Sparkline'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { crewIdentity } from '@/domain/crewConfig'
 import { activityLabel, phaseLabel } from '@/domain/emergencyText'
@@ -18,14 +18,14 @@ import { ResponsePanel } from './ResponsePanel'
 import { limitStatus, ENV_METRICS } from '@/domain/limits'
 
 function Field({ label, value }: { label: string; value: string }) {
-  return <div><div className="lbl">{label}</div><div className="mt-0.5 text-base">{value}</div></div>
+  return <div><div className="lbl">{label}</div><div className="mt-0.5 text-base font-medium">{value}</div></div>
 }
 
 function Trend({ title, value, unit, status, values }: { title: string; value: string; unit: string; status: Status; values: number[] }) {
   return (
-    <div className="min-w-0 border-l border-white/10 pl-4 first:border-l-0 first:pl-0">
+    <div className="min-w-0 border-l border-border pl-4 first:border-l-0 first:pl-0">
       <div className="lbl truncate">{title}</div>
-      <div className={`num text-[34px] leading-tight ${status !== 'ok' ? statusText[status] : ''}`}>{value}<span className="ml-1 text-sm text-muted-foreground">{unit}</span></div>
+      <div className={`num text-5xl leading-tight ${status !== 'ok' ? statusText[status] : ''}`}>{value}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{unit}</span></div>
       <Sparkline values={values} status={status} />
     </div>
   )
@@ -53,14 +53,14 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
     <>
       <div>
         <div className="mb-4 flex flex-wrap items-center gap-x-8 gap-y-3">
-          <Button variant="outline" size="sm" onClick={onBack}><ArrowLeft size={16} /> Equipaggio</Button>
+          <Button variant="outline" onClick={onBack}><ArrowLeft size={16} /> Equipaggio</Button>
           <div>
             <CrewChip id={npc.id} large />
             <div className="mt-1.5 text-center text-xs text-muted-foreground">{id.name}</div>
           </div>
           <Field label="Modulo" value={npc.module_id.toUpperCase()} />
           <Field label={phase ? 'Risposta all’emergenza' : 'Attività'} value={phase ?? activityLabel(npc.activity)} />
-          <Badge tone={st} className="ml-auto">{statusLabel[st]}</Badge>
+          <StatusBadge status={st} className="ml-auto">{statusLabel[st]}</StatusBadge>
         </div>
         <div className="grid grid-cols-4 gap-4">
           <Trend title={`FC di ${id.label}`} value={fmt0(v.hr)} unit="bpm" status={vitalStatus('hr', v.hr, npc.activity)} values={series(hist, 'hr')} />
@@ -71,7 +71,7 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
             : <Trend title={`ppCO₂ in ${npc.module_id.toUpperCase()}`} value={mod ? fmt1(ppco2Mmhg(mod)) : '—'} unit="mmHg" status={mod ? limitStatus(ENV_METRICS.ppco2, ppco2Mmhg(mod)) : 'ok'} values={ctx} />}
         </div>
       </div>
-      <div className="grid grid-cols-[1fr_290px] gap-[18px] animate-in fade-in zoom-in-95 duration-150">
+      <div className="grid grid-cols-[1fr_290px] gap-[18px] animate-in fade-in-0 duration-(--duration-enter)">
         <div ref={stageRef} className="relative min-w-0" style={{ height: H }}>
           <HologramFrame npc={npc} tick={tick} width={W} color={id.color} />
           <HologramCallouts npc={npc} anchors={anchors} width={stageW} height={H} />

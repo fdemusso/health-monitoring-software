@@ -1,22 +1,8 @@
 /**
  * Maps a severity value in the 0..1 range (0 = normal, 1 = critical) to the
- * hologram's visual parameters: color (cyan -> orange -> red) and glow
+ * hologram's visual parameters: color (neutral -> warning -> danger) and glow
  * intensity.
  */
-
-type RGB = [number, number, number];
-
-const COLOR_NORMAL: RGB = [34, 211, 238]; // cyan (hologram baseline)
-const COLOR_WARNING: RGB = [251, 146, 60]; // orange
-const COLOR_CRITICAL: RGB = [255, 36, 64]; // red
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
-function lerpColor(a: RGB, b: RGB, t: number): RGB {
-  return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
-}
 
 /** Clamps a severity value to the valid 0..1 range; `undefined`/`NaN` fall back to 0 (normal). */
 export function clampSeverity(value: number | undefined): number {
@@ -24,36 +10,40 @@ export function clampSeverity(value: number | undefined): number {
   return Math.min(1, Math.max(0, value));
 }
 
-function severityRGB(severity: number): RGB {
+/** Design-system tokens the hologram interpolates between: chart ink, warning, danger. */
+const NORMAL = 'var(--chart-1)';
+const WARNING = 'var(--status-warning)';
+const CRITICAL = 'var(--status-danger)';
+
+/** `color-mix` of two token colours, in oklab (the design system forbids oklch tints). */
+function mix(to: string, from: string, pct: number, alpha = 1): string {
+  const mixed = `color-mix(in oklab, ${to} ${Math.round(pct)}%, ${from})`;
+  return alpha >= 1 ? mixed : `color-mix(in oklab, ${mixed} ${Math.round(alpha * 100)}%, transparent)`;
+}
+
+function severityMix(severity: number, alpha = 1): string {
   const s = clampSeverity(severity);
-  return s <= 0.5
-    ? lerpColor(COLOR_NORMAL, COLOR_WARNING, s / 0.5)
-    : lerpColor(COLOR_WARNING, COLOR_CRITICAL, (s - 0.5) / 0.5);
+  return s <= 0.5 ? mix(WARNING, NORMAL, (s / 0.5) * 100, alpha) : mix(CRITICAL, WARNING, ((s - 0.5) / 0.5) * 100, alpha);
 }
 
 /**
- * Resolves a severity to an opaque `rgb()` color string, interpolated
- * cyan (0) -> orange (0.5) -> red (1).
+ * Resolves a severity to a CSS colour built from the design tokens,
+ * interpolated chart ink (0) -> warning (0.5) -> danger (1).
  *
  * @param severity - 0..1, 0 = normal, 1 = critical.
  */
 export function severityColor(severity: number): string {
-  const [r, g, b] = severityRGB(severity);
-  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+  return severityMix(severity);
 }
 
 /**
- * Same hue as {@link severityColor} but with reduced alpha, meant for the
- * glow (`drop-shadow`): the organ's fill is one thing, its halo is another —
- * if the halo were as opaque as the fill, two adjacent organs would bleed
- * into each other at the edges.
+ * Same hue as {@link severityColor} with reduced alpha, for the optional halo.
  *
  * @param severity - 0..1, 0 = normal, 1 = critical.
  * @param alpha - Opacity of the returned color, 0..1.
  */
 export function severityGlowColor(severity: number, alpha = 0.5): string {
-  const [r, g, b] = severityRGB(severity);
-  return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${alpha})`;
+  return severityMix(severity, alpha);
 }
 
 /**

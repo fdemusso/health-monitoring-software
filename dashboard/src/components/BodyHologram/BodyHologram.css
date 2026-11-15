@@ -4,10 +4,10 @@
 }
 
 .bh-outline {
-  fill: rgba(94, 211, 255, 0.1);
-  stroke: rgba(148, 224, 255, 0.65);
+  fill: color-mix(in oklab, var(--chart-1) 14%, transparent);
+  stroke: color-mix(in oklab, var(--chart-1) 80%, transparent);
   stroke-width: 0.6;
-  filter: drop-shadow(0 0 2.5px rgba(94, 211, 255, 0.55));
+  filter: drop-shadow(0 0 2.5px color-mix(in oklab, var(--chart-1) 60%, transparent));
 }
 
 .bh-organ path {

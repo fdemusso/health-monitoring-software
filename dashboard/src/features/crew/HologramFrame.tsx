@@ -45,7 +45,7 @@ export function HologramFrame({ npc, tick, width, color, children, frameRef }: {
         <ellipse cx="50" cy="10" rx="40" ry="6" fill="none" stroke={color} strokeOpacity={0.95} strokeWidth={1} vectorEffect="non-scaling-stroke" />
         <ellipse cx="50" cy="10" rx="30" ry="4" fill="none" stroke={color} strokeOpacity={0.5} strokeWidth={1} vectorEffect="non-scaling-stroke" />
       </svg>
-      <div aria-hidden className="anim-scan pointer-events-none absolute inset-x-0 h-3.5 mix-blend-screen" style={{ background: 'linear-gradient(transparent, rgb(143 211 255 / .35), transparent)' }} />
+      <div aria-hidden className="anim-scan pointer-events-none absolute inset-x-0 h-3.5 mix-blend-screen" style={{ background: 'linear-gradient(transparent, color-mix(in oklab, var(--chart-1) 40%, transparent), transparent)' }} />
       {children}
     </div>
   )

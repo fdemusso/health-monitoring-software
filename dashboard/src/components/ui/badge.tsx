@@ -1,14 +1,24 @@
-import type { HTMLAttributes } from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
+import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
-import type { Status } from '@/domain/status'
 
-const TONE: Record<Status | 'muted', string> = {
-  ok: 'text-ok border-ok/35 bg-ok/10',
-  warn: 'text-warn border-warn/40 bg-warn/10',
-  crit: 'text-crit border-crit/50 bg-crit/10',
-  muted: 'text-muted-foreground border-white/15',
-}
+export const badgeVariants = cva(
+  'inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1.5 rounded-full border border-transparent px-2 text-xs font-medium whitespace-nowrap [&_svg]:size-3',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground',
+        secondary: 'bg-muted text-muted-foreground',
+        outline: 'border-input text-foreground',
+        ghost: 'text-muted-foreground',
+        category: 'bg-category-soft text-foreground',
+        signal: 'bg-signal-soft text-signal-foreground',
+      },
+    },
+    defaultVariants: { variant: 'secondary' },
+  },
+)
 
-export function Badge({ tone = 'muted', className, ...props }: HTMLAttributes<HTMLSpanElement> & { tone?: Status | 'muted' }) {
-  return <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-[3px] text-[11px] font-medium tracking-[.06em]', TONE[tone], className)} {...props} />
+export function Badge({ className, variant, ...props }: ComponentProps<'span'> & VariantProps<typeof badgeVariants>) {
+  return <span data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props} />
 }
