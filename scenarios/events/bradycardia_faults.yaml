@@ -1,0 +1,11 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_02 (bot): symptomatic bradycardia, 20-120 min (central value 70 min), hr_to 38-46 (centre 42). A fall of the heart
+# rate towards a target below the resting rate; the other vitals follow the model. ESTIMATE; the ranges are drawn by tools/ml/crew_plan.yaml, this is the central case.
+faults:
+  - id: bot_bradycardia
+    type: medical
+    targets: [bot]
+    start_s: 4200
+    duration_s: 4200
+    params: {"hr_to": 42, "ramp_s": 120}
+    anomaly_type: bradycardia
+    priority: 7

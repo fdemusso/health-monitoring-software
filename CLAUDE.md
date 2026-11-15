@@ -22,6 +22,7 @@ docker compose run --rm ares3 run scenarios/nominal.yaml --days 1  # same CLI in
 uv run python tools/npc_report.py [--reuse]            # report for the bioengineer: HTML (figures as PNG) -> PDF via headless Chrome/Edge; normal day per NPC + 11 events (~10 min, needs --extra report)
 uv run python tools/ml/make_dataset.py --nominal --randomize --medical --combos --seeds 1-3,5 --days 2 --features --out output/ml/feat   # ML feature rows (one process per run, `--resume` skips what is written)
 uv run python tools/ml/train_anomaly.py && uv run python tools/ml/train_diagnoser.py   # -> models/station_v1/ (stage A and B), model cards next to them
+uv run python tools/ml/make_dataset.py --plan tools/ml/crew_plan.yaml --wave 1 --list   # the crew dataset: the job list of a plan file (the same on every machine; --shard, --pick REGEX, --hash DIR); each job also writes crew.parquet (crew features + truth| columns); tools/ml/probe_exposure.py sized the exposures
 uv run python tools/ml/check_monitor.py --nominal --seeds 5 --days 1                  # the real monitor on whole runs: false alarms and detection delays
 cd dashboard && pnpm install && pnpm dev              # frontend, fully independent of the Python side
 ```

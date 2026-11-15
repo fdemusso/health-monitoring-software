@@ -1,0 +1,180 @@
+# The job list of the crew dataset (docs/piano-ml-equipaggio.md, section 1). Read by tools/ml/crew_plan.py:
+#   uv run python tools/ml/make_dataset.py --plan tools/ml/crew_plan.yaml --wave 1 --list
+# EVERY machine builds the SAME list from the SAME commit and takes its --shard: changing this file changes the shards, so it is frozen before
+# the launch. All ranges are PLACEHOLDER (awaiting review by Luca / Mario) and ESTIMATE unless a source is named.
+#
+# Draws: numpy.random.default_rng([seed, crc32(group)]) (crc32(group/event) for the variants of a group). Person hit = [cmd, eng, med, bot][seed % 4];
+# activity at the start = [sleep, nominal, exercise][(seed // 4) % 3] (M9: always the aerobic block). The start is drawn inside a block of that
+# activity of the person, in [6 h, run - duration - 4 h]; time of day goes through the SimClock (t = 0 is 06:00 in the station scenario).
+
+scenario: scenarios/station/nominal.yaml
+splits: {train: 101-130, val: 131-140, test: 141-160}   # documentation: the seeds of every group are explicit below
+
+groups:
+  # ---- wave 1 -------------------------------------------------------------------------------------------------------------------------
+  N1: {wave: 1, days: 2, nominal: true, jitter: {shift_min: 30, met: [0.85, 1.15]}, seeds: {train: 101-124, val: 131-136}}   # baseline per person, all activities
+  N2: {wave: 1, days: 3, nominal: true, jitter: {shift_min: 30, met: [0.85, 1.15]}, seeds: {test: 141-150}}                  # false alarms (30 d)
+  N3: {wave: 1, days: 3, nominal: true, seeds: {test: 151-155}}                                                             # false alarms on the real programme (15 d)
+
+  M1:
+    wave: 1
+    days: 1.5
+    seeds: &med_seeds {train: 101-124, val: 131-138, test: 141-148}
+    medical:
+      faults_file: scenarios/events/fever_faults.yaml
+      label: fever
+      priority: 6
+      params: {core_temp_delta: [0.8, 2.0], skin_temp_delta: [0.5, 1.3]}
+      duration_s: [10800, 43200]            # 3-12 h
+      ramp_s: [1800, 3600]
+  M2:
+    wave: 1
+    days: 1.5
+    seeds: *med_seeds
+    medical:
+      faults_file: scenarios/events/dehydration_faults.yaml
+      label: dehydration
+      priority: 6
+      params: {fluid_loss_pct_per_h: [0.3, 0.7]}
+      duration_s: [21600, 36000]            # 6-10 h
+  M3:
+    wave: 1
+    days: 1.5
+    seeds: *med_seeds
+    medical:
+      faults_file: scenarios/events/fibrillation_faults.yaml
+      label: atrial_fibrillation_suspected
+      priority: 8
+      params: {hr_to: [130, 170], spo2_to: [91, 95]}
+      duration_s: [600, 3600]               # 10-60 min
+      ramp_s: [30, 120]
+  M4:
+    wave: 1
+    days: 1.5
+    seeds: *med_seeds
+    medical:
+      faults_file: scenarios/events/motion_sickness_faults.yaml
+      label: space_motion_sickness
+      priority: 5
+      params: {sms_severity: {choose: [2, 3]}}
+      duration_s: [3600, 10800]             # 1-3 h
+  M5:
+    wave: 1
+    days: 1.5
+    seeds: *med_seeds
+    medical:
+      faults_file: scenarios/events/stress_faults.yaml
+      label: acute_stress
+      priority: 5
+      params: {hr_delta: [6, 15]}
+      duration_s: [3600, 10800]             # 1-3 h
+      ramp_s: [300, 900]
+  M6:
+    wave: 1
+    days: 1.5
+    seeds: *med_seeds
+    medical:
+      faults_file: scenarios/events/svt_faults.yaml
+      label: svt_suspected
+      priority: 8
+      params: {hr_to: [160, 200], hrv_factor: [0.3, 0.6]}
+      duration_s: [300, 2400]               # 5-40 min
+      ramp_s: [10, 60]
+  M7:
+    wave: 1
+    days: 1.5
+    seeds: *med_seeds
+    medical:
+      faults_file: scenarios/events/bradycardia_faults.yaml
+      label: bradycardia
+      priority: 7
+      params: {hr_to: [38, 46]}
+      duration_s: [1200, 7200]              # 20-120 min
+  M8:
+    wave: 1
+    days: 1.5
+    seeds: *med_seeds
+    medical:
+      faults_file: scenarios/events/respiratory_infection_faults.yaml
+      label: respiratory_infection
+      priority: 6
+      params: {core_temp_delta: [0.6, 1.4], resp_delta: [4, 8], spo2_delta: [-5, -2]}
+      duration_s: [21600, 50400]            # 6-14 h
+      ramp_s: [1800, 3600]
+  M9:
+    wave: 1
+    days: 1.5
+    seeds: *med_seeds
+    activity: exercise_aerobic              # starts INSIDE the aerobic block, always
+    medical:
+      faults_file: scenarios/events/abnormal_exertion_faults.yaml
+      label: abnormal_exertion
+      priority: 7
+      params: {hr_delta: [18, 35], core_temp_delta: [0.5, 1.0], fluid_loss_pct_per_h: [1, 2]}
+      duration_s: [1800, 4500]              # 30-75 min
+      ramp_s: [60, 300]
+
+  # ---- wave 2 -------------------------------------------------------------------------------------------------------------------------
+  # E1: hypercapnia, a CO2 source in the module where the person is (CQ at night, work modules by day; never the EVA volume or the lifeboat)
+  E1:
+    wave: 2
+    days: 1.5
+    seeds: *med_seeds
+    exposure:
+      type: co2_source
+      label: hypercapnia_exposure
+      priority: 8
+      params: {mol_s: [5.0e-4, 3.0e-3]}
+      duration_s: [3600, 28800]             # 1-8 h
+      avoid_modules: [eva, lifeboat]
+  # E2: hypercapnia from a machine (catalog, same ranges as the sheet 06): the same class, another cause
+  E2:
+    wave: 2
+    days: 1.5
+    seeds: {train: 101-112, val: 131-134, test: 141-144}
+    variants:
+      - {event: F-ATT-CDRA-ARRESTO, catalog: [F-ATT-CDRA-ARRESTO]}
+      - {event: F-ATT-CQFAN-FOD, catalog: [F-ATT-CQFAN-FOD]}
+  # E3: carbon monoxide (SpCO up, SpO2 flat). Range from tools/ml/probe_exposure.py (12 h, bot in COL, no monitor): 1e-4 mol/s only reaches COHb 1.9 %
+  # in 10 h; 2e-4 crosses 2.5 % at hour 7, 8e-4 at hour 2 (and 5 % at hour 3, 12 % at hour 10). Hence 2.5e-4 .. 8e-4 and 2-8 h.
+  E3:
+    wave: 2
+    days: 1.5
+    seeds: *med_seeds
+    exposure:
+      type: co_source
+      label: co_exposure
+      priority: 8
+      params: {mol_s: [2.5e-4, 8.0e-4]}
+      duration_s: [7200, 28800]             # 2-8 h
+      avoid_modules: [eva, lifeboat]
+  # E4: hypoxia: a strong PRK leak (the multiplier of the leak steps of the sheet) with a weak OGA stack. OFF: the probe (tools/ml/probe_exposure.py,
+  # 12 h, leak x11.3 + OGA-STACK) leaves PIO2 at 150 mmHg and SpO2 at 96.5 % (the dip is the nominal EVA walk of `med`, whose volume is 130 mmHg by design),
+  # so no cause takes PIO2 under 135 mmHg in hours and the hypoxia stays with the SpO2 rule. Set `enabled: true` to bring the group back.
+  E4:
+    wave: 2
+    enabled: false
+    days: 1.5
+    seeds: *med_seeds
+    catalog: [F-FIS-PERDITA-PRK, F-ATT-OGA-STACK]
+    scale: [3.0, 10.0]
+  # C1: person + environment together: neither family may eat the other
+  C1:
+    wave: 2
+    days: 1.5
+    seeds: {train: 101-104, val: 131-132, test: 141-142}
+    variants:
+      - {event: fever+cdra, medical: M1, catalog: [F-ATT-CDRA-DEGRADO]}
+      - {event: stress+prk, medical: M5, catalog: [F-FIS-PERDITA-PRK]}
+      - event: svt+co
+        medical: M6
+        exposure:
+          type: co_source
+          label: co_exposure
+          priority: 8
+          params: {mol_s: [2.5e-4, 4.0e-4]}  # mild: the low half of E3
+          duration_s: [3600, 14400]
+          avoid_modules: [eva, lifeboat]
+      - {event: dehydration+tcs, medical: M2, catalog: [F-ATT-TCS-CIRCUITO]}
+  # R1: the whole catalog with --randomize --combos (26 faults + 4 pairs per seed), for the new columns. LAST in the list: the first thing to cut.
+  R1: {wave: 2, days: 2, regenerate: true, combos: true, seeds: {train: 101-104}}

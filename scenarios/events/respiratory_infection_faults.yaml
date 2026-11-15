@@ -1,0 +1,12 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_01 (cmd): respiratory infection, 6-14 h (central value 10 h): a slow mixed picture, core temperature +0.6...+1.4 C
+# (centre 1.0), respiratory rate +4...+8 /min (centre 6), SpO2 -5...-2 % (centre -3.5). In the model the core temperature raises hr and respiration by itself
+# ([P8]); resp_delta and spo2_delta are added on top (ESTIMATE). The ranges are drawn by tools/ml/crew_plan.yaml, this is the central case.
+faults:
+  - id: cmd_respiratory_infection
+    type: medical
+    targets: [cmd]
+    start_s: 3600
+    duration_s: 36000
+    params: {"core_temp_delta": 1.0, "resp_delta": 6, "spo2_delta": -3.5, "ramp_s": 3600}
+    anomaly_type: respiratory_infection
+    priority: 6

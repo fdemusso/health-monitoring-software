@@ -1,0 +1,12 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_03 (eng): suspected supraventricular tachycardia, 5-40 min (central value 22 min). A fast REGULAR rhythm, the
+# counterpart of the fibrillation (`arrhythmia: af` makes the RR series irregular, here it is not set): hr_to 160-200 (centre 180), hrv_factor 0.3-0.6
+# (centre 0.45), ramp 10-60 s (centre 35 s). All ESTIMATE; the dataset generator (tools/ml/crew_plan.yaml) draws the ranges, this is the central case.
+faults:
+  - id: eng_svt
+    type: medical
+    targets: [eng]
+    start_s: 4200
+    duration_s: 1320
+    params: {"hr_to": 180, "hrv_factor": 0.45, "ramp_s": 35}
+    anomaly_type: svt_suspected
+    priority: 8

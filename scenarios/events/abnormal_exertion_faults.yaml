@@ -1,0 +1,13 @@
+# PLACEHOLDER - awaiting review by Luca. ASTRO_03 (eng): abnormal response to effort, 30-75 min (central value 52 min), STARTING inside the 17:00 aerobic block
+# (the station scenarios start at 06:00, so 17:05 is t = 39900 s): heart rate +18...+35 bpm above what the MET asks (centre 26), core temperature +0.5...+1.0 C
+# (centre 0.75), fluid loss 1-2 %/h (centre 1.5). "126 bpm at 7 MET is normal, 165 is not": the point is the excess over the expected value, not the level.
+# ESTIMATE; the model cannot limit an effect to the exercise block, so it lasts the whole duration. The ranges are drawn by tools/ml/crew_plan.yaml.
+faults:
+  - id: eng_abnormal_exertion
+    type: medical
+    targets: [eng]
+    start_s: 39900
+    duration_s: 3120
+    params: {"hr_delta": 26, "core_temp_delta": 0.75, "fluid_loss_pct_per_h": 1.5, "ramp_s": 120}
+    anomaly_type: abnormal_exertion
+    priority: 7

@@ -14,6 +14,11 @@ A job may also carry ``"per_fault": {fault id: {"start_s": .., "params": {..}, "
 the workbook, ``scenarios/station/fault_ranges.yaml``), ``"faults_file"`` + ``"amp"`` (a medical event of ``scenarios/events`` injected
 on the station crew, amplitude +-30 %: plan D2) and ``"extra_faults"`` (a second catalog fault on top of the first: a combination, D10).
 
+A job of a PLAN (``--plan tools/ml/crew_plan.yaml --wave N``, built by ``crew_plan.build_plan_jobs``) is always a features job and may also
+carry ``"name"`` (its id is ``<name>_s<seed>_d<days>_f``), ``"faults"`` (complete fault dicts, appended to the scenario) and
+``"crew_schedule"`` (``{npc id: [blocks]}``, the programme of the day replaces the one of the crew file: the jitter). Besides
+``features.parquet`` it writes ``crew.parquet`` (one row per crew member, ``CrewFeatureExtractor`` + the truth for the labels).
+
     uv run python tools/ml/make_dataset.py --seeds 1-3 --days 3 --workers 8
     uv run python tools/ml/make_dataset.py --only F-SEN-DERIVA-CO2,F-FIS-PERDITA-PRK --seeds 1 --days 1 --resume
 """
@@ -25,6 +30,7 @@ import concurrent.futures as cf
 import hashlib
 import multiprocessing as mp
 import os
+import re
 import shutil
 import sys
 import time
@@ -50,6 +56,8 @@ COMBOS = [("F-SEN-DERIVA-CO2", "F-ATT-CDRA-DEGRADO"), ("F-FIS-PERDITA-PRK", "F-A
 def job_id(job: dict) -> str:
     """Stable name of a job: scenario stem, seed and length (a ``ticks`` job is named by its ticks)."""
     length = f"t{job['ticks']}" if job.get("ticks") else f"d{job['days']:g}"
+    if job.get("name"):  # a job of a plan: ``crew-<group>-<event>``
+        return f"{job['name']}_s{job['seed']}_{length}" + ("_f" if job.get("features") else "")
     name = "+".join([Path(job["scenario"]).stem, *job.get("extra_faults", [])]) if job.get("extra_faults") else Path(job["scenario"]).stem
     if job.get("faults_file"):
         name = f"med-{Path(job['faults_file']).stem.removesuffix('_faults')}"
@@ -81,6 +89,14 @@ def _apply(fault, patch: dict) -> None:
         fault.params = p
 
 
+def apply_schedules(sc, schedules: dict[str, list[dict]]) -> None:
+    """Replace the programme of the day of some crew members (``{npc id: [block dicts with from / to]}``), validated like the file."""
+    from ares3.schemas.crew import CrewMember
+
+    sc.crew.members = [CrewMember.model_validate({**m.model_dump(by_alias=True), "schedule": schedules[m.id]})
+                       if m.id in schedules else m for m in sc.crew.members]
+
+
 def _prepare(job: dict):
     """Scenario of a job (seed, fault overrides applied) and its length in ticks."""
     import yaml
@@ -101,6 +117,10 @@ def _prepare(job: dict):
             if "start_s" in job:
                 spec.start_s = float(job["start_s"])
             sc.faults.faults.append(spec)
+    for raw in job.get("faults", []):  # faults of a plan, complete (targets, start, params)
+        sc.faults.faults.append(FaultSpec.model_validate(raw))
+    if job.get("crew_schedule"):
+        apply_schedules(sc, job["crew_schedule"])
     patch = job.get("fault_overrides") or {}
     per_fault = job.get("per_fault") or {}
     for fault in sc.faults.faults:
@@ -137,17 +157,33 @@ def run_one(job: dict) -> str:
     return _publish(tmp, out)
 
 
+CREW_TRUTH = ("truth|ppco2_mmhg", "truth|pio2_mmhg", "truth|co_ppm", "truth|cohb_pct", "truth|health_state", "truth|hr",
+              "truth|spo2", "truth|module", "truth|met", "truth|activity")  # the true state, ONLY for the labels: never an input
+
+
+def _crew_truth(tick, npc_id: str) -> list:
+    """The truth of one crew member at a tick, in the order of ``CREW_TRUTH``: the air of the module where they are (the label of an
+    exposure comes from here, not from the fault) and their true vitals."""
+    npc = tick.npcs[npc_id]
+    mod = tick.modules[npc.module_id]
+    nan = float("nan")
+    return [mod.ppco2_mmhg, mod.pio2_mmhg, mod.co_ppm, npc.vitals.get("cohb_pct", nan), npc.vitals.get("health_state", nan),
+            npc.vitals.get("hr", nan), npc.vitals.get("spo2", nan), npc.module_id, npc.met, npc.activity]
+
+
 def run_features(job: dict) -> str:
     """One row of ML features every ``eval_every_s`` (default 60 s), for EVERY sensor of the scenario, run WITHOUT the
     monitor (pure signatures, and the twin run of a fault is exact). ``features.parquet`` has the columns ``t_s``, the
     feature names, and ``faults`` (ids of the faults active at that time, ``|`` separated); ``meta.json`` describes the
-    run (the faults with their targets, label, start; the feature names; the clock periods)."""
+    run (the faults with their targets, label, start; the feature names; the clock periods). ``crew.parquet`` (long: one row per
+    ``t_s`` and ``npc``, once ``CrewFeatureExtractor`` is ready) has the crew features and the ``truth|...`` columns."""
     import json
 
     import numpy as np
     import pandas as pd
 
     from ares3.core.engine import Engine
+    from ares3.plugins.monitor.ml.crew import CrewFeatureExtractor, crew_sensor_map
     from ares3.plugins.monitor.ml.features import FeatureExtractor, clock_periods, tick_samples
     from ares3.schemas.monitor import MonitorConfig
 
@@ -155,23 +191,43 @@ def run_features(job: dict) -> str:
     sc.monitor = MonitorConfig()
     every = float(job.get("eval_every_s", 60.0))
     fx = FeatureExtractor([s.id for s in sc.layout.sensors], clock_periods(sc.environment))
+    npc_ids = [m.id for m in sc.crew.members]
+    cx = CrewFeatureExtractor(npc_ids, crew_sensor_map(sc.layout.sensors))
     t_rows, rows, active = [], [], []
+    c_t, c_npc, c_rows, c_truth = [], [], [], []
     for res in Engine(sc).run(ticks):
         t = res.tick.t_sim_s
         fx.push(t, tick_samples(res.tick, res.observations))
-        if fx.ready(t) and res.tick.tick % round(every / sc.file.dt_s) == 0:
+        cx.push(res.tick, res.observations)
+        if res.tick.tick % round(every / sc.file.dt_s) != 0:
+            continue
+        if fx.ready(t):
             t_rows.append(t)
             rows.append(fx.compute(t))
             active.append("|".join(res.tick.active_faults))
+        if cx.ready(t):
+            for npc_id, vec in cx.compute(t).items():
+                c_t.append(t)
+                c_npc.append(npc_id)
+                c_rows.append(vec)
+                c_truth.append(_crew_truth(res.tick, npc_id))
     out = Path(job["out"])
     tmp = out.with_name(out.name + ".tmp")
     shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir(parents=True)
     df = pd.DataFrame(np.asarray(rows, dtype=np.float32).reshape(len(rows), fx.n_features), columns=fx.names)
-    df.insert(0, "t_s", np.asarray(t_rows))
-    df["faults"] = active
+    df.insert(0, "t_s", np.asarray(t_rows, dtype=np.float64))
+    df["faults"] = pd.Series(active, dtype=object)
     df.to_parquet(tmp / "features.parquet", index=False)
+    crew = pd.DataFrame(np.asarray(c_rows, dtype=np.float32).reshape(len(c_rows), cx.n_features), columns=cx.names)
+    crew.insert(0, "npc", pd.Series(c_npc, dtype=object))
+    crew.insert(0, "t_s", np.asarray(c_t, dtype=np.float64))
+    for k, name in enumerate(CREW_TRUTH):  # numbers as float64, the module and the activity as text
+        col = [r[k] for r in c_truth]
+        crew[name] = pd.Series(col, dtype=object) if name in ("truth|module", "truth|activity") else np.asarray(col, dtype=np.float64)
+    crew.to_parquet(tmp / "crew.parquet", index=False)
     meta = {"job": {k: v for k, v in job.items() if k != "out"}, "eval_every_s": every, "n_rows": len(rows),
+            "n_crew_rows": len(c_rows), "crew_feature_names": cx.names,
             "clock_periods_s": list(clock_periods(sc.environment)), "dt_s": sc.file.dt_s,
             "faults": {f.id: {"label": f.label, "type": f.type, "category": f.category, "targets": list(f.targets),
                               "start_s": f.start_s, "duration_s": f.duration_s, "priority": f.priority, "params": f.params}
@@ -187,6 +243,18 @@ def rows_hash(out_dir: str | Path) -> str:
     h = hashlib.sha256()
     for part in sorted((Path(out_dir) / "long").glob("part-*.parquet")):
         df = pd.read_parquet(part)
+        h.update(pd.util.hash_pandas_object(df, index=False).to_numpy().tobytes())
+    return h.hexdigest()
+
+
+def features_hash(out_dir: str | Path) -> str:
+    """Hash of the VALUES of ``features.parquet`` and ``crew.parquet`` of a features job (what to compare between two machines)."""
+    import pandas as pd
+
+    h = hashlib.sha256()
+    for name in ("features.parquet", "crew.parquet"):
+        df = pd.read_parquet(Path(out_dir) / name)
+        h.update(name.encode())
         h.update(pd.util.hash_pandas_object(df, index=False).to_numpy().tobytes())
     return h.hexdigest()
 
@@ -331,12 +399,36 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--features", action="store_true", help="write ML feature rows (features.parquet) instead of the raw dataset")
     p.add_argument("--shard", help="split the job list over several machines: e.g. 0,1,2/10 takes the jobs whose position is 0, 1 or 2 "
                                    "modulo 10 (every machine gets the same list and takes its own shards)")
+    p.add_argument("--plan", help="the job list of a plan file (tools/ml/crew_plan.yaml) instead of --seeds/--only/...; needs --wave")
+    p.add_argument("--wave", type=int, help="the wave of the plan to build (1 or 2)")
+    p.add_argument("--pick", help="keep only the jobs whose id matches this regex (to try one job)")
+    p.add_argument("--list", action="store_true", help="print the jobs, the count per group and split and the simulated days, then exit")
+    p.add_argument("--hash", metavar="DIR", help="print the hash of the values of features.parquet and crew.parquet of a job folder, then exit")
     args = p.parse_args(argv)
-    jobs = build_jobs(parse_seeds(args.seeds), args.days, args.only.split(",") if args.only else None,
-                      Path(args.out), args.nominal, args.ticks, args.features,
-                      args.randomize, args.medical, args.combos)
+    if args.hash:
+        print(features_hash(args.hash))
+        return 0
+    if args.plan:
+        import crew_plan
+
+        if args.wave is None:
+            raise SystemExit("--plan needs --wave")
+        ignored = [f for f, v in (("--only", args.only), ("--nominal", args.nominal), ("--randomize", args.randomize),
+                                  ("--medical", args.medical), ("--combos", args.combos)) if v]
+        if ignored:
+            print(f"warning: {' '.join(ignored)} ignored with --plan (the plan decides the jobs)")
+        jobs = crew_plan.build_plan_jobs(crew_plan.load_plan(args.plan), args.wave, Path(args.out), args.ticks)
+    else:
+        jobs = build_jobs(parse_seeds(args.seeds), args.days, args.only.split(",") if args.only else None,
+                          Path(args.out), args.nominal, args.ticks, args.features,
+                          args.randomize, args.medical, args.combos)
     if args.shard:
         jobs = shard_jobs(jobs, args.shard)
+    if args.pick:
+        jobs = crew_plan.pick_jobs(jobs, args.pick) if args.plan else [j for j in jobs if re.search(args.pick, job_id(j))]
+    if args.list:
+        print(crew_plan.describe(jobs) if args.plan else "\n".join(job_id(j) for j in jobs))
+        return 0
     print(f"{len(jobs)} jobs on {min(args.workers, len(jobs))} workers -> {args.out}")
     t0 = time.perf_counter()
     run_jobs(jobs, args.workers, args.resume)
