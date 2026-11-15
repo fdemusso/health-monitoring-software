@@ -300,6 +300,29 @@ def ema(series: np.ndarray, every_s: float, tau_s: float = TAU_S) -> np.ndarray:
     return out
 
 
+# The BOARD: who the crew detectors flag right now, by name (``board`` param of both): ``{board: {detector id: {person: score}}}``. The stage B
+# medical diagnosis reads it (``gate_board``) to name the person and to stay quiet when the baseline sees nothing. Detectors run in YAML order,
+# so the crew detectors (listed before the diagnosis) have published for the tick when the diagnosis reads.
+BOARD: dict[str, dict[str, dict[str, float]]] = {}
+
+
+EVIDENCE: dict[str, dict[str, tuple[str, ...]]] = {}  # {board: {person: the evidence of the flag with the largest score}}
+
+
+def flagged_evidence(board: str, person: str) -> tuple[str, ...]:
+    """What the baseline says about ``person`` (the values against the expected ones), for the diagnosis that names them."""
+    return EVIDENCE.get(board, {}).get(person, ())
+
+
+def flagged(board: str) -> dict[str, float]:
+    """The people the crew detectors of ``board`` flag at this moment, with their largest score."""
+    out: dict[str, float] = {}
+    for scores in BOARD.get(board, {}).values():
+        for npc, v in scores.items():
+            out[npc] = max(out.get(npc, 0.0), v)
+    return out
+
+
 _LOADED: dict[Path, CrewBaselineModel] = {}  # one copy per file: the slow and the fast detector (and a rebuilt engine) share it
 
 
@@ -325,6 +348,7 @@ class _CrewBaselineParams(BaseModel):
     model: str  # path of a ``CrewBaselineModel`` joblib file (``tools/ml/train_crew.py``)
     mode: Literal["slow", "fast"] = "slow"
     eval_every_s: float = Field(default=60.0, gt=0)
+    board: str | None = None  # publish the flagged people on this board for ``DiagnosisDetector(gate_board=...)``
 
 
 class CrewBaselineDetector(BaseDetector):
@@ -350,10 +374,22 @@ class CrewBaselineDetector(BaseDetector):
         self._mem: dict[str, np.ndarray] = {}  # the memory of the programme of each person (``CrewBaselineModel.memory_step``)
         self._latched: dict[str, Signal] = {}
         self.last_score = 0.0
+        if self.params.board:
+            BOARD.setdefault(self.params.board, {})[self.id] = {}
 
     def forget(self, entity_id: str) -> None:
         self._ema.pop(entity_id, None)
         self._latched.pop(entity_id, None)
+        self._publish()
+
+    def _publish(self) -> None:
+        if self.params.board:
+            BOARD.setdefault(self.params.board, {})[self.id] = {npc: float(s.value) for npc, s in self._latched.items()}
+            ev = EVIDENCE.setdefault(self.params.board, {})
+            for npc in [n for n in ev if not any(n in d for d in BOARD[self.params.board].values())]:
+                del ev[npc]  # nobody flags them any more
+            for npc, s in self._latched.items():
+                ev[npc] = tuple(s.evidence)
 
     def detect(self, ctx: StepContext, observations: list[Observation]) -> list[Signal]:
         tick = ctx.tick
@@ -406,3 +442,4 @@ class CrewBaselineDetector(BaseDetector):
                     subject=npc, value=score, cause="crew_baseline", evidence=phrases,
                     detail=f"{npc}: {text} (score {score:.1f})")
         self.last_score = best
+        self._publish()

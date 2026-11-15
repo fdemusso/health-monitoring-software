@@ -228,3 +228,69 @@ def test_the_stacked_forest_gives_what_scikit_learn_predicts():
         want = [m.predict(row[None, :])[0] for m in models]
         assert stack.predict(row) == pytest.approx(want, abs=1e-9)
     assert cb._StackedForest.try_build([cb.TableRegressor({}, {}, 0.0)]) is None  # anything it does not know falls back
+
+
+class _FeverClf:
+    classes_ = np.asarray(["fever", "nominal"])
+
+    def predict_proba(self, row):
+        return np.asarray([[0.9, 0.1]])
+
+
+def _gated_detector(monkeypatch, gate: str | None):
+    """A real ``DiagnosisDetector`` with a model that always says fever, whose explanation points to ``cmd``."""
+    import joblib
+
+    from ares3.plugins.monitor.ml.diagnoser import DiagnoserModel, DiagnosisDetector
+    from ares3.plugins.monitor.ml.features import FeatureExtractor
+
+    fx = FeatureExtractor(["s1"])
+    model = DiagnoserModel(keys=["s1"], columns=list(fx.names), clock_periods_s=(), mean=np.zeros(len(fx.names)), scale=np.ones(len(fx.names)),
+                           families={"medical": _FeverClf()}, signatures={"fever": np.ones(len(fx.names))}, sensor_info={"s1": ("npc", "cmd")},
+                           phrases={"fever": "Raised core temperature"})
+    monkeypatch.setattr(joblib, "load", lambda _p: model)
+    params = {"model": "x.joblib", "min_proba": 0.6, **({"gate_board": gate} if gate else {})}
+    det = DiagnosisDetector.from_config("diag", params, np.random.default_rng(0), metric=None, targets=[])
+    det.reset()
+    return det
+
+
+def _run_diagnosis(det, seconds=11000):
+    last = []
+    npcs = {"cmd": SimpleNamespace(module_id="NOD1"), "eng": SimpleNamespace(module_id="USL")}
+    for t in range(seconds):
+        obs = [Observation(tick=t, t_s=float(t), sensor_id="s1", entity_id="m", metric="X", value=5.0, value_true=5.0)]
+        last = det.detect(SimpleNamespace(tick=SimpleNamespace(t_sim_s=float(t), npcs=npcs, modules={"NOD1": None, "USL": None})), obs)
+    return last
+
+
+def test_the_medical_diagnosis_speaks_only_while_the_baseline_flags_somebody_and_names_that_person(monkeypatch):
+    cb.BOARD.clear()
+    alone = _run_diagnosis(_gated_detector(monkeypatch, None))
+    assert alone and alone[0].subject == "cmd" and alone[0].cause == "fever"  # without the gate: the person the explanation points to
+
+    cb.BOARD["crew"] = {"ml_crew_slow": {}, "ml_crew_fast": {}}
+    assert _run_diagnosis(_gated_detector(monkeypatch, "crew")) == []  # the baseline sees nobody: no diagnosis of its own
+
+    cb.BOARD["crew"] = {"ml_crew_slow": {"eng": 1.4}, "ml_crew_fast": {"cmd": 1.1, "eng": 2.5}}
+    cb.EVIDENCE["crew"] = {"eng": ("FC 150 bpm, attesi 63 a riposo (z 10,0)",)}
+    gated = _run_diagnosis(_gated_detector(monkeypatch, "crew"))
+    assert gated[0].evidence == ("FC 150 bpm, attesi 63 a riposo (z 10,0)", "Raised core temperature")  # the person's values first, the class last
+    assert gated and gated[0].subject == "eng" and gated[0].module_id == "USL" and gated[0].cause == "fever"  # the person the baseline flags most
+    assert cb.flagged("crew") == {"eng": 2.5, "cmd": 1.1}
+    cb.BOARD.clear()
+    cb.EVIDENCE.clear()
+
+
+def test_the_crew_detector_publishes_who_it_flags_on_its_board(monkeypatch):
+    cb.BOARD.clear()
+    model = toy_model()
+    monkeypatch.setattr(cb, "load_model", lambda _path: model)
+    det = cb.CrewBaselineDetector.from_config("crew_slow", {"model": "x", "mode": "slow", "board": "b"}, np.random.default_rng(0), metric=None, targets=[])
+    det.reset()
+    assert cb.flagged("b") == {}
+    first_signal(det, 3600, REST, bias=lambda t: {"hr": 40.0})
+    assert set(cb.flagged("b")) == {"a"} and cb.flagged("b")["a"] >= 1.0
+    det.forget("a")
+    assert cb.flagged("b") == {}
+    cb.BOARD.clear()

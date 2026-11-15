@@ -16,7 +16,7 @@ commit `6798982` (modelli e codice).
 | `models/station_v2/` | `crew_baseline.joblib`, `diagnoser.joblib` (famiglia medica nuova, le altre dal v1), schede, `eval_crew_{val,test}.json`, `eval_medical_test.json` |
 | `tools/ml/classes.yaml` + `scenarios/station/monitor.yaml` (rigenerato) | 4 classi nuove: `svt_suspected`, `bradycardia`, `respiratory_infection`, `abnormal_exertion` |
 
-Il monitor vivo resta su `station_v1` (fase 3).
+Il monitor vivo passa a `station_v2` con A più B filtrato da A (§3b).
 
 ## 2. Stadio A: baseline per persona dato il contesto
 
@@ -95,6 +95,35 @@ mai arrivati all'equipaggio; **lettura a posteriori** (dopo l'apertura del test,
 2 allarmi = 0,046/giorno (limite sup. 0,146). Somma A + B ≤ 0,186/giorno (limite superiore dell'unione, senza sovrapposizione).
 `eval_medical.py` è stato corretto per il futuro (scarta le diagnosi senza persona).
 
+### 3b. A e B combinati nel monitor vivo (aggiunto dopo il test)
+
+Il monitor vivo (`scenarios/station/monitor.yaml`, generato da `tools/build_station.py`) ora ha `ml_crew_slow` e `ml_crew_fast` dopo le regole e il
+diagnosticatore su `station_v2` con `gate_board: crew`: la famiglia **medica** parla solo mentre lo stadio A segnala qualcuno e **la persona che nomina è
+quella segnalata da A** (A sa chi, B sa che cosa). Le altre famiglie (fisica, attuatori) sono invariate. A pubblica le persone segnalate su una "lavagna"
+(`crew_baseline.BOARD`, per nome) e le sue evidenze (`EVIDENCE`); nell'emergenza la **prima** riga di evidenza è la persona con i valori misurati contro gli attesi,
+l'ultima la classe di B. Causa dell'emergenza: quella del rilevatore elencato per primo (`crew_baseline`, oppure la regola che nomina una causa).
+
+Misura **solo sulla validazione** (`tools/ml/eval_gated.py`, conferma ×2 come nel monitor vivo; il test è speso e qui non si apre):
+
+| | B da solo | A+B filtrato |
+|---|---|---|
+| classe giusta (persona non chiesta) | 56/72 = 0,78 | 56/72 = 0,78 |
+| classe giusta **e** persona giusta | non misurabile come ora (soggetto giusto ~53 % sul test) | **56/72 = 0,78** [0,67-0,86] |
+| persona giusta, qualunque classe | | 63/72 = 0,88 [0,78-0,93] |
+| falsi allarmi su 50,1 giorni nominali di validazione | 1 (0,020/giorno) | **0** |
+
+Il filtro non perde richiamo di classe e sistema persona e allarmi isolati; la qualità delle classi resta quella di B (stress/febbre, mal di spazio, bradicardia,
+FA/infezione respiratoria si confondono). **Non certificato sul test.**
+
+Controlli del monitor vivo su un run intero (`tools/ml/check_crew_live.py`, seed 5):
+* giorno nominale: **0 emergenze**, 4,8 ms/tick (con altri processi in corso);
+* fibrillazione atriale su `cmd` (25 min a 5 h): 1 emergenza, persona giusta, classe `emergency`, aperta a +2 min e confermata a +4 min dall'inizio;
+* febbre su `eng` (4 h a 7 h): persona giusta, causa `fever_or_heat` (la regola esistente sulla temperatura), aperta a +17 min;
+* in quest'ultimo run di 1,2 giorni è comparso anche `arresto_imv` (famiglia fisica/attuatori, invariata rispetto al v1) a 26 h senza guasto: da guardare nella fase 3.
+
+Limite noto: nella FA la classe che B nomina per ultima può essere "infezione respiratoria" (B le confonde: nel test dà FA in 7 eventi e infezione in 7 sugli stessi 8). Per
+questo la prima evidenza è la persona con i numeri.
+
 ## 4. Criteri di accettazione del §7 (test, una volta)
 
 | criterio | esito | misura |
@@ -155,8 +184,8 @@ Monitor di prova `output/ml/monitor_crew_test.yaml` (generato da `tools/ml/make_
 
 ## 9. Cosa resta per la fase 3
 
-1. `tools/build_station.py`: i rilevatori `ml_crew_slow` / `ml_crew_fast` dopo le regole, il diagnosticatore su `station_v2`, la procedura `crew_baseline` → `med_generic`; rigenerare e `--check`.
+1. (fatto, §3b) rilevatori dell'equipaggio e diagnosi medica filtrata nel monitor vivo; resta da controllare con l'interfaccia che mostri l'evidenza (la persona con i valori, poi la classe).
 2. Confronto con le regole online (`check_monitor.py` R / R+A / R+A+B) su run di test, e i falsi allarmi del monitor completo.
-3. Spiegazione dello stadio B: il soggetto è giusto nel 53 %; il minimo è prendere la persona dallo stadio A quando B e A sono d'accordo, o ri-addestrare B con le z dello stadio A.
+3. Qualità delle classi di B (confusioni stress/febbre, FA/infezione respiratoria): ri-addestrare B con le z dello stadio A come ingressi; la persona è già risolta dal filtro.
 4. Le classi congiunte `crew_env` (ipercapnia, ipossia, CO) sui dati dell'onda 2 (E, C, R1 già generati): non fatte.
 5. Se l'utente vuole chiudere i due criteri non superati dello stadio A: ampliare il jitter di addestramento (MET fino a 8,5, sonno più profondo) e ri-addestrare; sul test si può solo rivalutare con modelli nuovi e un test nuovo.

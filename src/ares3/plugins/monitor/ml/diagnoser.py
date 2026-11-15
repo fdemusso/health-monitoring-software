@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ares3.sdk import BaseDetector, Observation, Signal, StepContext
 
+from .crew_baseline import flagged, flagged_evidence
 from .features import FeatureExtractor, describe
 
 
@@ -94,6 +95,10 @@ class _DiagnosisParams(BaseModel):
     model: str  # path of a ``DiagnoserModel`` joblib file (``tools/ml/train_diagnoser.py``)
     eval_every_s: float = Field(default=60.0, gt=0)
     min_proba: float = Field(default=0.6, gt=0, le=1)  # plan D7: below this the family stays quiet
+    # name of the board of the crew baseline detectors (``CrewBaselineDetector(board=...)``): the MEDICAL family then speaks only while
+    # the baseline flags somebody, and the person it names is the one the baseline flags (the explanation of a class points to the right
+    # person only about half the time: the baseline knows who, the diagnosis knows what)
+    gate_board: str | None = None
 
 
 class DiagnosisDetector(BaseDetector):
@@ -135,7 +140,15 @@ class DiagnosisDetector(BaseDetector):
                 phrases, sensor = self.model.explain(x, label)
                 kind, where = self.model.sensor_info.get(sensor or "", ("other", ""))
                 subject = module = None
-                if fam == "medical" and kind == "npc" and where in ctx.tick.npcs:
+                gated = fam == "medical" and bool(self.params.gate_board)
+                if gated:
+                    people = {p: v for p, v in flagged(self.params.gate_board).items() if p in ctx.tick.npcs}
+                    if not people:
+                        continue  # the baseline sees nothing: no medical diagnosis on its own
+                    subject = max(people, key=people.get)
+                    module = ctx.tick.npcs[subject].module_id
+                    phrases = list(flagged_evidence(self.params.gate_board, subject))  # the person's own values, from the baseline
+                elif fam == "medical" and kind == "npc" and where in ctx.tick.npcs:
                     subject, module = where, ctx.tick.npcs[where].module_id
                 elif fam == "sensor" and sensor:
                     subject = sensor
@@ -145,7 +158,7 @@ class DiagnosisDetector(BaseDetector):
                 text = self.model.phrases.get(label, label)
                 self._latched.append(Signal(
                     detector_id=self.id, emergency="anomaly", module_id=module, subject=subject, severity="warning",
-                    value=proba, cause=label, evidence=(text, *phrases),
+                    value=proba, cause=label, evidence=(*phrases, text) if gated else (text, *phrases),  # gated: the person's values first, the class last
                     detail=f"{label} ({proba:.0%}): {text}" + (f"; {'; '.join(phrases)}" if phrases else "")))
             self.last_score = best
         return list(self._latched)

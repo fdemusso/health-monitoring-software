@@ -464,10 +464,19 @@ def ml_detectors() -> str:
     for g in groups:
         lines.append(f'  - {{id: ml_{g}, kind: "ares3.plugins.monitor.ml.anomaly:AnomalyDetector", emergency: anomaly, severity: warning,\n'
                      f'     params: {{model: "models/station_v1/detector_{g}.joblib"}}, confirm_s: 900, clear_s: 1800}}')
+    lines += ["  # Crew stage A (ML, tools/ml/train_crew.py, models/station_v2/): each person's vitals against what the programme of the day predicts",
+              "  # (plugins/monitor/ml/crew_baseline.py). slow: the smoothed statistic over its limit for 10 min; fast: the heart rate far from the expected",
+              "  # one for 2 min (an acute arrhythmia). They publish who they flag on the board `crew`, which the medical diagnosis below reads.",
+              '  - {id: ml_crew_slow, kind: "ares3.plugins.monitor.ml.crew_baseline:CrewBaselineDetector", emergency: medical, severity: warning,',
+              '     params: {model: "models/station_v2/crew_baseline.joblib", mode: slow, board: crew}, confirm_s: 600, clear_s: 1200}',
+              '  - {id: ml_crew_fast, kind: "ares3.plugins.monitor.ml.crew_baseline:CrewBaselineDetector", emergency: medical, severity: warning,',
+              '     params: {model: "models/station_v2/crew_baseline.joblib", mode: fast, board: crew}, confirm_s: 120, clear_s: 600}']
     lines += ["  # Stage B (ML, supervised on the labelled fault catalog): WHICH fault, where, how sure and why. One classifier per family",
-              "  # (physical / actuator / sensor / medical); the probability must reach min_proba. What it opens is in the `diagnosis` table below.",
+              "  # (physical / actuator / sensor / medical); the probability must reach min_proba (the medical classes have their own, tuned on",
+              "  # validation). The MEDICAL family speaks only while the crew baseline above flags somebody, and names that person (gate_board):",
+              "  # the baseline knows who, the diagnosis knows what. What it opens is in the `diagnosis` table below.",
               '  - {id: ml_diagnosis, kind: "ares3.plugins.monitor.ml.diagnoser:DiagnosisDetector", emergency: diagnosis,',
-              f'     params: {{model: "models/station_v1/diagnoser.joblib", min_proba: {DIAGNOSIS_MIN_PROBA}}}}}']
+              f'     params: {{model: "models/station_v2/diagnoser.joblib", min_proba: {DIAGNOSIS_MIN_PROBA}, gate_board: crew}}}}']
     return "\n".join(lines) + "\n"
 
 
@@ -493,7 +502,8 @@ def build_monitor(subs: dict[str, list[str]]) -> str:
         ("targets: [all_modules]   # SWAP-RESID",
          f"targets: [{', '.join(m for m in pressure_targets if m != 'NOD3')}]   # not NOD3: its sensor _b sits at the CDRA-B outlet, other air"),
         ("  # @ML-DETECTORS (the station adds the trained stage A / B detectors here, LAST: a rule that names a cause wins over a diagnosis: tools/build_station.py)\n", ml_detectors()),
-        ("    sensor_fault: caution\n", "    sensor_fault: caution\n" + diagnosis_classes()),
+        ("    sensor_fault: caution\n", "    sensor_fault: caution\n    medical:warning:crew_baseline: caution   # the crew baseline alone: ALERT, the generic procedure\n"
+         + diagnosis_classes()),
         ("# PLACEHOLDER - awaiting the team (and Mario for the final sensor set).", "# Monitoring of the ISS station (derived from monitor_placeholder.yaml by tools/build_station.py)."),
     ]
     for a, b in swaps:

@@ -17,6 +17,7 @@ classifier:
     equipment: caution
     anomaly: caution
     sensor_fault: caution
+    medical:warning:crew_baseline: caution   # the crew baseline alone: ALERT, the generic procedure
     depressurization:warning:perdita_prk: warning
     depressurization:critical:depress_rapida: emergency
     equipment:warning:portello_bloccato: warning
@@ -248,10 +249,19 @@ detectors:
      params: {model: "models/station_v1/detector_thermal_humidity.joblib"}, confirm_s: 900, clear_s: 1800}
   - {id: ml_ventilation, kind: "ares3.plugins.monitor.ml.anomaly:AnomalyDetector", emergency: anomaly, severity: warning,
      params: {model: "models/station_v1/detector_ventilation.joblib"}, confirm_s: 900, clear_s: 1800}
+  # Crew stage A (ML, tools/ml/train_crew.py, models/station_v2/): each person's vitals against what the programme of the day predicts
+  # (plugins/monitor/ml/crew_baseline.py). slow: the smoothed statistic over its limit for 10 min; fast: the heart rate far from the expected
+  # one for 2 min (an acute arrhythmia). They publish who they flag on the board `crew`, which the medical diagnosis below reads.
+  - {id: ml_crew_slow, kind: "ares3.plugins.monitor.ml.crew_baseline:CrewBaselineDetector", emergency: medical, severity: warning,
+     params: {model: "models/station_v2/crew_baseline.joblib", mode: slow, board: crew}, confirm_s: 600, clear_s: 1200}
+  - {id: ml_crew_fast, kind: "ares3.plugins.monitor.ml.crew_baseline:CrewBaselineDetector", emergency: medical, severity: warning,
+     params: {model: "models/station_v2/crew_baseline.joblib", mode: fast, board: crew}, confirm_s: 120, clear_s: 600}
   # Stage B (ML, supervised on the labelled fault catalog): WHICH fault, where, how sure and why. One classifier per family
-  # (physical / actuator / sensor / medical); the probability must reach min_proba. What it opens is in the `diagnosis` table below.
+  # (physical / actuator / sensor / medical); the probability must reach min_proba (the medical classes have their own, tuned on
+  # validation). The MEDICAL family speaks only while the crew baseline above flags somebody, and names that person (gate_board):
+  # the baseline knows who, the diagnosis knows what. What it opens is in the `diagnosis` table below.
   - {id: ml_diagnosis, kind: "ares3.plugins.monitor.ml.diagnoser:DiagnosisDetector", emergency: diagnosis,
-     params: {model: "models/station_v1/diagnoser.joblib", min_proba: 0.9}}
+     params: {model: "models/station_v2/diagnoser.joblib", min_proba: 0.9, gate_board: crew}}
 
 # NPC reaction: ISS Warn -> Gather -> Work. Roles/succession by crew PROFILE. Timings are ESTIMATES.
 crew_response:
