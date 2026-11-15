@@ -291,10 +291,13 @@ def _split_of(group: dict, seed: int) -> str:
 
 
 def jobs_hash(jobs: list[dict]) -> str:
-    """Hash of the whole list (ids, order and every drawn value, not the output folder): equal on two machines = the same list."""
+    """Hash of the whole list (ids, order and every drawn value, not the output folder nor where the repo is checked out): equal on two
+    machines = the same list."""
     h = hashlib.sha256()
     for j in jobs:
-        h.update(json.dumps({k: v for k, v in j.items() if k != "out"}, sort_keys=True, default=str).encode())
+        d = {k: v for k, v in j.items() if k != "out"}
+        d["scenario"] = Path(d["scenario"]).relative_to(ROOT).as_posix()  # absolute in the job, different on every machine
+        h.update(json.dumps(d, sort_keys=True, default=str).encode())
     return h.hexdigest()[:16]
 
 
