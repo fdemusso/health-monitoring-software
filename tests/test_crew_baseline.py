@@ -211,3 +211,20 @@ def test_the_memory_of_the_programme_is_the_same_batch_or_step_by_step():
         assert state == pytest.approx(batch[i], rel=0, abs=1e-12)
     assert batch[0] == pytest.approx([1.2, 1.2, 1.2])
     assert batch[-1][0] < batch[-1][1]  # two hours after the 7 MET the 30 min memory has forgotten it, the 120 min one has not
+
+
+def test_the_stacked_forest_gives_what_scikit_learn_predicts():
+    """The numpy walk of the live detector is the fitted model, to the rounding of the sum, with and without a missing value."""
+    from sklearn.ensemble import HistGradientBoostingRegressor
+
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(600, 6))
+    X[rng.random(X.shape) < 0.03] = np.nan
+    models = [HistGradientBoostingRegressor(loss="absolute_error", max_depth=3, max_iter=40, early_stopping=False, random_state=k)
+              .fit(X, np.nan_to_num(X[:, 0]) * (k + 1) + rng.normal(size=600)) for k in range(3)]
+    stack = cb._StackedForest.try_build(models)
+    assert stack is not None
+    for row in np.vstack([X[:25], np.full((1, 6), np.nan)]):
+        want = [m.predict(row[None, :])[0] for m in models]
+        assert stack.predict(row) == pytest.approx(want, abs=1e-9)
+    assert cb._StackedForest.try_build([cb.TableRegressor({}, {}, 0.0)]) is None  # anything it does not know falls back

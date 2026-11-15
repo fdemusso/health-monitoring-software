@@ -87,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     classes = yaml.safe_load(Path(args.classes).read_text(encoding="utf-8"))
     confirm = {k: v.get("confirm_s", 300.0) for k, v in classes.items()}
     seeds = set(parse_seeds(args.test_seeds))
+    medical.FALLBACK_LABELS = set(diag.info.get("medical", {}).get("fallback_visible_labels", []))  # as in the training
     runs = medical.load_all([Path(d) for d in args.features] if args.features else None)
     twins = medical.twin_index(runs)
     pick = [r for r in runs if r.seed in seeds and (r.group in ("N2", "N3") or r.group.startswith("M"))]

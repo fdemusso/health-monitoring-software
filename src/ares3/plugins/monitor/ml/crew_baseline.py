@@ -97,6 +97,58 @@ class TableRegressor:
                            for ci, bi in zip(k, b, strict=True)])
 
 
+class _StackedForest:
+    """Several fitted ``HistGradientBoostingRegressor`` (numerical features, identity link) evaluated TOGETHER on ONE row with numpy: all
+    their trees are padded into arrays and walked level by level at once, then summed per model. A one-row ``predict`` of scikit-learn
+    costs ~1 ms of overhead each (14 per person per evaluation); this costs ~0.1 ms for all of them. The answer is the model's, to the
+    rounding of the sum (``tests/test_crew_baseline.py`` checks it against ``predict``). Built from the private tree arrays of
+    scikit-learn: ``try_build`` gives None for anything it does not know (categorical splits, another link) and the caller falls back."""
+
+    def __init__(self, models: list) -> None:
+        trees, self.offsets, base = [], [], []
+        for m in models:
+            self.offsets.append(len(trees))
+            base.append(float(np.ravel(m._baseline_prediction)[0]))
+            trees += [p[0].nodes for p in m._predictors]
+        t, width = len(trees), max(len(n) for n in trees)
+        self.feat = np.zeros((t, width), dtype=np.intp)
+        self.thr = np.zeros((t, width))
+        self.miss = np.zeros((t, width), dtype=bool)
+        self.left = np.zeros((t, width), dtype=np.intp)
+        self.right = np.zeros((t, width), dtype=np.intp)
+        self.value = np.zeros((t, width))
+        for i, n in enumerate(trees):
+            k = len(n)
+            leaf = n["is_leaf"].astype(bool)
+            own = np.arange(k)
+            self.feat[i, :k], self.thr[i, :k], self.miss[i, :k] = n["feature_idx"], n["num_threshold"], n["missing_go_to_left"].astype(bool)
+            self.left[i, :k] = np.where(leaf, own, n["left"])  # a leaf points at itself: the walk can run a fixed number of levels
+            self.right[i, :k] = np.where(leaf, own, n["right"])
+            self.value[i, :k] = n["value"]
+        self.depth = max(int(n["depth"].max()) for n in trees)
+        self.base = np.asarray(base)
+        self._rows = np.arange(t)
+
+    @classmethod
+    def try_build(cls, models: list) -> _StackedForest | None:
+        try:
+            for m in models:
+                if type(m).__name__ != "HistGradientBoostingRegressor" or type(m._loss.link).__name__ != "IdentityLink"                         or m.n_trees_per_iteration_ != 1 or any(p[0].nodes["is_categorical"].any() for p in m._predictors):
+                    return None
+            return cls(models)
+        except (AttributeError, KeyError, ValueError, IndexError):
+            return None
+
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        """One value per model for the row ``x`` (``x`` as the models were fitted: the same columns)."""
+        idx = np.zeros(len(self._rows), dtype=np.intp)
+        for _ in range(self.depth):
+            xv = x[self.feat[self._rows, idx]]
+            go_left = np.where(np.isnan(xv), self.miss[self._rows, idx], xv <= self.thr[self._rows, idx])
+            idx = np.where(go_left, self.left[self._rows, idx], self.right[self._rows, idx])
+        return np.add.reduceat(self.value[self._rows, idx], self.offsets) + self.base
+
+
 @dataclass
 class CrewBaselineModel:
     """A fitted model (plain numpy and sklearn objects, picklable)."""
@@ -149,6 +201,13 @@ class CrewBaselineModel:
         d = np.asarray([DIRECTION[q] for q in QUANTITIES], dtype=float)
         return np.where(d == 0, np.abs(z), np.maximum(d * z, 0.0))
 
+    def _stack(self, npc: str) -> _StackedForest | None:
+        cache = self.__dict__.setdefault("_stacked", {})
+        if npc not in cache:
+            models = [self.regressors[npc][q] for q in QUANTITIES] + [self.scale_models[npc][q] for q in QUANTITIES if self.scale_models.get(npc)]
+            cache[npc] = _StackedForest.try_build(models)
+        return cache[npc]
+
     def context(self, X: np.ndarray, mem: np.ndarray | None = None) -> np.ndarray:
         """The input of the regressors: the context columns of ``X`` and the memory of the programme (``mem``: one row per row of ``X``;
         by default computed down the rows of ``X``, which must then be one person's consecutive rows)."""
@@ -163,12 +222,31 @@ class CrewBaselineModel:
         ctx = self.context(X, mem)
         act = X[:, act_i]
         cls = np.where(act.sum(axis=1) > 0, act.argmax(axis=1), _NOMINAL)
-        expected = np.column_stack([self.regressors[npc][q].predict(ctx) for q in QUANTITIES])
         sig = self.sigma[npc][np.arange(len(QUANTITIES))[None, :], cls[:, None]]
-        if self.scale_models.get(npc):  # in transition the residual is larger than in a steady state: the context says so
-            sig = np.maximum(sig, 1.4826 * np.column_stack([np.maximum(self.scale_models[npc][q].predict(ctx), 0.0) for q in QUANTITIES]))
+        stack = self._stack(npc) if len(X) == 1 else None
+        if stack is not None:  # the live detector: one row, the 14 forests of the person at once
+            out = stack.predict(ctx[0])
+            expected = out[None, :len(QUANTITIES)]
+            if self.scale_models.get(npc):
+                sig = np.maximum(sig, 1.4826 * np.maximum(out[None, len(QUANTITIES):], 0.0))
+        else:
+            expected = np.column_stack([self.regressors[npc][q].predict(ctx) for q in QUANTITIES])
+            if self.scale_models.get(npc):  # in transition the residual is larger than in a steady state: the context says so
+                sig = np.maximum(sig, 1.4826 * np.column_stack([np.maximum(self.scale_models[npc][q].predict(ctx), 0.0) for q in QUANTITIES]))
         z = (X[:, q_i] - expected) / sig
         return np.where(np.isfinite(z), z, 0.0), expected  # NOT clipped: ``stats`` clips for D2 and the slow statistic, the fast one reads it whole
+
+    def z_cached(self, npc: str, row: np.ndarray, mem: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """``z_batch`` of one row, remembering the last call per person: the slow and the fast detector evaluate the same row of the same
+        person at the same moment and share the 14 predictions (the dominant cost of the stage)."""
+        key = row.tobytes() + mem.tobytes()
+        cache = self.__dict__.setdefault("_zcache", {})
+        hit = cache.get(npc)
+        if hit is not None and hit[0] == key:
+            return hit[1]
+        out = self.z_batch(npc, row, mem)
+        cache[npc] = (key, out)
+        return out
 
     def stats(self, npc: str, z: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """(stat, D2, directional z) for the z of ``z_batch``; ``stat`` is the instantaneous slow statistic (not smoothed). The z is
@@ -222,13 +300,23 @@ def ema(series: np.ndarray, every_s: float, tau_s: float = TAU_S) -> np.ndarray:
     return out
 
 
+_LOADED: dict[Path, CrewBaselineModel] = {}  # one copy per file: the slow and the fast detector (and a rebuilt engine) share it
+
+
 def load_model(path: str | Path) -> CrewBaselineModel:
     import joblib
 
     p = Path(path)
     if not p.is_absolute() and not p.exists():
         p = _ROOT / p
-    return joblib.load(p)
+    key = p.resolve()
+    stamp = (key.stat().st_mtime_ns, key.stat().st_size)
+    cached = _LOADED.get(key)
+    if cached is None or cached.__dict__.get("_stamp") != stamp:  # a file trained again is read again
+        cached = joblib.load(p)
+        cached.__dict__["_stamp"] = stamp
+        _LOADED[key] = cached
+    return cached
 
 
 class _CrewBaselineParams(BaseModel):
@@ -249,7 +337,14 @@ class CrewBaselineDetector(BaseDetector):
 
     def reset(self) -> None:
         self.model = load_model(self.params.model)
+        try:  # a prediction of ONE row gains nothing from threads and their start-up costs more than the prediction
+            from threadpoolctl import threadpool_limits
+
+            threadpool_limits(limits=1)
+        except ImportError:
+            pass
         self._fx: CrewFeatureExtractor | None = None
+        self._ignore: set[str] = set()  # the sensors that are not a wearable of a crew member
         self._bucket = -1
         self._ema: dict[str, float] = {}
         self._mem: dict[str, np.ndarray] = {}  # the memory of the programme of each person (``CrewBaselineModel.memory_step``)
@@ -265,10 +360,19 @@ class CrewBaselineDetector(BaseDetector):
         if self._fx is None:
             self._fx = CrewFeatureExtractor(list(tick.npcs), {})
             assert self._fx.names == self.model.columns, "the model and the extractor disagree"
-        for o in observations:  # the wearables are the sensors whose entity is a crew member
-            if o.metric in VITALS and o.entity_id in tick.npcs:
-                self._fx.register(o.sensor_id, o.entity_id, o.metric)
-        self._fx.push(tick, observations)
+        row, ignore, mine = self._fx._row, self._ignore, []
+        for o in observations:  # ~1000 a tick: a sensor is classified once, afterwards one set lookup; the wearables are the sensors of a crew member
+            sid = o.sensor_id
+            if sid in ignore:
+                continue
+            if sid not in row:
+                if o.metric in VITALS and o.entity_id in tick.npcs:
+                    self._fx.register(sid, o.entity_id, o.metric)
+                else:
+                    ignore.add(sid)
+                    continue
+            mine.append(o)
+        self._fx.push(tick, mine)
         t = tick.t_sim_s
         bucket = int(t // self.params.eval_every_s)
         if bucket != self._bucket and self._fx.ready(t):
@@ -286,7 +390,7 @@ class CrewBaselineDetector(BaseDetector):
                 continue
             row = row.astype(np.float32).astype(np.float64)  # the precision the dataset stores (``crew.parquet``): online = offline, bit for bit
             self._mem[npc] = m.memory_step(self._mem.get(npc), float(row[m._idx()[0][0]]), self.params.eval_every_s)
-            z, expected = m.z_batch(npc, row, self._mem[npc])
+            z, expected = m.z_cached(npc, row, self._mem[npc])
             stat, _, _ = m.stats(npc, z)
             if fast:
                 score = float(m.fast_stat(z)[0])

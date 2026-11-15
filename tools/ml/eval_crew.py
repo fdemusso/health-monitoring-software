@@ -247,8 +247,8 @@ def event_report(model: CrewBaselineModel, runs: list[CrewRun], twins: dict[tupl
 
 
 def load_twins(dirs=None) -> dict[tuple[int, float], CrewRun]:
-    """Nominal runs WITHOUT jitter (group T): the twins of the M runs, keyed by (seed, days)."""
-    return {(r.seed, r.days): r for r in find_runs(dirs or default_dirs()) if r.group == "T" and not r.jitter}
+    """Nominal runs WITHOUT jitter (the twins of the M runs, ``nominal_s*`` in the ``crew_T_*`` folders), keyed by (seed, days)."""
+    return {(r.seed, r.days): r for r in find_runs(dirs or default_dirs(), prefix="") if not r.faults and not r.jitter and r.group in ("", "T")}
 
 
 def fmt_interval(iv: tuple[float, float]) -> str:

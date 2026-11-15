@@ -92,6 +92,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--val-seeds", default="131-138", help="with --families: the seeds that set the thresholds and are read for the confusion matrix")
     p.add_argument("--fa-target", type=float, default=0.05, help="with --families: false alarms per day allowed per class on the nominal validation days")
     p.add_argument("--min-rows", type=int, default=300, help="with --families: positive rows a class needs to be live in the monitor")
+    p.add_argument("--fallback-labels", default="dehydration", help="with --families: classes whose visible time is start + ramp_s (+ 1 h for the dehydration) "
+                   "because the twin never shows them at k sigmas")
     p.add_argument("--fallback-visible", action="store_true", help="with --families: no twin -> visible = start + ramp_s (+ 1 h for the dehydration)")
     args = p.parse_args(argv)
     if args.families:
@@ -101,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
             args.train_seeds = "1-3,101-124"
         import medical
 
+        medical.FALLBACK_LABELS = {x for x in args.fallback_labels.split(",") if x}
         return medical.train(args)
     args.features = str(args.features[0]) if args.features else str(ROOT / "output" / "ml" / "feat")
 

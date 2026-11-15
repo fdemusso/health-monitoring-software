@@ -56,6 +56,7 @@ def sweep_medical(args) -> int:
     seeds = set(parse_seeds(args.val_seeds))
     if any(s >= 141 for s in seeds):
         raise SystemExit("the test seeds (141+) are opened once, by eval_medical.py")
+    medical.FALLBACK_LABELS = set(model.info.get("medical", {}).get("fallback_visible_labels", []))
     runs = medical.load_all([Path(d) for d in args.features] if isinstance(args.features, list) and args.features else None)
     twins = medical.twin_index(runs)
     pick = [r for r in runs if r.seed in seeds and (r.group == "N1" or r.group.startswith("M"))]
