@@ -83,5 +83,5 @@ export function EcgStrip({ npc, color = 'var(--status-live)' }: { npc: NPCState;
     return () => { cancelAnimationFrame(raf); ro.disconnect() }
   }, [who, color])
 
-  return <canvas ref={canvas} role="img" aria-label={`Simulated ECG of ${npc.id}, ${Math.round(npc.vitals.hr)} beats per minute`} className="block h-28 w-full rounded-control bg-muted/40" />
+  return <canvas ref={canvas} role="img" aria-label={`Simulated ECG, real time, of ${npc.id}, ${Math.round(npc.vitals.hr)} beats per minute`} className="block h-28 w-full rounded-control bg-muted/40" />
 }

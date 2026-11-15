@@ -1,5 +1,6 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Sparkline } from '@/components/Sparkline'
+import { ToggleGroup, type ToggleOption } from '@/components/ui/toggle-group'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { crewIdentity } from '@/domain/crewConfig'
 import { activityLabel, phaseLabel } from '@/domain/emergencyText'
@@ -14,8 +15,13 @@ import { HologramFrame } from './HologramFrame'
 import { EcgStrip } from './EcgStrip'
 import { ResponsePanel } from './ResponsePanel'
 
-/** The last hour of a quantity (one sample per 10 s) for a sparkline. */
-const series = (h: CrewSample[] | undefined, k: keyof CrewSample) => (h ?? []).slice(-360).map((s) => s[k]).filter((x): x is number => typeof x === 'number')
+/** Time spans of the trend lines, in samples (the history has one per 10 simulated seconds). */
+const SPANS = { '5m': 30, '15m': 90, '1h': 360 } as const
+type Span = keyof typeof SPANS
+const SPAN_OPTIONS: ToggleOption<Span>[] = [{ value: '5m', label: '5 min' }, { value: '15m', label: '15 min' }, { value: '1h', label: '1 h' }]
+
+/** The last `n` samples of a quantity for a trend line. */
+const series = (h: CrewSample[] | undefined, k: keyof CrewSample, n: number) => (h ?? []).slice(-n).map((s) => s[k]).filter((x): x is number => typeof x === 'number')
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return <section aria-label={title} className="min-w-0 space-y-3"><h3 className="lbl">{title}</h3>{children}</section>
@@ -39,21 +45,28 @@ function Row({ label, value, unit, note, status = 'ok', values }: { label: strin
 function ReadingsCard({ npc, hist }: { npc: NPCState; hist?: CrewSample[] }) {
   const v = npc.vitals
   const af = (v.rhythm ?? 0) >= 0.5
+  const [span, setSpan] = useState<Span>('15m')
+  const n = SPANS[span]
   return (
     <div className="grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 rounded-lg border border-border bg-card p-4">
       <div className="col-span-2">
-        <div className="mb-1 flex items-baseline justify-between"><h3 className="lbl">ECG · lead II, simulated</h3><span className={`num text-2xl ${vitalStatus('hr', v.hr, npc.activity) !== 'ok' ? statusText[vitalStatus('hr', v.hr, npc.activity)] : ''}`}>{fmt0(v.hr)}<span className="ml-1 font-sans text-xs font-normal text-muted-foreground">bpm</span></span></div>
+        <div className="mb-1 flex items-baseline justify-between"><h3 className="lbl">ECG · simulated, real time only</h3><span className={`num text-2xl ${vitalStatus('hr', v.hr, npc.activity) !== 'ok' ? statusText[vitalStatus('hr', v.hr, npc.activity)] : ''}`}>{fmt0(v.hr)}<span className="ml-1 font-sans text-xs font-normal text-muted-foreground">bpm</span></span></div>
         <EcgStrip npc={npc} />
+        <p className="mt-1 text-xs text-muted-foreground">Drawn from heart rate, rhythm and variability. It always runs at normal speed, even when the simulation is faster.</p>
+      </div>
+      <div className="col-span-2 flex items-center justify-between gap-3">
+        <span className="text-sm text-muted-foreground">Trend lines: last</span>
+        <ToggleGroup value={span} onChange={setSpan} options={SPAN_OPTIONS} />
       </div>
       <Group title="Heart and lungs">
-        <Row label="Blood oxygen" value={fmt0(v.spo2)} unit="%" status={vitalStatus('spo2', v.spo2)} values={series(hist, 'spo2')} />
-        <Row label="Breathing rate" value={fmt0(v.resp_rate)} unit="/min" status={vitalStatus('resp_rate', v.resp_rate)} values={series(hist, 'resp')} />
+        <Row label="Blood oxygen" value={fmt0(v.spo2)} unit="%" status={vitalStatus('spo2', v.spo2)} values={series(hist, 'spo2', n)} />
+        <Row label="Breathing rate" value={fmt0(v.resp_rate)} unit="/min" status={vitalStatus('resp_rate', v.resp_rate)} values={series(hist, 'resp', n)} />
         <Row label="Rhythm" value={af ? 'Irregular' : 'Regular'} status={af ? 'crit' : 'ok'} />
       </Group>
       <Group title="Temperature and recovery">
-        <Row label="Body temperature" value={fmt1(v.core_temp_c)} unit="°C" status={vitalStatus('core_temp_c', v.core_temp_c)} values={series(hist, 'core')} />
-        <Row label="Skin temperature" value={fmt1(v.skin_temp_c)} unit="°C" values={series(hist, 'skin')} />
-        <Row label="Heart-rate variability" value={fmt0(v.hrv_rmssd)} unit="ms" values={series(hist, 'hrv')} />
+        <Row label="Body temperature" value={fmt1(v.core_temp_c)} unit="°C" status={vitalStatus('core_temp_c', v.core_temp_c)} values={series(hist, 'core', n)} />
+        <Row label="Skin temperature" value={fmt1(v.skin_temp_c)} unit="°C" values={series(hist, 'skin', n)} />
+        <Row label="Heart-rate variability" value={fmt0(v.hrv_rmssd)} unit="ms" values={series(hist, 'hrv', n)} />
         <Row label="Sleep" value={sleepLabel(v.sleep_stage)} />
       </Group>
       <div className="col-span-2 border-t border-border pt-4">
