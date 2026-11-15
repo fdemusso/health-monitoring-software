@@ -18,8 +18,8 @@ services:
       - --fps=${ARES3_FPS:-5}        # frames per second to each client: ~1 Mbit/s per viewer at 10, about half at 5
       - --warmup-h=4                 # ~1 min at start: the ML is ready and the charts start full
       - --allow-origin=${ARES3_ORIGIN:-https://ares.daado.dev}
-      - --max-speed=200              # what a client can ask for (a public server must not run flat out)
-      - --max-clients=${ARES3_MAX_CLIENTS:-30}
+      - --max-speed=60               # what a client can ask for (a public server must not run flat out)
+      - --max-clients=${ARES3_MAX_CLIENTS:-8}
       - --guest-commands=${ARES3_GUEST_COMMANDS-approve_action,reject_action,ack_step}   # what a visitor without token may do; empty = watch only
     environment:
       ARES3_TOKEN: ${ARES3_TOKEN:?set ARES3_TOKEN in deploy/.env}   # whoever has it can send commands; the others only watch

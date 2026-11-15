@@ -16,8 +16,8 @@ tunnel. `.dev` è un dominio solo-HTTPS (HSTS): per questo il socket deve essere
 | **Token operatore**: chi collega con `?token=<ARES3_TOKEN>` può mandare comandi; gli altri (spettatori) ricevono tutto, i loro comandi sono rifiutati (`read-only connection`) | `ares3 serve --token` / `ARES3_TOKEN` |
 | **Visitatori (giudici) senza login**: nessun accesso Cloudflare, nessun token. Vedono tutto in diretta e possono solo `approve_action`, `reject_action` e `ack_step` (partecipare alla risposta); iniettare guasti, `reset`, velocità, pausa e `declare_emergency` richiedono il token. Per sola lettura: `ARES3_GUEST_COMMANDS=` vuoto in `deploy/.env` | `--guest-commands` |
 | **Origin**: da un browser il socket si apre solo dalla pagina `https://ares.daado.dev` (403 per le altre) | `--allow-origin` |
-| **Velocità massima** chiesta da un client: 200x (altrimenti `set_speed` potrebbe tenere la CPU al 100%) | `--max-speed` |
-| **Connessioni**: al massimo 50, messaggi dal client al massimo 64 KB | `--max-clients`, automatico |
+| **Velocità massima** chiesta da un client: 60x (altrimenti `set_speed` potrebbe tenere la CPU al 100%) | `--max-speed` |
+| **Connessioni**: al massimo 8 (`ARES3_MAX_CLIENTS`), messaggi dal client al massimo 64 KB | `--max-clients`, automatico |
 | Container non root, filesystem in sola lettura, nessuna capability, 1 GB di RAM e 1,5 CPU | `deploy/docker-compose.yml` |
 | Nessuna porta pubblicata: l'unica via d'ingresso è il tunnel | `deploy/docker-compose.yml` |
 | Segreti solo in `deploy/.env` (ignorato da git) | `.gitignore` |
@@ -105,7 +105,7 @@ Il server Proxmox resta al 97% libero. Con `--pause-when-idle` (attivo nel compo
 collegato** e riparte al primo visitatore: a vuoto non usa CPU. Il tempo simulato non avanza durante la pausa.
 
 Il collo di bottiglia è la **banda in uscita** del collegamento di casa: ogni spettatore costa circa 0,5 Mbit/s a 5 frame/s
-(`ARES3_FPS`, predefinito 5) e circa 1 Mbit/s a 10; con `ARES3_MAX_CLIENTS=30` il massimo è circa 15-30 Mbit/s.
+(`ARES3_FPS`, predefinito 5) e circa 1 Mbit/s a 10; con `ARES3_MAX_CLIENTS=8` il massimo è circa 15-30 Mbit/s.
 
 ## Costi e limiti
 
