@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from crew_data import CrewRun, default_dirs, find_runs
 
-from ares3.plugins.monitor.ml.crew_baseline import QUANTITIES, CrewBaselineModel, ema, load_model
+from ares3.plugins.monitor.ml.crew_baseline import QUANTITIES, Z_CLIP, CrewBaselineModel, ema, load_model
 
 SLOW_CONFIRM_S = 600.0  # ``confirm_s`` of the YAML for the slow detector
 FAST_CONFIRM_S = 120.0
@@ -120,7 +120,7 @@ def run_series(model: CrewBaselineModel, run: CrewRun) -> dict[str, NpcSeries]:
         z, _ = model.z_batch(npc, X)
         t = g["t_s"].to_numpy(dtype=float)
         ex = (X[:, pos["ctx|act_aerobic"]] > 0) | (X[:, pos["ctx|act_resistive"]] > 0) | (X[:, pos["ctx|min_since_ex"]] < EXERCISE_QUIET_MIN)
-        out[str(npc)] = NpcSeries(str(npc), t, z, model._mask(z), ex, X[:, [pos[q] for q in QUANTITIES]],
+        out[str(npc)] = NpcSeries(str(npc), t, z, model._mask(np.clip(z, -Z_CLIP, Z_CLIP)), ex, X[:, [pos[q] for q in QUANTITIES]],
                                   float(np.median(np.diff(t))) if len(t) > 1 else 60.0)
     return out
 
@@ -128,7 +128,7 @@ def run_series(model: CrewBaselineModel, run: CrewRun) -> dict[str, NpcSeries]:
 def alarms_of(model: CrewBaselineModel, s: NpcSeries, mode: str) -> list[Alarm]:
     """The alarms of one crew member with the limits ``model`` carries: ``slow`` | ``fast``."""
     if mode == "fast":
-        return episodes_full(model.fast_stat(s.zm) >= 1.0, s.t, FAST_CONFIRM_S)
+        return episodes_full(model.fast_stat(s.z) >= 1.0, s.t, FAST_CONFIRM_S)
     stat, _, _ = model.stats(s.npc, s.z)
     return episodes_full(ema(stat, s.every_s, model.tau_s) >= 1.0, s.t, SLOW_CONFIRM_S)
 

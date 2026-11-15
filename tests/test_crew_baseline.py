@@ -48,7 +48,7 @@ def toy_model(fast_factor: float = 1.0) -> cb.CrewBaselineModel:
     return cb.CrewBaselineModel(
         npc_ids=["a"], columns=list(NAMES), regressors={"a": {x: Toy(x) for x in q}},
         sigma={"a": np.repeat(np.asarray([[SIGMA[x]] for x in q]), len(CLASSES), axis=1)},
-        precision={"a": np.eye(len(q))}, limit_d=40.0, limit_z=np.full(len(q), 4.0), fast_factor=fast_factor, kind="table")
+        precision={"a": np.eye(len(q))}, limit_d=40.0, limit_z=np.full(len(q), 4.0), fast_factor=fast_factor, limit_fast=np.full(2, 4.0), kind="table")
 
 
 class _Npc:
@@ -178,7 +178,7 @@ def test_the_slow_score_online_is_the_offline_one(monkeypatch):
         if t % 60 == 0 and fx.ready(t):
             online.append(det.last_score)
             rows.append(fx.compute(t)["a"])
-    z, _ = model.z_batch("a", np.asarray(rows))
+    z, _ = model.z_batch("a", np.asarray(rows, dtype=np.float32).astype(np.float64))  # as stored in crew.parquet
     stat, _, _ = model.stats("a", z)
     assert cb.ema(stat, 60.0, model.tau_s) == pytest.approx(online, abs=1e-9)
     # the offline alarm list built from the same series is the one the classifier would open
@@ -196,3 +196,18 @@ def test_the_detector_reads_no_vitals_and_forgets_a_repaired_person(monkeypatch)
 
 def test_the_act_names_and_classes_the_model_relies_on_exist():
     assert len(ACT_NAMES) == len(CLASSES) == 5 and all(f"ctx|{a}" in NAMES for a in ACT_NAMES)
+
+
+def test_the_memory_of_the_programme_is_the_same_batch_or_step_by_step():
+    """The detector steps the memory one row at a time, the offline evaluation runs it down a column: the same numbers, bit for bit."""
+    model = toy_model()
+    mets = np.concatenate([np.full(40, 1.2), np.full(30, 7.0), np.full(120, 1.5)])
+    X = np.zeros((len(mets), len(NAMES)))
+    X[:, NAMES.index("ctx|met10")] = mets
+    batch = model.memory(X)
+    state = None
+    for i, met in enumerate(mets):
+        state = model.memory_step(state, float(met), 60.0)
+        assert state == pytest.approx(batch[i], rel=0, abs=1e-12)
+    assert batch[0] == pytest.approx([1.2, 1.2, 1.2])
+    assert batch[-1][0] < batch[-1][1]  # two hours after the 7 MET the 30 min memory has forgotten it, the 120 min one has not

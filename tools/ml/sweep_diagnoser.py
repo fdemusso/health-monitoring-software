@@ -45,20 +45,52 @@ def alarms(model, df, thr: float, confirm: dict[str, float], confirm_x: float) -
     return first
 
 
+def sweep_medical(args) -> int:
+    """The table threshold -> false alarms per day / recall of every live class of the medical family, on the validation seeds."""
+    import medical
+    from crew_data import parse_seeds
+
+    model = joblib.load(args.model)
+    classes = yaml.safe_load(Path(args.classes).read_text(encoding="utf-8"))
+    confirm = {k: v.get("confirm_s", 300.0) for k, v in classes.items()}
+    seeds = set(parse_seeds(args.val_seeds))
+    if any(s >= 141 for s in seeds):
+        raise SystemExit("the test seeds (141+) are opened once, by eval_medical.py")
+    runs = medical.load_all([Path(d) for d in args.features] if isinstance(args.features, list) and args.features else None)
+    twins = medical.twin_index(runs)
+    pick = [r for r in runs if r.seed in seeds and (r.group == "N1" or r.group.startswith("M"))]
+    val = medical.predict_val(model.families["medical"], pick, twins, model.scale, list(model.columns), classes,
+                              float(model.info.get("medical", {}).get("visible_k", 3.0)), args.fallback_visible)
+    out = medical.tune(model, val, confirm, args.fa_target)
+    print(f"\nnominal validation days: {out['nominal_days']:.1f}")
+    for label, rows in out["table"].items():
+        print(f"\n{label}")
+        for r in rows:
+            print(f"  min_proba {r['threshold']:.2f}  false alarms {r['per_day']:6.3f}/day ({r['false_alarms']:3d})  recall {r['detected']}/{r['events']}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--features", default=str(ROOT / "output" / "ml" / "feat"))
+    p.add_argument("--features", nargs="*", default=None, help="folders with the runs (default: output/ml/feat; with --medical, every crew* folder)")
     p.add_argument("--model", default=str(ROOT / "models" / "station_v1" / "diagnoser.joblib"))
     p.add_argument("--classes", default=str(Path(__file__).with_name("classes.yaml")))
     p.add_argument("--thresholds", default="0.6,0.8,0.9,0.95")
     p.add_argument("--confirm-x", default="1,2", help="multiples of each class's confirm_s")
+    p.add_argument("--medical", action="store_true", help="the medical family on the crew dataset: per class the false alarms per day and the recall at each "
+                   "threshold, on the validation seeds (the test seeds are never read here)")
+    p.add_argument("--val-seeds", default="131-138")
+    p.add_argument("--fa-target", type=float, default=0.05)
+    p.add_argument("--fallback-visible", action="store_true", help="no twin: visible = start + ramp_s (+ 1 h for the dehydration)")
     args = p.parse_args(argv)
+    if args.medical:
+        return sweep_medical(args)
 
     model = joblib.load(args.model)  # our own file: joblib runs code on load
     classes = yaml.safe_load(Path(args.classes).read_text(encoding="utf-8"))
     confirm = {k: v.get("confirm_s", 900.0) for k, v in classes.items()}
     train_seeds = set(model.info["train_seeds"])
-    runs = load_runs(Path(args.features))
+    runs = load_runs(Path(args.features[0] if args.features else ROOT / "output" / "ml" / "feat"))
     cols = feature_columns(runs[0]["df"])
     nominal = {r["seed"]: r for r in runs if r["nominal"] and r["meta"]["job"].get("days", 3) >= 2}
     nom_test = [r for r in runs if r["nominal"] and r["seed"] not in train_seeds]

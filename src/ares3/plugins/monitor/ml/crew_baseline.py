@@ -4,16 +4,22 @@ and normal to a physiologist); this one predicts each vital from the CONTEXT ALO
 the minutes since exercise or since sleep began, the clock: ``crew.py``) and judges the residual.
 
 Per (crew member, quantity) a regressor gives the expected value; ``z`` = residual / sigma, where sigma is a robust scale per
-activity class. The quantities are the 10 min means of the six vitals plus the noise of the heart rate (``hr|sd10``: the
-irregularity of an atrial fibrillation shows there). Each has a clinical direction (SpO2 only down, core temperature and the heart
-rate irregularity only up). Two statistics per crew member:
+activity class, raised where the context says the body is in transition (a second small regressor of the size of the residual).
+The context is the row of ``crew.py`` plus a MEMORY of the programme: exponential means of ``ctx|met10`` with time constants of 30,
+120 and 360 min, computed row after row (the detector and the offline evaluation run the same recursion), because the heart rate
+stays above rest for hours after exercise and ``ctx|min_since_ex`` stops counting at 2 h.
+
+The quantities are the 10 min means of the six vitals plus the noise of the heart rate (``hr|sd10``: the irregularity of an atrial
+fibrillation shows there). Each has a clinical direction (SpO2 only down, core temperature and the heart rate irregularity only up).
+Two statistics per crew member:
 
 * ``D2``: robust Mahalanobis distance of the (directional) z vector, with the precision matrix of that person;
 * ``max z``: the largest directional z.
 
-``stat`` = max(D2 / L_D, max_q z_q / L_z[q]); the limits are a margin times the largest value seen on validation nights. The
-``slow`` detector smooths ``stat`` (exponential mean, 5 min) and signals at >= 1; the ``fast`` one looks at the heart rate alone,
-unsmoothed, at ``fast_factor`` times its limit (an acute arrhythmia: the debounce of the YAML does the rest).
+``stat`` = max(D2 / L_D, max_q z_q / L_z[q]); the limits are a margin times the largest level that the validation days SUSTAINED for
+the confirmation time of the detector (a stretch that short is what the debounce of the YAML lets through, so a transition of a few
+minutes sets no limit). The ``slow`` detector smooths ``stat`` (exponential mean, 5 min) and signals at >= 1; the ``fast`` one looks
+at the heart rate alone, unsmoothed, at ``fast_factor`` times its limit (an acute arrhythmia: the debounce of the YAML does the rest).
 
 SECURITY: ``joblib`` runs code when it loads a file. Load only the models this project produced (``models/``).
 """
@@ -41,6 +47,8 @@ QUANTITIES = tuple(f"{v}|lv10" for v in VITALS) + ("hr|sd10",)
 DIRECTION = {"hr|lv10": 0, "resp_rate|lv10": 0, "spo2|lv10": -1, "core_temp_c|lv10": +1, "skin_temp_c|lv10": 0,
              "hrv_rmssd|lv10": 0, "hr|sd10": +1}
 FAST_QUANTITIES = ("hr|lv10", "hr|sd10")
+MEMORY_TAU_MIN = (30.0, 120.0, 360.0)  # time constants of the memory of the programme (the means of ``ctx|met10``)
+EVERY_S = 60.0  # the rows of the extractor are one minute apart
 CTX_COLUMNS = ("ctx|met10", "ctx|met_max30", "ctx|min_since_ex", *(f"ctx|{a}" for a in ACT_NAMES), "ctx|min_since_sleep",
                "clock|sin", "clock|cos")
 _NOMINAL = CLASSES.index("nominal")
@@ -104,10 +112,36 @@ class CrewBaselineModel:
     tau_s: float = TAU_S
     kind: Literal["regressor", "table"] = "regressor"
     info: dict = field(default_factory=dict)  # how it was trained (split, margins, metrics, versions): the model card
+    limit_fast: np.ndarray = field(default_factory=lambda: np.ones(len(FAST_QUANTITIES)))  # limits of the fast statistic
+    scale_models: dict[str, dict[str, Any]] = field(default_factory=dict)  # npc -> quantity -> regressor of the size of the residual
 
     def _idx(self) -> tuple[list[int], list[int], list[int]]:
         pos = {c: i for i, c in enumerate(self.columns)}
         return [pos[c] for c in CTX_COLUMNS], [pos[q] for q in QUANTITIES], [pos[f"ctx|{a}"] for a in ACT_NAMES]
+
+    @staticmethod
+    def memory_step(prev: np.ndarray | None, met10: float, every_s: float = EVERY_S) -> np.ndarray:
+        """The memory of the programme after one more row: exponential means of ``met10`` (the first row starts them at its value).
+        The online detector calls this once per evaluation; ``memory`` below calls it down a column."""
+        met = met10 if math.isfinite(met10) else 1.0
+        if prev is None:
+            return np.full(len(MEMORY_TAU_MIN), met)
+        a = 1.0 - np.exp(-every_s / (np.asarray(MEMORY_TAU_MIN) * 60.0))
+        return prev + a * (met - prev)
+
+    def memory(self, X: np.ndarray, every_s: float = EVERY_S) -> np.ndarray:
+        """(rows, 3): the memory down the rows of ONE person, consecutive and ``every_s`` apart (what the detector does online)."""
+        mets = np.asarray(X[:, self._idx()[0][0]], dtype=float)
+        mets = np.where(np.isfinite(mets), mets, 1.0)
+        a = 1.0 - np.exp(-every_s / (np.asarray(MEMORY_TAU_MIN) * 60.0))  # the same arithmetic as ``memory_step``, column by column
+        out = np.empty((len(X), len(MEMORY_TAU_MIN)))
+        for k in range(len(MEMORY_TAU_MIN)):
+            ak, state = float(a[k]), 0.0
+            col = out[:, k]
+            for i, met in enumerate(mets.tolist()):
+                state = met if i == 0 else state + ak * (met - state)
+                col[i] = state
+        return out
 
     @staticmethod
     def _mask(z: np.ndarray) -> np.ndarray:
@@ -115,34 +149,45 @@ class CrewBaselineModel:
         d = np.asarray([DIRECTION[q] for q in QUANTITIES], dtype=float)
         return np.where(d == 0, np.abs(z), np.maximum(d * z, 0.0))
 
-    def z_batch(self, npc: str, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """(z, expected), both (rows, quantities): ``X`` has one row of crew features per row, in ``columns`` order. A feature that
-        could not be computed (no samples) is taken as normal (z = 0)."""
+    def context(self, X: np.ndarray, mem: np.ndarray | None = None) -> np.ndarray:
+        """The input of the regressors: the context columns of ``X`` and the memory of the programme (``mem``: one row per row of ``X``;
+        by default computed down the rows of ``X``, which must then be one person's consecutive rows)."""
         X = np.atleast_2d(np.asarray(X, dtype=float))
-        ctx_i, q_i, act_i = self._idx()
-        ctx = X[:, ctx_i]
+        return np.hstack([X[:, self._idx()[0]], self.memory(X) if mem is None else np.atleast_2d(mem)])
+
+    def z_batch(self, npc: str, X: np.ndarray, mem: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+        """(z, expected), both (rows, quantities): ``X`` has one row of crew features per row, in ``columns`` order. A feature that
+        could not be computed (no samples) is taken as normal (z = 0). ``z`` is not clipped (see ``stats``)."""
+        X = np.atleast_2d(np.asarray(X, dtype=float))
+        _, q_i, act_i = self._idx()
+        ctx = self.context(X, mem)
         act = X[:, act_i]
         cls = np.where(act.sum(axis=1) > 0, act.argmax(axis=1), _NOMINAL)
         expected = np.column_stack([self.regressors[npc][q].predict(ctx) for q in QUANTITIES])
         sig = self.sigma[npc][np.arange(len(QUANTITIES))[None, :], cls[:, None]]
+        if self.scale_models.get(npc):  # in transition the residual is larger than in a steady state: the context says so
+            sig = np.maximum(sig, 1.4826 * np.column_stack([np.maximum(self.scale_models[npc][q].predict(ctx), 0.0) for q in QUANTITIES]))
         z = (X[:, q_i] - expected) / sig
-        return np.clip(np.where(np.isfinite(z), z, 0.0), -Z_CLIP, Z_CLIP), expected
+        return np.where(np.isfinite(z), z, 0.0), expected  # NOT clipped: ``stats`` clips for D2 and the slow statistic, the fast one reads it whole
 
     def stats(self, npc: str, z: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """(stat, D2, directional z) for the z of ``z_batch``; ``stat`` is the instantaneous slow statistic (not smoothed)."""
-        zm = self._mask(z)
+        """(stat, D2, directional z) for the z of ``z_batch``; ``stat`` is the instantaneous slow statistic (not smoothed). The z is
+        clipped to +-``Z_CLIP`` here: one quantity cannot add more than that to the slow statistic."""
+        zm = self._mask(np.clip(z, -Z_CLIP, Z_CLIP))
         d2 = np.einsum("ij,jk,ik->i", zm, self.precision[npc], zm)
         stat = np.maximum(d2 / self.limit_d, (zm / self.limit_z).max(axis=1))
         return stat, d2, zm
 
-    def fast_stat(self, zm: np.ndarray) -> np.ndarray:
-        """The fast statistic: the largest directional z of the heart rate quantities over ``fast_factor`` times its limit."""
+    def fast_stat(self, z: np.ndarray) -> np.ndarray:
+        """The fast statistic: the largest directional z of the heart rate quantities over ``fast_factor`` times its limit. It reads the
+        UNCLIPPED z: the first minutes of a change of activity reach ~10 sigmas for a few minutes, an arrhythmia tens of them."""
+        zm = self._mask(z)
         ix = [QUANTITIES.index(q) for q in FAST_QUANTITIES]
-        return (zm[:, ix] / (self.fast_factor * self.limit_z[ix])).max(axis=1)
+        return (zm[:, ix] / (self.fast_factor * self.limit_fast)).max(axis=1)
 
-    def score(self, npc: str, row: np.ndarray) -> tuple[float, np.ndarray, str]:
-        """(stat, z, explanation) of one row of crew features."""
-        z, expected = self.z_batch(npc, row)
+    def score(self, npc: str, row: np.ndarray, mem: np.ndarray | None = None) -> tuple[float, np.ndarray, str]:
+        """(stat, z, explanation) of one row of crew features (``mem``: the memory of that person's programme; by default the row alone)."""
+        z, expected = self.z_batch(npc, row, mem)
         stat, _, _ = self.stats(npc, z)
         return float(stat[0]), z[0], self.explain(npc, np.asarray(row, dtype=float), z[0], expected[0])[0]
 
@@ -152,6 +197,7 @@ class CrewBaselineModel:
         ctx_i, q_i, _ = self._idx()
         met = float(row[ctx_i[0]]) if math.isfinite(row[ctx_i[0]]) else 0.0
         where = "a riposo" if met < 2.0 else f"a {_it(met, 1)} MET"
+        z = np.clip(z, -Z_CLIP, Z_CLIP)
         zm = self._mask(z[None, :])[0]
         order = [i for i in np.argsort(zm)[::-1][:top] if zm[i] > 0]
         phrases = []
@@ -206,6 +252,7 @@ class CrewBaselineDetector(BaseDetector):
         self._fx: CrewFeatureExtractor | None = None
         self._bucket = -1
         self._ema: dict[str, float] = {}
+        self._mem: dict[str, np.ndarray] = {}  # the memory of the programme of each person (``CrewBaselineModel.memory_step``)
         self._latched: dict[str, Signal] = {}
         self.last_score = 0.0
 
@@ -237,10 +284,12 @@ class CrewBaselineDetector(BaseDetector):
         for npc, row in rows.items():
             if npc not in m.regressors or npc not in ctx.tick.npcs:
                 continue
-            z, expected = m.z_batch(npc, row)
-            stat, _, zm = m.stats(npc, z)
+            row = row.astype(np.float32).astype(np.float64)  # the precision the dataset stores (``crew.parquet``): online = offline, bit for bit
+            self._mem[npc] = m.memory_step(self._mem.get(npc), float(row[m._idx()[0][0]]), self.params.eval_every_s)
+            z, expected = m.z_batch(npc, row, self._mem[npc])
+            stat, _, _ = m.stats(npc, z)
             if fast:
-                score = float(m.fast_stat(zm)[0])
+                score = float(m.fast_stat(z)[0])
             else:
                 prev = self._ema.get(npc)
                 score = float(stat[0]) if prev is None else prev + a * (float(stat[0]) - prev)

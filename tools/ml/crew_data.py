@@ -15,22 +15,21 @@ import pandas as pd
 
 
 def _output_dir() -> Path:
-    """``output/ml`` of this checkout, or of the main one when this is a git worktree (``output/`` is not in the repository, so the data
-    stays in the main checkout); ``ARES3_ML_DATA`` overrides both."""
+    """``output/ml`` that holds the ``crew*`` run folders: this checkout's, or the main one's when this is a git worktree (``output/`` is not
+    in the repository, so the data stays in the main checkout); ``ARES3_ML_DATA`` overrides both."""
     import os
     import subprocess
 
     if os.environ.get("ARES3_ML_DATA"):
         return Path(os.environ["ARES3_ML_DATA"])
-    here = Path(__file__).resolve().parents[2] / "output" / "ml"
-    if here.is_dir():
-        return here
+    root = Path(__file__).resolve().parents[2]
+    candidates = [root / "output" / "ml"]
     try:
-        common = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=here.parents[1], capture_output=True, text=True,
-                                check=True).stdout.strip()
-        return (here.parents[1] / common).resolve().parent / "output" / "ml"
+        common = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=root, capture_output=True, text=True, check=True).stdout.strip()
+        candidates.append((root / common).resolve().parent / "output" / "ml")
     except (OSError, subprocess.CalledProcessError):
-        return here
+        pass
+    return next((c for c in candidates if any(c.glob("crew*"))), candidates[0])
 
 
 OUTPUT = _output_dir()
@@ -72,6 +71,11 @@ class CrewRun:
         return self.meta["faults"]
 
     @property
+    def features(self) -> pd.DataFrame:
+        """``features.parquet``: the station features (the stage B input), one row per minute once the 3 h windows are full."""
+        return pd.read_parquet(self.path / "features.parquet")
+
+    @property
     def crew(self) -> pd.DataFrame:
         if self._crew is None:
             self._crew = pd.read_parquet(self.path / "crew.parquet")
@@ -81,14 +85,14 @@ class CrewRun:
         self._crew = None
 
 
-def find_runs(dirs: list[str | Path], prefix: str = CREW_PREFIX) -> list[CrewRun]:
-    """Every complete run directly inside ``dirs`` (names starting with ``prefix``), sorted by name; a name found twice (a run copied
-    between machines) is read once."""
+def find_runs(dirs: list[str | Path], prefix: str = CREW_PREFIX, need: str = "crew.parquet") -> list[CrewRun]:
+    """Every complete run directly inside ``dirs`` (names starting with ``prefix``, holding the file ``need``), sorted by name; a name
+    found twice (a run copied between machines) is read once. ``prefix=""`` and ``need="features.parquet"`` read the older catalog runs."""
     seen: dict[str, CrewRun] = {}
     for d in dirs:
         for p in sorted(Path(d).iterdir()):
             if p.is_dir() and p.name.startswith(prefix) and not p.name.endswith(".tmp") \
-                    and (p / "crew.parquet").exists() and (p / "meta.json").exists() and p.name not in seen:
+                    and (p / need).exists() and (p / "meta.json").exists() and p.name not in seen:
                 seen[p.name] = CrewRun(p, json.loads((p / "meta.json").read_text(encoding="utf-8")))
     return sorted(seen.values(), key=lambda r: r.name)
 
