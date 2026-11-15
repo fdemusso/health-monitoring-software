@@ -32,7 +32,8 @@ function Trend({ title, value, unit, status, values }: { title: string; value: s
   )
 }
 
-const series = (h: CrewSample[] | undefined, k: keyof CrewSample) => (h ?? []).map((s) => s[k]).filter((x): x is number => typeof x === 'number')
+/** The last hour of a vital (one sample per 10 s) for a sparkline. */
+const series = (h: CrewSample[] | undefined, k: keyof CrewSample) => (h ?? []).slice(-360).map((s) => s[k]).filter((x): x is number => typeof x === 'number')
 
 export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: SimulationTick; onBack: () => void }) {
   const id = crewIdentity(npc.id)

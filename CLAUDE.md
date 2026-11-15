@@ -13,7 +13,7 @@ uv sync --extra dev                                   # install (Python >= 3.11)
 uv run pytest -q -n auto                             # tests in parallel (pytest-xdist): ~90 s on 16 cores, ~450 s serial; the floor is the longest test (a 14 h simulated day)
 uv run pytest tests/test_engine.py::test_closed_system_conserves_every_species
 uv run ruff check src tests
-uv sync --extra serve && uv run ares3 serve scenarios/station/nominal.yaml --speed 10 --warmup-h 4   # live WebSocket bridge for the dashboard (ws://127.0.0.1:8765; protocol in src/ares3/serve/session.py; --warmup-h runs hours ahead so the ML is ready and the charts start full: the port is open meanwhile and clients get a `warming` state with progress, the dashboard shows WarmupScreen)
+uv sync --extra serve && uv run ares3 serve scenarios/station/nominal.yaml --speed 10 --warmup-h 4   # live WebSocket bridge for the dashboard (ws://127.0.0.1:8765; protocol in src/ares3/serve/session.py; --warmup-h runs hours ahead so the ML is ready and the charts start full: the port is open meanwhile and clients get a `warming` state with progress, the dashboard shows WarmupScreen); `--vital-variability` (default 0.3) adds a short-term wobble to hr/spo2/resp so live vitals are not ruler-straight (the engine default is 0; ML trained on smooth vitals: see docs/monitor-ui.md)
 uv run python tools/demo_client.py --fault fire --module COL --seconds 60 --approve --ack   # a stand-in for the UI: injects a fault and prints mode / emergencies / requests / procedure steps
 uv run ares3 validate scenarios/station/nominal.yaml  # loads scenario + builds every plugin, no run
 uv run --with openpyxl python tools/build_station.py  # regenerate scenarios/station/* from Mario's workbook (--check: are they stale?)

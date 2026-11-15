@@ -115,6 +115,8 @@ export interface SimulationTick {
   /** Local hours, 0..24. */
   time_of_day_h: number;
   modules: Record<string, ModuleState>;
+  /** What each crew member's wearable reads right now (sensed: noisy, as the monitor sees it), by crew id and metric. Added by `ares3 serve`, not part of `sdk/types.py`. */
+  wearables?: Record<string, Record<string, number>>;
   /** Keyed by astronaut id. */
   npcs: Record<string, NPCState>;
   hatches: HatchState[];
@@ -142,6 +144,9 @@ export interface SimulationTick {
 
 /** One point of the history the backend sends to a new client (one per simulated minute, last 6 h): what the charts need. */
 export type HistorySample = Pick<SimulationTick, 't_sim_s' | 'npcs' | 'modules'>;
+
+/** One point of the finer crew history (one per 10 simulated seconds): what the wearables read. */
+export interface VitalsSample { t_sim_s: number; w: Record<string, Record<string, number>> }
 
 export type EmergencyKind = 'depressurization' | 'fire' | 'toxic' | 'equipment' | 'medical' | 'sensor_fault' | 'anomaly';
 /** passive: green; alert: yellow; reaction: orange (warning) / red (emergency), see docs/monitor-ui.md. */

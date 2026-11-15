@@ -101,6 +101,16 @@ simulate, un campione al minuto (stessi `npcs` e `modules` di un tick). La UI ci
 li costruiva da sola, un punto al minuto SIMULATO dal momento della connessione: a 10x un punto ogni 6 s reali, a 1x uno ogni minuto).
 Se la storia è vuota il messaggio non viene inviato. Un `reset` riparte da zero e svuota la storia.
 
+I segni vitali dell'equipaggio hanno una storia più fine: `"vitals": [{"t_sim_s", "w": {crew: {hr, spo2, resp_rate, core_temp_c, cohb_pct}}}, ...]`,
+un punto ogni 10 s simulati (2160 punti = 6 h). Sono le letture dei WEARABLE (misurate: rumore e guasti dei sensori inclusi, come le vede il
+monitor), non la verità del modello; `samples` (un punto al minuto) resta per moduli e verità. Ogni `tick` porta anche `"wearables"` (ultima
+lettura per persona e metrica): la UI li disegna nel grafico dei segni vitali. L'asse del tempo è l'ora di bordo (`time_of_day_h`).
+
+`ares3 serve --vital-variability K` (default 0.3) aggiunge al modello fisiologico (HumanModel, `variability`) una piccola oscillazione a breve
+termine su hr / spo2 / resp_rate, perché un adulto vero non ha una riga dritta (K=1: hr ±2.5 bpm, spo2 ±0.4 %, resp ±1/min). 0 = il modello liscio
+di prima (dataset ed ML restano identici: il default del motore è 0). Con K >= 0.5 il `crew_baseline` ML (`models/station_v2`, addestrato su
+vitali lisci) segnala tutti: per usare K=1 va riaddestrato con dati generati con la stessa variabilità.
+
 `ares3 serve ... --warmup-h 4` fa avanzare la simulazione di 4 ore (circa un minuto reale) prima di andare in diretta: i rilevatori ML hanno
 bisogno di 3 ore simulate di storia prima di giudicare, e la storia dei grafici parte già piena. La porta si apre SUBITO (dopo il
 caricamento di scenario e modelli, qualche secondo): durante il warmup il server è nello stato `warming`.

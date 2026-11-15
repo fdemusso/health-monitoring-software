@@ -29,7 +29,8 @@ const METRICS: Record<Key, Metric> = {
 
 const WINDOWS = { '15m': 900, '1h': 3600, '6h': 21600 } as const
 type Win = keyof typeof WINDOWS
-const X_STEP: Record<Win, number> = { '15m': 300, '1h': 900, '6h': 3600 }
+/** Spacing of the time-axis labels, aligned to the clock on board (a label is always a round time). */
+const X_STEP: Record<Win, number> = { '15m': 180, '1h': 600, '6h': 3600 }
 
 const PADL = 44, PADR = 92, PADT = 14, PADB = 28
 
@@ -37,7 +38,8 @@ const CLASS_COLOR: Record<AlertClass, string> = {
   emergency: 'var(--status-danger)', warning: 'var(--status-warning)', caution: 'var(--status-info)', advisory: 'var(--status-info)',
 }
 
-const hhmm = (s: number) => fmtHms(s).slice(0, 5)
+/** Time of day on board from simulated seconds + the clock offset. */
+const clock = (t: number, off: number) => fmtHms((t + off) % 86400)
 
 interface Span { id: string; t0: number; t1: number | null; text: string; color: string }
 
@@ -45,6 +47,7 @@ export const VitalsChart = memo(function VitalsChart() {
   const history = useAllCrewHistory()
   const eventLog = useEventLog()
   const emergencies = useStore((s) => s.tick?.emergencies)
+  const off = useStore((s) => s.clockOffsetS)
   const [key, setKey] = useState<Key>('hr')
   const [win, setWin] = useState<Win>('1h')
   const [focus, setFocus] = useState<string | null>(null)
@@ -75,7 +78,7 @@ export const VitalsChart = memo(function VitalsChart() {
     const yTicks: number[] = []
     for (let v = lo; v <= hi + 1e-9; v += meta.step) yTicks.push(Number(v.toFixed(2)))
     const xTicks: number[] = []
-    for (let t = Math.ceil(tMin / X_STEP[win]) * X_STEP[win]; t <= tMax - X_STEP[win] * 0.25; t += X_STEP[win]) xTicks.push(t)
+    for (let t = Math.ceil((tMin + off) / X_STEP[win]) * X_STEP[win] - off; t <= tMax - X_STEP[win] * 0.25; t += X_STEP[win]) xTicks.push(t)
 
     // end-of-line labels, >= 18 px apart, kept inside the plot
     const GAP = 18
@@ -88,7 +91,7 @@ export const VitalsChart = memo(function VitalsChart() {
     for (let i = tips.length - 2; i >= 0; i--) if (tips[i + 1].y - tips[i].y < GAP) tips[i].y = tips[i + 1].y - GAP
     if (tips.length && tips[0].y < yTop) tips[0].y = yTop
     return { series: vis, x, y, tips, tMin, tMax, lo, hi, yTicks, xTicks }
-  }, [history, ids, key, win, meta, PW, PH])
+  }, [history, ids, key, win, meta, PW, PH, off])
 
   // Emergencies as spans on the time axis (opened ... cleared, or still open).
   const spans = useMemo<Span[]>(() => {
@@ -178,7 +181,7 @@ export const VitalsChart = memo(function VitalsChart() {
             {model.xTicks.map((t) => (
               <g key={t}>
                 <line x1={model.x(t)} x2={model.x(t)} y1={PADT} y2={PADT + PH} stroke="var(--border)" strokeOpacity={0.45} />
-                <text x={model.x(t)} y={H - 8} fontSize="12" textAnchor="middle" className="fill-muted-foreground">{hhmm(t)}</text>
+                <text x={model.x(t)} y={H - 8} fontSize="12" textAnchor="middle" className="fill-muted-foreground">{clock(t, off).slice(0, 5)}</text>
               </g>
             ))}
             <text x={W - PADR} y={H - 8} fontSize="12" fontWeight={600} textAnchor="end" className="fill-foreground">now</text>
@@ -228,7 +231,7 @@ export const VitalsChart = memo(function VitalsChart() {
           {hover && (
             <div className="pointer-events-none absolute top-2 z-10 min-w-40 rounded-lg border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-md"
               style={hover.left > 55 ? { right: `${100 - hover.left + 2}%` } : { left: `${hover.left + 2}%` }}>
-              <div className="mb-1 font-semibold tabular-nums">{fmtHms(hover.t)}</div>
+              <div className="mb-1 font-semibold tabular-nums">{clock(hover.t, off)}</div>
               {hover.rows.map((r) => (
                 <div key={r.id} className="flex items-center justify-between gap-4">
                   <span className="flex items-center gap-2"><span className="size-2.5 rounded-full" style={{ background: crewIdentity(r.id).color }} />{crewIdentity(r.id).first}</span>

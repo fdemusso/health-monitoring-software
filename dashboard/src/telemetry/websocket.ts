@@ -3,7 +3,7 @@
  * and a client for the commands the backend accepts. Protocol: `src/ares3/serve/session.py` (module docstring).
  */
 import type { VitalsSource } from './contracts';
-import type { EmergencyKind, FaultSpec, HistorySample, SimulationTick } from './types';
+import type { EmergencyKind, FaultSpec, HistorySample, SimulationTick, VitalsSample } from './types';
 
 /** What the UI can ask of the running simulation (python: `sdk/control.py::ControlAPI`, plus pacing). */
 export type ControlCommand =
@@ -51,8 +51,8 @@ export interface CommandResult {
 
 type ServerMessage =
   | ({ type: 'hello' } & BackendHello)
-  | ({ type: 'tick'; tick: SimulationTick } & BackendStatus)
-  | { type: 'history'; samples: HistorySample[] }
+  | ({ type: 'tick'; tick: SimulationTick; wearables?: SimulationTick['wearables'] } & BackendStatus)
+  | { type: 'history'; samples: HistorySample[]; vitals?: VitalsSample[] }
   | ({ type: 'warming' } & WarmupProgress)
   | { type: 'ready' }
   | ({ type: 'result'; id: number } & CommandResult);
@@ -64,7 +64,7 @@ export interface WebSocketBackendOptions {
   reconnectMs?: number;
   onHello?: (hello: BackendHello) => void;
   /** The last hours of the simulation, sent once right after `hello`: fills the charts at once. */
-  onHistory?: (samples: HistorySample[]) => void;
+  onHistory?: (samples: HistorySample[], vitals: VitalsSample[]) => void;
   onStatus?: (status: BackendStatus) => void;
   /** Warm-up progress while the server runs ahead; `null` once it is over (or if the server never warmed up). */
   onWarming?: (progress: WarmupProgress | null) => void;
@@ -139,7 +139,8 @@ export class WebSocketBackend implements VitalsSource {
   private onMessage(msg: ServerMessage): void {
     if (msg.type === 'tick') {
       this.options.onStatus?.({ paused: msg.paused, speed: msg.speed });
-      for (const listener of this.listeners) listener(msg.tick);
+      const tick = msg.wearables ? { ...msg.tick, wearables: msg.wearables } : msg.tick;
+      for (const listener of this.listeners) listener(tick);
     } else if (msg.type === 'hello') {
       this.options.onHello?.(msg);
       if (msg.state === 'live') this.options.onWarming?.(null);
@@ -148,7 +149,7 @@ export class WebSocketBackend implements VitalsSource {
     } else if (msg.type === 'ready') {
       this.options.onWarming?.(null);
     } else if (msg.type === 'history') {
-      this.options.onHistory?.(msg.samples);
+      this.options.onHistory?.(msg.samples, msg.vitals ?? []);
     } else {
       const resolve = this.waiting.get(msg.id);
       this.waiting.delete(msg.id);
