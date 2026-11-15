@@ -1,0 +1,1051 @@
+{
+ "kept": "regressor",
+ "split": {
+  "train": [
+   101,
+   102,
+   103,
+   104,
+   105,
+   106,
+   107,
+   108,
+   109,
+   110,
+   111,
+   112,
+   113,
+   114,
+   115,
+   116,
+   117,
+   118,
+   119,
+   120,
+   121,
+   122,
+   123,
+   124
+  ],
+  "val": [
+   131,
+   132,
+   133,
+   134,
+   135,
+   136
+  ],
+  "event_val": [
+   131,
+   132,
+   133,
+   134,
+   135,
+   136,
+   137,
+   138
+  ],
+  "test": "not read"
+ },
+ "info": {
+  "kind": "regressor",
+  "train_seeds": [
+   101,
+   102,
+   103,
+   104,
+   105,
+   106,
+   107,
+   108,
+   109,
+   110,
+   111,
+   112,
+   113,
+   114,
+   115,
+   116,
+   117,
+   118,
+   119,
+   120,
+   121,
+   122,
+   123,
+   124
+  ],
+  "val_seeds": [
+   131,
+   132,
+   133,
+   134,
+   135,
+   136
+  ],
+  "event_val_seeds": [
+   131,
+   132,
+   133,
+   134,
+   135,
+   136,
+   137,
+   138
+  ],
+  "train_rows": 273600,
+  "val_rows": 68400,
+  "margin": 2.0,
+  "fast_factor": 1.5,
+  "tau_s": 300.0,
+  "memory_tau_min": [
+   30.0,
+   120.0,
+   360.0
+  ],
+  "regressor": "HistGradientBoostingRegressor(absolute_error, depth 3, 200 it) on the context and the memory of the programme",
+  "limit_floors": {
+   "z": 3.0,
+   "d2": 30.0,
+   "fast": 4.0
+  },
+  "limit_cap_z": 9.5,
+  "test_seeds_read": false,
+  "ares3": "0.1.0",
+  "sklearn": "1.9.1",
+  "numpy": "2.4.6",
+  "python": "3.11.15",
+  "trained_at": "2026-11-15"
+ },
+ "limit_d": 1655.4784636514776,
+ "limit_z": {
+  "hr|lv10": 9.5,
+  "resp_rate|lv10": 4.9228973642750535,
+  "spo2|lv10": 3.0,
+  "core_temp_c|lv10": 3.65212843429421,
+  "skin_temp_c|lv10": 5.270103240790887,
+  "hrv_rmssd|lv10": 9.5,
+  "hr|sd10": 4.350123504591757
+ },
+ "limit_fast": {
+  "hr|lv10": 23.3320192209526,
+  "hr|sd10": 8.964460108909654
+ },
+ "fast_factor": 1.5,
+ "tau_s": 300.0,
+ "sigma": {
+  "cmd": {
+   "hr|lv10": {
+    "sleep": 0.3154,
+    "nominal": 0.2184,
+    "exercise_aerobic": 1.5926,
+    "exercise_resistive": 1.0526,
+    "recovery": 0.5491
+   },
+   "resp_rate|lv10": {
+    "sleep": 0.189,
+    "nominal": 0.0946,
+    "exercise_aerobic": 0.4792,
+    "exercise_resistive": 0.195,
+    "recovery": 0.2528
+   },
+   "spo2|lv10": {
+    "sleep": 0.098,
+    "nominal": 0.098,
+    "exercise_aerobic": 0.098,
+    "exercise_resistive": 0.098,
+    "recovery": 0.098
+   },
+   "core_temp_c|lv10": {
+    "sleep": 0.0369,
+    "nominal": 0.0369,
+    "exercise_aerobic": 0.0369,
+    "exercise_resistive": 0.0369,
+    "recovery": 0.0369
+   },
+   "skin_temp_c|lv10": {
+    "sleep": 0.0336,
+    "nominal": 0.0336,
+    "exercise_aerobic": 0.0336,
+    "exercise_resistive": 0.0336,
+    "recovery": 0.0336
+   },
+   "hrv_rmssd|lv10": {
+    "sleep": 0.4735,
+    "nominal": 0.2122,
+    "exercise_aerobic": 0.2369,
+    "exercise_resistive": 0.381,
+    "recovery": 0.5366
+   },
+   "hr|sd10": {
+    "sleep": 0.0293,
+    "nominal": 0.0303,
+    "exercise_aerobic": 0.0357,
+    "exercise_resistive": 0.0303,
+    "recovery": 0.0301
+   }
+  },
+  "eng": {
+   "hr|lv10": {
+    "sleep": 0.5123,
+    "nominal": 0.6456,
+    "exercise_aerobic": 2.4614,
+    "exercise_resistive": 0.5376,
+    "recovery": 0.65
+   },
+   "resp_rate|lv10": {
+    "sleep": 0.1795,
+    "nominal": 0.1227,
+    "exercise_aerobic": 0.314,
+    "exercise_resistive": 0.2428,
+    "recovery": 0.101
+   },
+   "spo2|lv10": {
+    "sleep": 0.098,
+    "nominal": 0.098,
+    "exercise_aerobic": 0.098,
+    "exercise_resistive": 0.098,
+    "recovery": 0.098
+   },
+   "core_temp_c|lv10": {
+    "sleep": 0.037,
+    "nominal": 0.037,
+    "exercise_aerobic": 0.037,
+    "exercise_resistive": 0.037,
+    "recovery": 0.037
+   },
+   "skin_temp_c|lv10": {
+    "sleep": 0.0336,
+    "nominal": 0.0336,
+    "exercise_aerobic": 0.0336,
+    "exercise_resistive": 0.0336,
+    "recovery": 0.0336
+   },
+   "hrv_rmssd|lv10": {
+    "sleep": 0.8103,
+    "nominal": 0.4729,
+    "exercise_aerobic": 0.5889,
+    "exercise_resistive": 0.2608,
+    "recovery": 0.3533
+   },
+   "hr|sd10": {
+    "sleep": 0.0276,
+    "nominal": 0.0304,
+    "exercise_aerobic": 0.0298,
+    "exercise_resistive": 0.0285,
+    "recovery": 0.0324
+   }
+  },
+  "med": {
+   "hr|lv10": {
+    "sleep": 0.5962,
+    "nominal": 0.4153,
+    "exercise_aerobic": 0.9337,
+    "exercise_resistive": 0.5073,
+    "recovery": 1.3476
+   },
+   "resp_rate|lv10": {
+    "sleep": 0.1659,
+    "nominal": 0.1134,
+    "exercise_aerobic": 0.2605,
+    "exercise_resistive": 0.1347,
+    "recovery": 0.1906
+   },
+   "spo2|lv10": {
+    "sleep": 0.098,
+    "nominal": 0.098,
+    "exercise_aerobic": 0.098,
+    "exercise_resistive": 0.098,
+    "recovery": 0.098
+   },
+   "core_temp_c|lv10": {
+    "sleep": 0.037,
+    "nominal": 0.037,
+    "exercise_aerobic": 0.06,
+    "exercise_resistive": 0.037,
+    "recovery": 0.037
+   },
+   "skin_temp_c|lv10": {
+    "sleep": 0.0336,
+    "nominal": 0.0336,
+    "exercise_aerobic": 0.0336,
+    "exercise_resistive": 0.0336,
+    "recovery": 0.0336
+   },
+   "hrv_rmssd|lv10": {
+    "sleep": 0.9382,
+    "nominal": 0.4223,
+    "exercise_aerobic": 0.4482,
+    "exercise_resistive": 0.5378,
+    "recovery": 0.6919
+   },
+   "hr|sd10": {
+    "sleep": 0.0293,
+    "nominal": 0.0283,
+    "exercise_aerobic": 0.053,
+    "exercise_resistive": 0.0294,
+    "recovery": 0.0334
+   }
+  },
+  "bot": {
+   "hr|lv10": {
+    "sleep": 0.3711,
+    "nominal": 0.2885,
+    "exercise_aerobic": 0.8419,
+    "exercise_resistive": 0.3319,
+    "recovery": 0.9226
+   },
+   "resp_rate|lv10": {
+    "sleep": 0.1592,
+    "nominal": 0.1314,
+    "exercise_aerobic": 0.1981,
+    "exercise_resistive": 0.147,
+    "recovery": 0.1501
+   },
+   "spo2|lv10": {
+    "sleep": 0.098,
+    "nominal": 0.098,
+    "exercise_aerobic": 0.098,
+    "exercise_resistive": 0.098,
+    "recovery": 0.098
+   },
+   "core_temp_c|lv10": {
+    "sleep": 0.0369,
+    "nominal": 0.0369,
+    "exercise_aerobic": 0.0369,
+    "exercise_resistive": 0.0369,
+    "recovery": 0.0369
+   },
+   "skin_temp_c|lv10": {
+    "sleep": 0.0336,
+    "nominal": 0.0336,
+    "exercise_aerobic": 0.0336,
+    "exercise_resistive": 0.0336,
+    "recovery": 0.0336
+   },
+   "hrv_rmssd|lv10": {
+    "sleep": 0.6106,
+    "nominal": 0.3033,
+    "exercise_aerobic": 0.2353,
+    "exercise_resistive": 0.3765,
+    "recovery": 0.5888
+   },
+   "hr|sd10": {
+    "sleep": 0.029,
+    "nominal": 0.0289,
+    "exercise_aerobic": 0.0298,
+    "exercise_resistive": 0.029,
+    "recovery": 0.0318
+   }
+  }
+ },
+ "validation": {
+  "n1_false_alarms": 0,
+  "n1_days": 11.995833333333332,
+  "n1_during_exercise": 0,
+  "comparison": {
+   "regressor": {
+    "calibration": {
+     "candidates": [
+      {
+       "margin": 1.25,
+       "fast_factor": 1.5,
+       "fa_n1_val": {
+        "slow": 3,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 5,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 72,
+        "events": 72,
+        "alarms_outside_events": 11
+       },
+       "fast": {
+        "detected": 51,
+        "events": 72,
+        "alarms_outside_events": 1
+       },
+       "slow+fast": {
+        "detected": 72,
+        "events": 72,
+        "alarms_outside_events": 11
+       }
+      },
+      {
+       "margin": 1.25,
+       "fast_factor": 2.0,
+       "fa_n1_val": {
+        "slow": 3,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 5,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 72,
+        "events": 72,
+        "alarms_outside_events": 11
+       },
+       "fast": {
+        "detected": 42,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 72,
+        "events": 72,
+        "alarms_outside_events": 11
+       }
+      },
+      {
+       "margin": 1.25,
+       "fast_factor": 3.0,
+       "fa_n1_val": {
+        "slow": 3,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 5,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 72,
+        "events": 72,
+        "alarms_outside_events": 11
+       },
+       "fast": {
+        "detected": 24,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 72,
+        "events": 72,
+        "alarms_outside_events": 11
+       }
+      },
+      {
+       "margin": 1.5,
+       "fast_factor": 1.5,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 3,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 47,
+        "events": 72,
+        "alarms_outside_events": 1
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      },
+      {
+       "margin": 1.5,
+       "fast_factor": 2.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 3,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 35,
+        "events": 72,
+        "alarms_outside_events": 1
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      },
+      {
+       "margin": 1.5,
+       "fast_factor": 3.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 3,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 22,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      },
+      {
+       "margin": 1.75,
+       "fast_factor": 1.5,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 39,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      },
+      {
+       "margin": 1.75,
+       "fast_factor": 2.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 26,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      },
+      {
+       "margin": 1.75,
+       "fast_factor": 3.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 18,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      },
+      {
+       "margin": 2.0,
+       "fast_factor": 1.5,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 1,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 35,
+        "events": 72,
+        "alarms_outside_events": 1
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      },
+      {
+       "margin": 2.0,
+       "fast_factor": 2.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 1,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 23,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      },
+      {
+       "margin": 2.0,
+       "fast_factor": 3.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 1,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "fast": {
+        "detected": 18,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 0
+       }
+      }
+     ],
+     "margin": 2.0,
+     "fast_factor": 1.5,
+     "sustained_max_d2": 827.7392318257388,
+     "sustained_max_z": {
+      "hr|lv10": 6.1776110725551705,
+      "resp_rate|lv10": 2.4614486821375268,
+      "spo2|lv10": 0.6815235325275963,
+      "core_temp_c|lv10": 1.826064217147105,
+      "skin_temp_c|lv10": 2.6350516203954437,
+      "hrv_rmssd|lv10": 5.25993081155669,
+      "hr|sd10": 2.1750617522958784
+     },
+     "sustained_max_fast": {
+      "hr|lv10": 11.6660096104763,
+      "hr|sd10": 4.482230054454827
+     }
+    },
+    "recall_val_detected_events_outside": [
+     71,
+     72,
+     0
+    ]
+   },
+   "table": {
+    "calibration": {
+     "candidates": [
+      {
+       "margin": 1.25,
+       "fast_factor": 1.5,
+       "fa_n1_val": {
+        "slow": 2,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 11,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 17,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 1.25,
+       "fast_factor": 2.0,
+       "fa_n1_val": {
+        "slow": 2,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 11,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 17,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 1.25,
+       "fast_factor": 3.0,
+       "fa_n1_val": {
+        "slow": 2,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 11,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 14,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 1.5,
+       "fast_factor": 1.5,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 3,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 17,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 1.5,
+       "fast_factor": 2.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 3,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 15,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 1.5,
+       "fast_factor": 3.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 3,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 12,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 71,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 1.75,
+       "fast_factor": 1.5,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 70,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 17,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 70,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 1.75,
+       "fast_factor": 2.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 70,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 14,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 70,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 1.75,
+       "fast_factor": 3.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 70,
+        "events": 72,
+        "alarms_outside_events": 2
+       },
+       "fast": {
+        "detected": 10,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 70,
+        "events": 72,
+        "alarms_outside_events": 2
+       }
+      },
+      {
+       "margin": 2.0,
+       "fast_factor": 1.5,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 68,
+        "events": 72,
+        "alarms_outside_events": 1
+       },
+       "fast": {
+        "detected": 15,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 68,
+        "events": 72,
+        "alarms_outside_events": 1
+       }
+      },
+      {
+       "margin": 2.0,
+       "fast_factor": 2.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 68,
+        "events": 72,
+        "alarms_outside_events": 1
+       },
+       "fast": {
+        "detected": 14,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 68,
+        "events": 72,
+        "alarms_outside_events": 1
+       }
+      },
+      {
+       "margin": 2.0,
+       "fast_factor": 3.0,
+       "fa_n1_val": {
+        "slow": 0,
+        "fast": 0
+       },
+       "fa_n1_split_half": {
+        "slow": 2,
+        "fast": 0
+       },
+       "slow": {
+        "detected": 68,
+        "events": 72,
+        "alarms_outside_events": 1
+       },
+       "fast": {
+        "detected": 8,
+        "events": 72,
+        "alarms_outside_events": 0
+       },
+       "slow+fast": {
+        "detected": 68,
+        "events": 72,
+        "alarms_outside_events": 1
+       }
+      }
+     ],
+     "margin": 2.0,
+     "fast_factor": 1.5,
+     "sustained_max_d2": 2472.11886376462,
+     "sustained_max_z": {
+      "hr|lv10": 3.5414729686294923,
+      "resp_rate|lv10": 2.191213058895415,
+      "spo2|lv10": 0.8273061756524763,
+      "core_temp_c|lv10": 1.6082182136341843,
+      "skin_temp_c|lv10": 3.3707641277670954,
+      "hrv_rmssd|lv10": 2.3405225974461685,
+      "hr|sd10": 2.190476647506639
+     },
+     "sustained_max_fast": {
+      "hr|lv10": 11.519636516333865,
+      "hr|sd10": 4.461734416893609
+     }
+    },
+    "recall_val_detected_events_outside": [
+     68,
+     72,
+     1
+    ]
+   }
+  }
+ }
+}

@@ -53,6 +53,38 @@ su un passo non attivo risponde `ok: false`.
 
 Eventi nuovi in `monitor_events`: `procedure_started`, `step_done`, `step_failed`, `procedure_done`, `procedure_escalated`.
 
+## Procedure mediche e avviso
+
+Contratto per la UI (solo documento: nessun campo nuovo in `sdk/types.py`, nessuna modifica a `dashboard/`). Il contenuto clinico è in
+`docs/procedure-mediche.md`.
+
+**Campi del tick che servono.** Dell'emergenza (`tick.emergencies`, `kind == "medical"`): `subject` (la persona), `module_id` (dove
+si trova), `cause` (quale problema; sceglie la procedura), `evidence` (i valori che hanno fatto scattare l'allarme), `alert_class`
+(il colore), `severity`. Della procedura (`tick.procedures`, si collega con `emergency_id`): `title`, `status`, `current`, `steps[]`
+(`kind`, `text`, `status`, `by`, `answer`, `deadline_s`), `t_start_s`, `t_end_s`. Lo stesso `cause` può non avere una procedura
+dedicata (allora c'è `med_generic`): la UI non deve presumere che il titolo dica la causa, lo dice `Emergency.cause`.
+
+**Stati e transizioni dei passi.** `pending` -> `active` (uno solo alla volta, `current`) -> `done` | `failed`; i passi mai raggiunti
+finiscono `skipped`. Un `check` che non passa entro `deadline_s` diventa `failed` e la procedura salta al ramo di fallimento
+(quasi sempre un passo `escalate`). Un passo `escalate` è l'ultimo: diventa `done` e la procedura `escalated`. La procedura
+`running` -> `done` (tutti i rami arrivati in fondo), `escalated` (arrivata a un passo `escalate`), `closed` (l'emergenza è finita
+prima: i passi aperti diventano `skipped`). Resta nel tick 300 s dopo la fine, con l'esito.
+
+**Avviso fisso, da mostrare in ogni procedura medica** (in alto, sempre visibile, non chiudibile):
+
+> Simulation checklist, NOT medical advice. The steps are reconstructed from public sources and have not been reviewed by a flight
+> surgeon. In a real emergency follow the ISS Medical Checklist and the instructions of the flight surgeon.
+
+**Ordine di visualizzazione.** 1) avviso fisso; 2) titolo con la persona e il modulo, `alert_class` come colore, `evidence`
+sotto (perché il monitor ha aperto l'allarme); 3) i passi nell'ordine della lista, quello `active` evidenziato con il suo pulsante
+("fatto", sì / no) o il conto alla rovescia del `check`; i passi `skipped` attenuati; 4) se ci sono due procedure mediche aperte
+(due persone), prima la più grave (`severity` poi `alert_class`) e l'altra in elenco.
+
+**Quando una procedura va in `escalated`** l'equipaggio deve vedere, al posto della checklist, un riquadro rosso con il testo del
+passo `escalate` (es. "chiama il chirurgo di volo"), l'elenco dei passi già fatti e quelli che non hanno funzionato (`failed`) per
+riferirli a terra, e i valori attuali della persona. L'evacuazione o la chiamata a terra le decidono le persone: il sistema non le fa.
+La procedura non si riapre da sola; se l'emergenza si riaccende, ne parte una nuova.
+
 ## Alimentazione e sensori sostitutivi
 
 * `Action.kind = "power"` (`command: off | on`, `target` = modulo): togliere l'alimentazione a un modulo (risposta ISS al fumo). Quando è

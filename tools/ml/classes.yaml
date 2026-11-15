@@ -46,3 +46,8 @@ dehydration:      {family: medical, emergency: medical, severity: warning,  aler
 atrial_fibrillation_suspected: {family: medical, emergency: medical, severity: critical, alert_class: emergency, confirm_s: 120, phrase: "Irregular fast heart rhythm (suspected atrial fibrillation)"}
 acute_stress:     {family: medical, emergency: medical, severity: warning,  alert_class: caution,  confirm_s: 300, phrase: "Acute stress: heart and breathing rate up, HRV down"}
 space_motion_sickness: {family: medical, emergency: medical, severity: warning, alert_class: advisory, confirm_s: 300, phrase: "Space motion sickness"}
+# ---- crew, wave 1 of the crew dataset (the new events of the medical family; ESTIMATE: ours, to confirm with the bioengineer)
+svt_suspected:    {family: medical, emergency: medical, severity: critical, alert_class: emergency, confirm_s: 120, phrase: "Very fast regular heart rhythm (suspected supraventricular tachycardia)"}
+bradycardia:      {family: medical, emergency: medical, severity: warning,  alert_class: warning,  confirm_s: 300, phrase: "Slow heart rate (bradycardia)"}
+respiratory_infection: {family: medical, emergency: medical, severity: warning, alert_class: warning, confirm_s: 300, phrase: "Signs of a respiratory infection: temperature and breathing rate up, SpO2 down"}
+abnormal_exertion: {family: medical, emergency: medical, severity: warning, alert_class: caution, confirm_s: 300, phrase: "Heart rate and temperature too high for the exercise being done"}

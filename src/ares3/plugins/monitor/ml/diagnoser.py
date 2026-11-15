@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ares3.sdk import BaseDetector, Observation, Signal, StepContext
 
+from .crew_baseline import flagged, flagged_evidence
 from .features import FeatureExtractor, describe
 
 
@@ -38,6 +39,26 @@ class DiagnoserModel:
     sensor_info: dict[str, tuple[str, str]]  # sensor id -> (kind: module | actuator | npc | other, module or crew id)
     phrases: dict[str, str] = field(default_factory=dict)  # label -> sentence for the crew
     info: dict = field(default_factory=dict)  # training: seeds, rows, metrics, versions (the model card)
+    live: dict[str, bool] = field(default_factory=dict)  # label -> False: trained but too few examples, the live monitor ignores it
+    min_proba: dict[str, float] = field(default_factory=dict)  # label -> its own threshold (tuned on validation); else the detector's
+
+    def is_live(self, label: str) -> bool:
+        return getattr(self, "live", {}).get(label, True)  # a model saved before the field existed has every class live
+
+    def threshold(self, label: str, default: float) -> float:
+        return getattr(self, "min_proba", {}).get(label, default)
+
+    def decide(self, family: str, proba: np.ndarray, default: float = 0.6) -> tuple[np.ndarray, np.ndarray]:
+        """The rule of the live detector on a MATRIX of probabilities (rows x ``classes_`` of the family): per row the most likely live,
+        non-nominal class and its probability; the label is ``nominal`` where that probability is under the class's threshold."""
+        cl = self.families[family].classes_
+        usable = np.asarray([c != "nominal" and self.is_live(c) for c in cl])
+        masked = np.where(usable[None, :], proba, -1.0)
+        best = masked.argmax(axis=1)
+        p = masked[np.arange(len(masked)), best]
+        thr = np.asarray([self.threshold(c, default) for c in cl])[best]
+        label = np.where((p >= thr) & usable[best], cl[best], "nominal")
+        return label, np.maximum(p, 0.0)
 
     def z(self, x: np.ndarray) -> np.ndarray:
         z = (np.asarray(x, dtype=float) - self.mean) / self.scale
@@ -50,7 +71,7 @@ class DiagnoserModel:
         row = np.asarray(x, dtype=float).reshape(1, -1)
         for fam, clf in self.families.items():
             proba = clf.predict_proba(row)[0]
-            ranked = [(c, float(p)) for c, p in zip(clf.classes_, proba, strict=True) if c != "nominal"]
+            ranked = [(c, float(p)) for c, p in zip(clf.classes_, proba, strict=True) if c != "nominal" and self.is_live(c)]
             out[fam] = max(ranked, key=lambda cp: cp[1]) if ranked else ("nominal", 0.0)
         return out
 
@@ -74,6 +95,10 @@ class _DiagnosisParams(BaseModel):
     model: str  # path of a ``DiagnoserModel`` joblib file (``tools/ml/train_diagnoser.py``)
     eval_every_s: float = Field(default=60.0, gt=0)
     min_proba: float = Field(default=0.6, gt=0, le=1)  # plan D7: below this the family stays quiet
+    # name of the board of the crew baseline detectors (``CrewBaselineDetector(board=...)``): the MEDICAL family then speaks only while
+    # the baseline flags somebody, and the person it names is the one the baseline flags (the explanation of a class points to the right
+    # person only about half the time: the baseline knows who, the diagnosis knows what)
+    gate_board: str | None = None
 
 
 class DiagnosisDetector(BaseDetector):
@@ -110,12 +135,20 @@ class DiagnosisDetector(BaseDetector):
             best = 0.0
             for fam, (label, proba) in self.model.predict(x).items():
                 best = max(best, proba)
-                if proba < self.params.min_proba:
+                if proba < self.model.threshold(label, self.params.min_proba):
                     continue
                 phrases, sensor = self.model.explain(x, label)
                 kind, where = self.model.sensor_info.get(sensor or "", ("other", ""))
                 subject = module = None
-                if fam == "medical" and kind == "npc" and where in ctx.tick.npcs:
+                gated = fam == "medical" and bool(self.params.gate_board)
+                if gated:
+                    people = {p: v for p, v in flagged(self.params.gate_board).items() if p in ctx.tick.npcs}
+                    if not people:
+                        continue  # the baseline sees nothing: no medical diagnosis on its own
+                    subject = max(people, key=people.get)
+                    module = ctx.tick.npcs[subject].module_id
+                    phrases = list(flagged_evidence(self.params.gate_board, subject))  # the person's own values, from the baseline
+                elif fam == "medical" and kind == "npc" and where in ctx.tick.npcs:
                     subject, module = where, ctx.tick.npcs[where].module_id
                 elif fam == "sensor" and sensor:
                     subject = sensor
@@ -125,7 +158,7 @@ class DiagnosisDetector(BaseDetector):
                 text = self.model.phrases.get(label, label)
                 self._latched.append(Signal(
                     detector_id=self.id, emergency="anomaly", module_id=module, subject=subject, severity="warning",
-                    value=proba, cause=label, evidence=(text, *phrases),
+                    value=proba, cause=label, evidence=(*phrases, text) if gated else (text, *phrases),  # gated: the person's values first, the class last
                     detail=f"{label} ({proba:.0%}): {text}" + (f"; {'; '.join(phrases)}" if phrases else "")))
             self.last_score = best
         return list(self._latched)

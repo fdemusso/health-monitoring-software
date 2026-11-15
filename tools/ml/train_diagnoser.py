@@ -79,7 +79,7 @@ def labelled(run: dict, vis: dict[str, float | None], classes: dict) -> pd.DataF
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--features", default=str(ROOT / "output" / "ml" / "feat"))
+    p.add_argument("--features", nargs="*", default=None, help="folders with the runs (default: output/ml/feat; with --families, every crew* folder)")
     p.add_argument("--classes", default=str(Path(__file__).with_name("classes.yaml")))
     p.add_argument("--out", default=str(ROOT / "models" / "station_v1"))
     p.add_argument("--train-seeds", default="1-3")
@@ -87,7 +87,25 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--visible-k", type=float, default=3.0)
     p.add_argument("--min-proba", type=float, default=0.6)
     p.add_argument("--max-iter", type=int, default=150)
+    p.add_argument("--families", default=None, help="train only these families (today: medical) on the crew dataset; needs --base-model")
+    p.add_argument("--base-model", default=None, help="the diagnoser whose other families, scale and signatures are kept")
+    p.add_argument("--val-seeds", default="131-138", help="with --families: the seeds that set the thresholds and are read for the confusion matrix")
+    p.add_argument("--fa-target", type=float, default=0.05, help="with --families: false alarms per day allowed per class on the nominal validation days")
+    p.add_argument("--min-rows", type=int, default=300, help="with --families: positive rows a class needs to be live in the monitor")
+    p.add_argument("--fallback-labels", default="dehydration", help="with --families: classes whose visible time is start + ramp_s (+ 1 h for the dehydration) "
+                   "because the twin never shows them at k sigmas")
+    p.add_argument("--fallback-visible", action="store_true", help="with --families: no twin -> visible = start + ramp_s (+ 1 h for the dehydration)")
     args = p.parse_args(argv)
+    if args.families:
+        if args.families != "medical" or not args.base_model:
+            raise SystemExit("--families takes 'medical' and needs --base-model")
+        if args.train_seeds == "1-3":
+            args.train_seeds = "1-3,101-124"
+        import medical
+
+        medical.FALLBACK_LABELS = {x for x in args.fallback_labels.split(",") if x}
+        return medical.train(args)
+    args.features = str(args.features[0]) if args.features else str(ROOT / "output" / "ml" / "feat")
 
     import joblib
     from sklearn.ensemble import HistGradientBoostingClassifier

@@ -1,0 +1,1143 @@
+{
+ "trained_at": "2026-11-15T18:36:06",
+ "families": {
+  "medical": "new"
+ },
+ "other_families_from": "models/station_v1/diagnoser.joblib",
+ "info": {
+  "train_seeds": [
+   1,
+   2,
+   3,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "stride": 5,
+  "visible_k": 3.0,
+  "min_proba": 0.6,
+  "ares3": "0.1.0",
+  "sklearn": "1.9.1",
+  "numpy": "2.4.6",
+  "python": "3.11.15",
+  "trained_at": "2026-11-15",
+  "metrics": {
+   "false_alarms": 17,
+   "nominal_test_days": 9.995833333333334
+  },
+  "medical": {
+   "train_seeds": [
+    1,
+    2,
+    3,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124
+   ],
+   "stride": 5,
+   "visible_k": 3.0,
+   "positive_rows": {
+    "respiratory_infection": 13644,
+    "fever": 11291,
+    "dehydration": 10668,
+    "space_motion_sickness": 2630,
+    "acute_stress": 1803,
+    "bradycardia": 1526,
+    "abnormal_exertion": 924,
+    "atrial_fibrillation_suspected": 895,
+    "svt_suspected": 457
+   },
+   "live": {
+    "abnormal_exertion": true,
+    "acute_stress": true,
+    "atrial_fibrillation_suspected": true,
+    "bradycardia": true,
+    "dehydration": true,
+    "fever": true,
+    "respiratory_infection": true,
+    "space_motion_sickness": true,
+    "svt_suspected": true
+   },
+   "min_rows": 300,
+   "visible_from": {
+    "twin": 297,
+    "twin+fallback(dehydration)": 27,
+    "nominal": 27
+   },
+   "twin_identity": {
+    "cross_platform_rel_tolerance": 2.4e-07,
+    "catalog_abs_tolerance": 1e-06,
+    "same_platform_exact": {
+     "pairs": 114,
+     "pairs_with_a_difference": 0,
+     "max_abs_diff": 0.0,
+     "max_rel_diff": 0.0
+    },
+    "cross_platform_rel": {
+     "pairs": 102,
+     "pairs_with_a_difference": 73,
+     "max_abs_diff": 5.960464477539063e-08,
+     "max_rel_diff": 1.0435723820238814e-07
+    },
+    "catalog_abs": {
+     "pairs": 108,
+     "pairs_with_a_difference": 62,
+     "max_abs_diff": 3.725290298461914e-09,
+     "max_rel_diff": 8.076656516193979e-08
+    }
+   },
+   "fallback_visible_labels": [
+    "dehydration"
+   ],
+   "base_model": "models/station_v1/diagnoser.joblib",
+   "ares3": "0.1.0",
+   "sklearn": "1.9.1",
+   "numpy": "2.4.6",
+   "python": "3.11.15",
+   "trained_at": "2026-11-15",
+   "validation": {
+    "seeds": [
+     131,
+     132,
+     133,
+     134,
+     135,
+     136,
+     137,
+     138
+    ],
+    "nominal_days": 50.084027777777806,
+    "fa_target_per_day": 0.05,
+    "thresholds": {
+     "abnormal_exertion": 0.3,
+     "acute_stress": 0.3,
+     "atrial_fibrillation_suspected": 0.3,
+     "bradycardia": 0.3,
+     "dehydration": 0.3,
+     "fever": 0.3,
+     "respiratory_infection": 0.5,
+     "space_motion_sickness": 0.3,
+     "svt_suspected": 0.3
+    },
+    "test_seeds_read": false
+   }
+  }
+ },
+ "tuning": {
+  "nominal_days": 50.084027777777806,
+  "table": {
+   "abnormal_exertion": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    }
+   ],
+   "acute_stress": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    }
+   ],
+   "atrial_fibrillation_suspected": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 7,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 7,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 7,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 7,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 6,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    }
+   ],
+   "bradycardia": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    }
+   ],
+   "dehydration": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 1,
+     "per_day": 0.019966445279460895,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 1,
+     "per_day": 0.019966445279460895,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 1,
+     "per_day": 0.019966445279460895,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 1,
+     "per_day": 0.019966445279460895,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 1,
+     "per_day": 0.019966445279460895,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 1,
+     "per_day": 0.019966445279460895,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    }
+   ],
+   "fever": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    }
+   ],
+   "respiratory_infection": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 8,
+     "per_day": 0.15973156223568716,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 3,
+     "per_day": 0.05989933583838269,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 1,
+     "per_day": 0.019966445279460895,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 8,
+     "events": 8
+    }
+   ],
+   "space_motion_sickness": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 1,
+     "events": 8
+    }
+   ],
+   "svt_suspected": [
+    {
+     "threshold": 0.3,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.4,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.5,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 5,
+     "events": 8
+    },
+    {
+     "threshold": 0.6,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 4,
+     "events": 8
+    },
+    {
+     "threshold": 0.7,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.8,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.85,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 3,
+     "events": 8
+    },
+    {
+     "threshold": 0.9,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 2,
+     "events": 8
+    },
+    {
+     "threshold": 0.95,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 2,
+     "events": 8
+    },
+    {
+     "threshold": 0.98,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 2,
+     "events": 8
+    },
+    {
+     "threshold": 0.99,
+     "false_alarms": 0,
+     "per_day": 0.0,
+     "detected": 1,
+     "events": 8
+    }
+   ]
+  },
+  "chosen": {
+   "abnormal_exertion": 0.3,
+   "acute_stress": 0.3,
+   "atrial_fibrillation_suspected": 0.3,
+   "bradycardia": 0.3,
+   "dehydration": 0.3,
+   "fever": 0.3,
+   "respiratory_infection": 0.5,
+   "space_motion_sickness": 0.3,
+   "svt_suspected": 0.3
+  }
+ },
+ "confusion_val": {
+  "columns": [
+   "abnormal_exertion",
+   "acute_stress",
+   "atrial_fibrillation_suspected",
+   "bradycardia",
+   "dehydration",
+   "fever",
+   "respiratory_infection",
+   "space_motion_sickness",
+   "svt_suspected",
+   "nominal"
+  ],
+  "index": [
+   "abnormal_exertion",
+   "acute_stress",
+   "atrial_fibrillation_suspected",
+   "bradycardia",
+   "dehydration",
+   "fever",
+   "respiratory_infection",
+   "space_motion_sickness",
+   "svt_suspected"
+  ],
+  "data": [
+   [
+    283,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3
+   ],
+   [
+    0,
+    429,
+    0,
+    0,
+    0,
+    183,
+    4,
+    0,
+    0,
+    10
+   ],
+   [
+    0,
+    0,
+    199,
+    0,
+    0,
+    0,
+    63,
+    0,
+    1,
+    41
+   ],
+   [
+    0,
+    0,
+    0,
+    172,
+    0,
+    0,
+    0,
+    0,
+    0,
+    168
+   ],
+   [
+    60,
+    0,
+    0,
+    0,
+    3037,
+    18,
+    71,
+    11,
+    2,
+    333
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    31,
+    3169,
+    702,
+    0,
+    0,
+    290
+   ],
+   [
+    0,
+    3,
+    0,
+    0,
+    3,
+    17,
+    3922,
+    0,
+    0,
+    1285
+   ],
+   [
+    0,
+    0,
+    0,
+    0,
+    124,
+    57,
+    201,
+    306,
+    0,
+    60
+   ],
+   [
+    0,
+    34,
+    1,
+    1,
+    0,
+    5,
+    0,
+    0,
+    73,
+    46
+   ]
+  ]
+ },
+ "events_val": {
+  "fever": {
+   "events": 8,
+   "right_label": 8,
+   "other_label_only": 0,
+   "missed": 0,
+   "delays_s": [
+    240.0,
+    660.0,
+    240.0,
+    1620.0,
+    420.0,
+    600.0,
+    1140.0,
+    540.0
+   ]
+  },
+  "dehydration": {
+   "events": 8,
+   "right_label": 8,
+   "other_label_only": 0,
+   "missed": 0,
+   "delays_s": [
+    1052.3910000000033,
+    0.0,
+    0.0,
+    1256.4570000000022,
+    0.0,
+    0.0,
+    9663.236,
+    6066.071
+   ]
+  },
+  "atrial_fibrillation_suspected": {
+   "events": 8,
+   "right_label": 7,
+   "other_label_only": 1,
+   "missed": 0,
+   "delays_s": [
+    180.0,
+    300.0,
+    1440.0,
+    240.0,
+    300.0,
+    300.0,
+    540.0
+   ]
+  },
+  "space_motion_sickness": {
+   "events": 8,
+   "right_label": 5,
+   "other_label_only": 2,
+   "missed": 1,
+   "delays_s": [
+    360.0,
+    240.0,
+    600.0,
+    3600.0,
+    3780.0
+   ]
+  },
+  "acute_stress": {
+   "events": 8,
+   "right_label": 4,
+   "other_label_only": 3,
+   "missed": 1,
+   "delays_s": [
+    780.0,
+    2700.0,
+    0.0,
+    300.0
+   ]
+  },
+  "svt_suspected": {
+   "events": 8,
+   "right_label": 5,
+   "other_label_only": 1,
+   "missed": 2,
+   "delays_s": [
+    180.0,
+    480.0,
+    660.0,
+    180.0,
+    1860.0
+   ]
+  },
+  "bradycardia": {
+   "events": 8,
+   "right_label": 3,
+   "other_label_only": 0,
+   "missed": 5,
+   "delays_s": [
+    540.0,
+    540.0,
+    240.0
+   ]
+  },
+  "respiratory_infection": {
+   "events": 8,
+   "right_label": 8,
+   "other_label_only": 0,
+   "missed": 0,
+   "delays_s": [
+    420.0,
+    300.0,
+    720.0,
+    420.0,
+    600.0,
+    1320.0,
+    360.0,
+    2400.0
+   ]
+  },
+  "abnormal_exertion": {
+   "events": 8,
+   "right_label": 8,
+   "other_label_only": 0,
+   "missed": 0,
+   "delays_s": [
+    420.0,
+    180.0,
+    0.0,
+    0.0,
+    180.0,
+    240.0,
+    360.0,
+    0.0
+   ]
+  }
+ },
+ "skipped_without_twin": []
+}
