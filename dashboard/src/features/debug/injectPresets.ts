@@ -2,6 +2,7 @@ import type { FaultSpec } from '@/telemetry'
 
 /** Real FaultSpecs from scenarios/events/*_faults.yaml and tests/. start_s is ignored by inject_event. */
 export interface InjectPreset { label: string; make: () => FaultSpec }
+/** Event ids are `<prefix>_<timestamp>`, created by `uid` below. */
 const uid = (p: string) => `${p}_${Date.now().toString(36)}`
 
 export const INJECT_PRESETS: InjectPreset[] = [
@@ -15,3 +16,10 @@ export const INJECT_PRESETS: InjectPreset[] = [
   { label: 'Fibrillazione ENG', make: () => ({ id: uid('af'), type: 'medical', targets: ['eng'], duration_s: 900, params: { hr_to: 150, spo2_to: 92.5, arrhythmia: 'af', resp_delta: 3, ramp_s: 60 }, anomaly_type: 'atrial_fibrillation_suspected', priority: 8 }) },
   { label: 'Febbre CMD', make: () => ({ id: uid('fever'), type: 'medical', targets: ['cmd'], duration_s: 21600, params: { core_temp_delta: 1.5, skin_temp_delta: 1.0, hrv_factor: 0.8, ramp_s: 3600 }, anomaly_type: 'fever', priority: 6 }) },
 ]
+
+const PREFIX_LABEL: Record<string, string> = Object.fromEntries(
+  INJECT_PRESETS.map((p) => [p.make().id.split('_')[0], p.label]),
+)
+
+/** Readable name of an active event: injected ones use the preset label, others show their id. */
+export const eventName = (faultId: string) => PREFIX_LABEL[faultId.split('_')[0]] ?? faultId

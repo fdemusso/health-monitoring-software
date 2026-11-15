@@ -75,3 +75,10 @@ const EVENT_LABEL: Record<MonitorEvent['kind'], string> = {
 export const eventLabel = (k: string) => EVENT_LABEL[k as MonitorEvent['kind']] ?? k
 export const eventFamily = (k: string): 'emergency' | 'action' | 'crew' =>
   k.startsWith('emergency') ? 'emergency' : k.startsWith('action') ? 'action' : 'crew'
+
+const ACTIVITY: Record<string, string> = {
+  sleep: 'Riposo notturno', nominal: 'Attività normale', work: 'Al lavoro', rest: 'A riposo', meal: 'Pasto',
+  recovery: 'Recupero', exercise_aerobic: 'Esercizio aerobico', exercise_resistive: 'Esercizio di forza',
+}
+/** Italian label for `NPCState.activity`; unknown values are shown as they are. */
+export const activityLabel = (a: string) => ACTIVITY[a] ?? a

@@ -13,6 +13,9 @@ interface UiState {
   sheetEmergency: string | null
   setSheetEmergency: (id: string | null) => void
   toast: string | null
+  /** Counter: bumping it shows the pending-action popover again. */
+  pendingReopen: number
+  reopenPending: () => void
   showToast: (m: string) => void
 }
 
@@ -24,12 +27,14 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const [logOpen, setLogOpen] = useState(false)
   const [sheetEmergency, setSheetEmergency] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [pendingReopen, setPendingReopen] = useState(0)
   const value = useMemo<UiState>(() => ({
-    page, setPage, selectedCrew, logOpen, setLogOpen, sheetEmergency, setSheetEmergency, toast,
+    page, setPage, selectedCrew, logOpen, setLogOpen, sheetEmergency, setSheetEmergency, toast, pendingReopen,
+    reopenPending: () => setPendingReopen((n) => n + 1),
     openCrew: (id) => { setSelected(id); setPage(1) },
     closeCrew: () => setSelected(null),
     showToast: (m) => { setToast(m); setTimeout(() => setToast(null), 1800) },
-  }), [page, selectedCrew, logOpen, sheetEmergency, toast])
+  }), [page, selectedCrew, logOpen, sheetEmergency, toast, pendingReopen])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

@@ -4,6 +4,7 @@ import { HoneycombNav } from '@/features/nav/HoneycombNav'
 import { CrewStrip } from '@/features/shell/CrewStrip'
 import { StatusPage } from '@/features/status/StatusPage'
 import { CrewPage } from '@/features/crew/CrewPage'
+import { PendingPopover } from '@/features/crew/PendingPopover'
 import { EventLogSheet } from '@/features/log/EventLogSheet'
 import { EmergencySheet } from '@/features/log/EmergencySheet'
 import { globalStatus } from '@/domain/status'
@@ -39,6 +40,7 @@ function Shell() {
       <DebugPanel />
       <EventLogSheet />
       <EmergencySheet />
+      <PendingPopover />
       <Toast />
     </div>
   )

@@ -82,7 +82,7 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button variant={critical ? 'danger' : 'outline'} onClick={open}>Apri risposta →</Button>
             <Button variant="outline" onClick={() => ui.showToast('Contatto con la Terra non collegato')}>Contatta la Terra</Button>
-            {pending > 0 && <button type="button" onClick={open} className="rounded-full border border-warn/50 bg-warn/10 px-3 py-1 text-xs text-warn">{pending} {pending === 1 ? 'azione' : 'azioni'} in attesa di conferma</button>}
+            {pending > 0 && <button type="button" onClick={ui.reopenPending} className="rounded-full border border-warn/50 bg-warn/10 px-3 py-1 text-xs text-warn">{pending} {pending === 1 ? 'azione' : 'azioni'} in attesa di conferma</button>}
           </div>
           {others.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Anche: {others.map((e: Emergency) => emergencyTitle(e)).join(' · ')}</p>}
         </div>

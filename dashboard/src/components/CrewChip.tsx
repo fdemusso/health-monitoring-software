@@ -1,9 +1,9 @@
 import { crewIdentity } from '@/domain/crewConfig'
 
-export function CrewChip({ id }: { id: string }) {
+export function CrewChip({ id, large }: { id: string; large?: boolean }) {
   const c = crewIdentity(id)
   return (
-    <span className="inline-flex h-6 min-w-11 items-center justify-center rounded-full border-[1.5px] px-[9px] text-[11px] font-bold tracking-[.1em]" style={{ color: c.color, borderColor: c.color }}>
+    <span className={large ? 'inline-flex h-11 min-w-24 items-center justify-center rounded-full border-2 px-5 text-lg font-bold tracking-[.12em]' : 'inline-flex h-6 min-w-11 items-center justify-center rounded-full border-[1.5px] px-[9px] text-[11px] font-bold tracking-[.1em]'} style={{ color: c.color, borderColor: c.color }}>
       {c.label}
     </span>
   )

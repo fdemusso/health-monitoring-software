@@ -5,7 +5,7 @@ import { Sparkline } from '@/components/Sparkline'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { crewIdentity } from '@/domain/crewConfig'
-import { phaseLabel } from '@/domain/emergencyText'
+import { activityLabel, phaseLabel } from '@/domain/emergencyText'
 import { crewStatus, statusLabel, statusText, vitalStatus, type Status } from '@/domain/status'
 import { fmt0, fmt1, ppco2Mmhg } from '@/domain/units'
 import type { NPCState, SimulationTick } from '@/telemetry'
@@ -16,6 +16,10 @@ import { useElementWidth } from './CrewColumn'
 import { HologramFrame, useOrganAnchors } from './HologramFrame'
 import { ResponsePanel } from './ResponsePanel'
 import { limitStatus, ENV_METRICS } from '@/domain/limits'
+
+function Field({ label, value }: { label: string; value: string }) {
+  return <div><div className="lbl">{label}</div><div className="mt-0.5 text-base">{value}</div></div>
+}
 
 function Trend({ title, value, unit, status, values }: { title: string; value: string; unit: string; status: Status; values: number[] }) {
   return (
@@ -48,12 +52,15 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
   return (
     <>
       <div>
-        <div className="mb-3 flex flex-wrap items-center gap-4">
+        <div className="mb-4 flex flex-wrap items-center gap-x-8 gap-y-3">
           <Button variant="outline" size="sm" onClick={onBack}><ArrowLeft size={16} /> Equipaggio</Button>
-          <CrewChip id={npc.id} />
-          <span className="text-[30px] font-light tracking-[.22em]" style={{ color: id.color }}>{id.label}</span>
-          <span className="text-sm text-muted-foreground">{id.name} · {npc.module_id.toUpperCase()} · {phase ?? npc.activity}</span>
-          <Badge tone={st}>{statusLabel[st]}</Badge>
+          <div>
+            <CrewChip id={npc.id} large />
+            <div className="mt-1.5 text-center text-xs text-muted-foreground">{id.name}</div>
+          </div>
+          <Field label="Modulo" value={npc.module_id.toUpperCase()} />
+          <Field label={phase ? 'Risposta all’emergenza' : 'Attività'} value={phase ?? activityLabel(npc.activity)} />
+          <Badge tone={st} className="ml-auto">{statusLabel[st]}</Badge>
         </div>
         <div className="grid grid-cols-4 gap-4">
           <Trend title={`FC di ${id.label}`} value={fmt0(v.hr)} unit="bpm" status={vitalStatus('hr', v.hr, npc.activity)} values={series(hist, 'hr')} />

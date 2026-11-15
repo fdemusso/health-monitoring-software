@@ -5,6 +5,8 @@ import { fmtClock } from '@/domain/units'
 import type { PendingAction } from '@/telemetry'
 import { useCommands } from '@/telemetry/useTelemetry'
 
+const KIND: Record<string, string> = { extinguish: 'Estintore', actuator: 'Attuatore', hatch: 'Portello', announce: 'Annuncio', ventilation: 'Ventilazione' }
+
 export function PendingActionCard({ pa, tSim }: { pa: PendingAction; tSim: number }) {
   const cmd = useCommands()
   const [busy, setBusy] = useState(false)
@@ -19,7 +21,7 @@ export function PendingActionCard({ pa, tSim }: { pa: PendingAction; tSim: numbe
   return (
     <div className="rounded-2xl border border-warn/50 bg-warn/[.06] p-3">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="lbl">{a.kind}</span>
+        <span className="lbl">{KIND[a.kind] ?? a.kind}</span>
         <span className="font-mono text-sm tabular-nums">{fmtClock(pa.deadline_s - tSim)}</span>
       </div>
       <p className="text-sm">{a.reason || `${a.command} ${a.target}`}</p>

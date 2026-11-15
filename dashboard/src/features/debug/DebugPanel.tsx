@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
 import type { EmergencyKind } from '@/telemetry'
 import { useBackendStatus, useCommands, useModuleList, useTick } from '@/telemetry/useTelemetry'
-import { INJECT_PRESETS } from './injectPresets'
+import { INJECT_PRESETS, eventName } from './injectPresets'
 
 const SPEEDS = [1, 10, 60, 600, 3600]
 const KINDS: EmergencyKind[] = ['depressurization', 'fire', 'toxic', 'equipment', 'medical']
@@ -67,7 +67,7 @@ export function DebugPanel() {
         <Section title="Eventi attivi">
           {tick?.active_faults.length ? tick.active_faults.map((f) => (
             <div key={f} className="mb-1 flex items-center justify-between gap-2">
-              <span className="truncate">{f}</span>
+              <span className="truncate" title={f}>{eventName(f)}</span>
               <Button size="sm" variant="outline" onClick={() => cmd.stopEvent(f)}>Stop</Button>
             </div>
           )) : <span className="text-muted-foreground">nessuno</span>}

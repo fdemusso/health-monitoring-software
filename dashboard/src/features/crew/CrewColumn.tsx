@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CornerBrackets } from '@/components/CornerBrackets'
 import { Badge } from '@/components/ui/badge'
 import { crewIdentity } from '@/domain/crewConfig'
-import { phaseLabel, ROLE_LABEL } from '@/domain/emergencyText'
+import { activityLabel, phaseLabel, ROLE_LABEL } from '@/domain/emergencyText'
 import { crewStatus, statusLabel, statusText, vitalStatus } from '@/domain/status'
 import { fmt0, fmt1 } from '@/domain/units'
 import { cn } from '@/lib/utils'
@@ -46,7 +46,7 @@ export function CrewColumn({ npc, tick, onOpen }: { npc: NPCState; tick: Simulat
         {w > 0 && <HologramFrame npc={npc} tick={tick} width={Math.min(w, 200)} color={id.color} />}
       </div>
       <div className="mt-3 text-2xl tracking-[.22em]" style={{ color: id.color }}>{id.label}</div>
-      <div className="mb-2 min-h-4 text-xs text-muted-foreground">{phase ? `${phase}${npc.role ? ` · ${ROLE_LABEL[npc.role] ?? npc.role}` : ''}` : npc.activity}</div>
+      <div className="mb-2 min-h-4 text-xs text-muted-foreground">{phase ? `${phase}${npc.role ? ` · ${ROLE_LABEL[npc.role] ?? npc.role}` : ''}` : activityLabel(npc.activity)}</div>
       <div className="flex gap-4 font-mono text-sm tabular-nums">
         <span className={statusText[vitalStatus('hr', v.hr, npc.activity)]}>{fmt0(v.hr)}<small className="ml-0.5 text-muted-foreground">bpm</small></span>
         <span className={statusText[vitalStatus('spo2', v.spo2)]}>{fmt0(v.spo2)}<small className="ml-0.5 text-muted-foreground">%</small></span>
