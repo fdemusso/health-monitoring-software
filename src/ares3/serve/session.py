@@ -14,10 +14,12 @@ Server -> client (JSON text frames):
       during the warm-up, about four times a second (and right after ``hello`` for a client that connects late).
   {"type": "ready"}
       the warm-up is over: ``history`` (to every client) then this, then ticks start. Not sent when there was no warm-up.
-  {"type": "history", "samples": [{"t_sim_s", "npcs", "modules"}, ...]}
-      sent once to a new client right after ``hello``: the last 6 simulated hours, one sample per simulated minute, so the charts are
+  {"type": "history", "samples": [{"t_sim_s", "npcs", "modules"}, ...], "vitals": [{"t_sim_s", "w": {crew: {metric: value}}}, ...]}
+      sent once to a new client right after ``hello``: the last 6 simulated hours, so the charts are
       full at once instead of starting empty at the moment of connection (nothing is sent when there is no history yet).
-  {"type": "tick", "tick": <SimulationTick>, "paused": bool, "speed": float}
+      ``samples`` has one point per simulated minute (modules and ground truth); ``vitals`` one per 10 simulated seconds with what
+      the crew's WEARABLES read (hr, spo2, resp_rate, core_temp_c, cohb_pct: sensed values, noisy, as the monitor sees them).
+  {"type": "tick", "tick": <SimulationTick>, "wearables": {crew: {metric: value}}, "paused": bool, "speed": float}
       ``tick.monitor_events`` holds the events of every tick since the last frame, so none is lost when frames are thinned.
   {"type": "result", "id": <echo>, "ok": bool, "error"?: str, "data"?: any}
 Client -> server:
@@ -45,6 +47,9 @@ from ares3.sdk.types import MonitorEvent, SimulationTick
 MAX_BATCH = 5000  # ticks stepped per loop iteration at most: a slow machine falls behind instead of freezing the loop
 HISTORY_STEP_S = 60.0  # simulated seconds between two history samples
 HISTORY_LEN = 360  # samples kept: 6 simulated hours
+VITALS_STEP_S = 10.0  # the crew's vital signs are kept at a finer step: the charts of a short window need more than 15 points
+VITALS_LEN = 2160  # 6 simulated hours at VITALS_STEP_S
+WEARABLE_METRICS = ("hr", "spo2", "resp_rate", "core_temp_c", "cohb_pct")  # what the crew's wearables report (what the UI charts)
 
 
 class Session:
@@ -62,6 +67,8 @@ class Session:
         self._events: list[MonitorEvent] = []
         self._owed = 0.0  # fractional ticks carried to the next iteration
         self._history: deque[dict[str, Any]] = deque(maxlen=HISTORY_LEN)
+        self._vitals: deque[dict[str, Any]] = deque(maxlen=VITALS_LEN)
+        self._wearables: dict[str, dict[str, float]] = {}  # latest reading of each wearable (measured: noisy, fault-corrupted), by crew id
         self.state = "live"  # "warming" while warm_up_async runs
         self._warm = (0.0, 0.0)  # simulated seconds done, total
 
@@ -72,8 +79,20 @@ class Session:
             res = self.engine.step()
             self._latest = res.tick
             self._events.extend(res.tick.monitor_events)
+            self._wearables = self._read_wearables(res)
+            if not self._vitals or res.tick.t_sim_s - self._vitals[-1]["t_sim_s"] >= VITALS_STEP_S:
+                self._vitals.append({"t_sim_s": res.tick.t_sim_s, "w": self._wearables})
             if not self._history or res.tick.t_sim_s - self._history[-1]["t_sim_s"] >= HISTORY_STEP_S:
                 self._history.append(res.tick.model_dump(mode="json", include={"t_sim_s", "npcs", "modules"}))
+
+    @staticmethod
+    def _read_wearables(res: Any) -> dict[str, dict[str, float]]:
+        """The crew wearables' readings of this tick (sensed values, rounded for the wire), by crew id and metric."""
+        out: dict[str, dict[str, float]] = {}
+        for o in res.observations:
+            if o.entity_id in res.tick.npcs and o.metric in WEARABLE_METRICS:
+                out.setdefault(o.entity_id, {})[o.metric] = round(float(o.value), 2)
+        return out
 
     def warm_up(self, seconds: float, progress: Callable[[float], None] | None = None) -> None:
         """Run the simulation ahead before the first client connects: the ML detectors need hours of history before they judge,
@@ -116,7 +135,7 @@ class Session:
         """The ``history`` message for a new client, or None when nothing was recorded (or the warm-up is still running)."""
         if not self._history or self.state == "warming":
             return None
-        return json.dumps({"type": "history", "samples": list(self._history)})
+        return json.dumps({"type": "history", "samples": list(self._history), "vitals": list(self._vitals)})
 
     def frame(self) -> str | None:
         """The tick message to broadcast (latest tick + events since the last frame), or None before the first tick."""
@@ -125,7 +144,7 @@ class Session:
         tick = self._latest.model_copy(update={"monitor_events": tuple(self._events)})
         self._events = []
         return (f'{{"type":"tick","paused":{json.dumps(self.paused)},"speed":{self.speed},'
-                f'"tick":{tick.model_dump_json()}}}')
+                f'"wearables":{json.dumps(self._wearables)},"tick":{tick.model_dump_json()}}}')
 
     def hello(self, role: str = "operator") -> str:
         return json.dumps({"type": "hello", "scenario": self.scenario.file.name, "dt_s": self.scenario.file.dt_s,
@@ -198,6 +217,8 @@ class Session:
             self.engine = Engine(self.scenario)
             self._latest, self._events, self._owed = None, [], 0.0
             self._history.clear()  # a reset starts cold: the warm-up is only run at startup
+            self._vitals.clear()
+            self._wearables = {}
         else:
             raise ValueError(f"unknown command {cmd!r}")
         return None

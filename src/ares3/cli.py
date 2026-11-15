@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ares3.core.engine import Engine
 from ares3.export import DatasetWriter
-from ares3.schemas.scenario import load_scenario
+from ares3.schemas.scenario import deep_merge, load_scenario
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -65,6 +65,12 @@ def _serve(args: argparse.Namespace) -> int:
     from ares3.serve import Session
 
     sc = load_scenario(args.scenario)
+    if args.vital_variability > 0:  # a live demo should not show ruler-straight vitals (the engine default stays smooth: datasets, ML)
+        patch = {"variability": args.vital_variability}
+        sc.crew.physiology.params = deep_merge(sc.crew.physiology.params, patch)
+        for member in sc.crew.members:
+            if member.physiology is not None:
+                member.physiology.params = deep_merge(member.physiology.params, patch)
     session = Session(sc, speed=min(args.speed, args.max_speed), paused=args.paused, max_fps=args.fps, max_speed=args.max_speed,
                       pause_when_idle=args.pause_when_idle)
     if args.warmup_h > 0:
@@ -114,6 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--warmup-h", type=float, default=0.0, metavar="H",
                    help="simulated hours to run ahead at startup: the ML detectors are ready (they need 3 h) and the charts start full "
                         "(~1 min of real time per 4 h). The port is open meanwhile: clients get a `warming` state with progress")
+    s.add_argument("--vital-variability", type=float, default=0.3, metavar="K",
+                   help="short-term wobble of hr / spo2 / resp_rate, as a multiple of a resting adult's (0 = the smooth model; 1 = a real person, "
+                        "but the crew baseline ML of models/station_v2 was trained on smooth vitals and flags everyone from ~0.5: retrain it first)")
     s.set_defaults(fn=_serve)
     args = p.parse_args(argv)
     return args.fn(args)

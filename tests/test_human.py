@@ -80,3 +80,19 @@ def test_atrial_fibrillation_makes_the_rr_series_irregular():
     assert ticks[4700].vitals["rhythm"] == 1.0 and ticks[2500].vitals["rhythm"] == 0.0
     assert statistics.pstdev(af) / statistics.mean(af) > 0.08
     assert statistics.mean(af) < statistics.mean(sinus) * 0.7
+
+
+def test_short_term_variability_is_off_by_default_and_never_feeds_back():
+    def hr(variability):
+        sc = load_scenario(SCEN / "day_nominal.yaml")
+        if variability:
+            sc.crew.physiology.params["variability"] = variability
+            for m in sc.crew.members:
+                if m.physiology is not None:
+                    m.physiology.params["variability"] = variability
+        return [r.tick.npcs["cmd"].vitals["hr"] for r in Engine(sc).run(1800)]
+
+    smooth, wobbly = hr(0.0), hr(1.0)
+    assert statistics.pstdev(smooth[600:]) < 1.0  # the lagged state alone: no wobble
+    assert 1.5 < statistics.pstdev(wobbly[600:]) < 6.0  # a resting adult's beat-to-beat-averaged variation
+    assert abs(statistics.mean(wobbly[600:]) - statistics.mean(smooth[600:])) < 2.0  # same level: the wobble has no bias

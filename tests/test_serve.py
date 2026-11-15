@@ -262,3 +262,16 @@ def test_a_warm_up_that_is_served_reports_progress_and_refuses_commands(station)
     assert len(frames[-2]["samples"]) == 20  # the charts of every client start full
     assert json.loads(s.hello())["state"] == "live" and s.handle(_cmd("pause"))["ok"]
     assert json.loads(s.frame())["tick"]["monitor_events"] == []  # the hours before are not replayed
+
+
+def test_history_and_frames_carry_what_the_wearables_read(station):
+    s = Session(station, paused=True)
+    s.advance(1200)
+    msg = json.loads(s.history())
+    assert len(msg["vitals"]) == 120 and msg["vitals"][1]["t_sim_s"] - msg["vitals"][0]["t_sim_s"] == 10.0  # one per 10 simulated s
+    crew = next(iter(json.loads(s.frame())["tick"]["npcs"]))
+    assert {"hr", "spo2"} <= msg["vitals"][-1]["w"][crew].keys()
+    frame = json.loads(s.frame())
+    assert frame["wearables"][crew]["hr"] != frame["tick"]["npcs"][crew]["vitals"]["hr"]  # measured (noisy), not the ground truth
+    s.advance(7 * 3600)
+    assert len(json.loads(s.history())["vitals"]) == 2160

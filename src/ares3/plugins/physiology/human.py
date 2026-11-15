@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import math
 from itertools import pairwise
+from typing import ClassVar
 
 from ares3.sdk import ModuleState, NPCState, StepContext, VitalsUpdate, register
 
@@ -158,6 +159,11 @@ class HumanParams(ProfileParams):
     af_spo2_osc: float = 1.5  # AF: spo2 wanders +-1.5 around spo2_to (Luca: 91-94 %), slow noise
     af_sd_frac: float = 0.15  # AF: SD of RR / mean RR (RMSSD 80-250 ms is the usual AF range [P20])
     rr_min_ms: float = 250.0  # refractory limit
+    # --- short-term variability of the readings (0 = off: the vitals are the smooth lagged state, as before; 1 = a resting adult)
+    # Each vital gets a mean-reverting wobble on top (it never feeds back into the state), so a per-minute reading of a real person
+    # is not a ruler-straight line. ESTIMATE amplitudes (to confirm with Luca): hr 2.5 bpm, spo2 0.4 %, resp 1 /min, core 0.03 C.
+    variability: float = 0.0
+    var_tau_s: float = 25.0
 
 
 @register("human_physiology")
@@ -390,10 +396,28 @@ class HumanModel(ProfileModel):
             nb += rr_ms / 1000.0
         mine.update(next_beat_t=max(nb, t), rr_ms=rr_ms)
 
+        if p.variability > 0.0:
+            self._wobble(dt, v, mine, lat, state)
         v.update(health_state=float(state), core_temp_c=core, sleep_stage=mine["sleep_stage"], dehydration_pct=dehyd,
                  nausea=mine["sms_eff"], cohb_pct=mine["cohb_pct"], rr_interval_ms=rr_ms, rhythm=1.0 if af_w > 0.5 else 0.0,
                  gas_scale=min(1.0, 1.0 / max(npc.met, 1.0)) if unconscious else 1.0)
         return VitalsUpdate(vitals=v, latent={**lat, **vit.latent, **mine})
+
+    # amplitude (std) of each vital's wobble at variability = 1; hr scales with the effort (more beats to vary), spo2 only while healthy
+    _WOBBLE: ClassVar[dict[str, float]] = {"hr": 2.5, "spo2": 0.4, "resp_rate": 1.0}
+
+    def _wobble(self, dt: float, v: dict[str, float], mine: dict[str, float], lat: dict[str, float], state: int) -> None:
+        """Ornstein-Uhlenbeck noise on hr / spo2 / resp_rate (state in ``mine`` as ``var_*``). Applied to the output only."""
+        p = self.params
+        k = math.sqrt(2.0 * dt / p.var_tau_s)
+        for key, sd in self._WOBBLE.items():
+            x = lat.get("var_" + key, 0.0)
+            x += -x * dt / p.var_tau_s + sd * p.variability * k * float(self.rng.standard_normal())
+            mine["var_" + key] = x
+            if key == "spo2":
+                v[key] = min(100.0, max(0.0, v[key] + (x if state < 2 else 0.0)))
+            else:
+                v[key] = max(0.0, v[key] + x)
 
     def _dead_step(self, dt: float, npc: NPCState, env: ModuleState, lat: dict[str, float],
                    mine: dict[str, float]) -> VitalsUpdate:
