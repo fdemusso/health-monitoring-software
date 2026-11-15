@@ -220,3 +220,24 @@ def test_a_viewer_may_send_only_the_guest_commands(station):
             await asyncio.wait([server], timeout=5)
 
     asyncio.run(go())
+
+
+def test_a_server_with_nobody_connected_stands_still(station):
+    async def go():
+        s = Session(station, speed=500.0, max_fps=50.0, pause_when_idle=True)
+        task = asyncio.create_task(s.run(lambda frame: None))
+        try:
+            await asyncio.sleep(0.3)
+            assert s._latest is None  # nobody watches: no tick was made
+            s.watchers = 1
+            await asyncio.sleep(0.5)
+            assert s._latest is not None and s._latest.tick > 50  # the first visitor wakes it
+            s.watchers = 0
+            stopped = s._latest.tick
+            await asyncio.sleep(0.4)
+            assert s._latest.tick - stopped < 5  # and it stops again
+        finally:
+            task.cancel()
+            await asyncio.wait([task], timeout=5)
+
+    asyncio.run(go())

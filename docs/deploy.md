@@ -91,6 +91,22 @@ e `dashboard/LICENSE` / `THIRD_PARTY_NOTICES.md` raggiungibili dal sito.
 | Cambiare token | modificare `deploy/.env` e `docker compose ... up -d` |
 | Vedere chi è collegato / errori | `docker compose ... logs ares3` e, per il tunnel, `logs cloudflared` |
 
+## Quanto pesa sul server (misurato)
+
+Misure sul container `docker-host` (i5-9500, 6 core, 8 GB) con un visitatore collegato:
+
+| | CPU | RAM | Rete |
+|---|---|---|---|
+| `ares3` (backend) | circa 6-7% di un core a 10x | 236 MB (tetto 1 GB) | circa 13 KB per frame, 9 frame/s = 1 Mbit/s per spettatore non compresso; circa 0,6 Mbit/s sul filo |
+| `cloudflared` | circa 0,7% | 20 MB | uguale al traffico dei client |
+| Avvio (warm-up 4 h simulate) | 1 core per 3-4 minuti, una volta | - | - |
+
+Il server Proxmox resta al 97% libero. Con `--pause-when-idle` (attivo nel compose) la simulazione **si ferma quando non c'è nessuno
+collegato** e riparte al primo visitatore: a vuoto non usa CPU. Il tempo simulato non avanza durante la pausa.
+
+Il collo di bottiglia è la **banda in uscita** del collegamento di casa: ogni spettatore costa circa 0,5 Mbit/s a 5 frame/s
+(`ARES3_FPS`, predefinito 5) e circa 1 Mbit/s a 10; con `ARES3_MAX_CLIENTS=30` il massimo è circa 15-30 Mbit/s.
+
 ## Costi e limiti
 
 Cloudflare Workers (file statici), il Tunnel e il DNS sono gratuiti. Il backend gira su una macchina tua: una simulazione condivisa

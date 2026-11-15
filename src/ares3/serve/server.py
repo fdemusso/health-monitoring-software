@@ -40,6 +40,7 @@ async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, rea
             return
         role = role_of(ws)
         clients.add(ws)
+        session.watchers = len(clients)
         try:
             await ws.send(session.hello(role))
             history = session.history()
@@ -59,6 +60,7 @@ async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, rea
                 await ws.send(json.dumps(reply))
         finally:
             clients.discard(ws)
+            session.watchers = len(clients)
 
     allowed = None if origins is None else [*origins, None]
     async with ws_serve(handler, host, port, origins=allowed, max_size=MAX_CLIENT_MESSAGE) as server:

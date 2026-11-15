@@ -42,9 +42,11 @@ HISTORY_LEN = 360  # samples kept: 6 simulated hours
 
 class Session:
     def __init__(self, scenario: Scenario, *, speed: float = 10.0, paused: bool = False, max_fps: float = 10.0,
-                 max_speed: float = 100_000.0) -> None:
+                 max_speed: float = 100_000.0, pause_when_idle: bool = False) -> None:
         self.scenario = scenario
         self.max_speed = max_speed
+        self.pause_when_idle = pause_when_idle  # no client connected: the simulation stands still (a public server costs nothing when nobody looks)
+        self.watchers = 0  # connected clients, kept by the server
         self.speed = speed  # simulated seconds per real second
         self.paused = paused
         self.max_fps = max_fps
@@ -100,7 +102,7 @@ class Session:
         dirty = False
         while True:
             now = time.monotonic()
-            if not self.paused:
+            if not self.paused and not (self.pause_when_idle and self.watchers == 0):
                 self._owed = min(self._owed + (now - last) * self.speed / dt, float(MAX_BATCH))
                 n = int(self._owed)
                 self._owed -= n

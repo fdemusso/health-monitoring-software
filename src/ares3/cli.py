@@ -65,7 +65,8 @@ def _serve(args: argparse.Namespace) -> int:
     from ares3.serve import Session
 
     sc = load_scenario(args.scenario)
-    session = Session(sc, speed=min(args.speed, args.max_speed), paused=args.paused, max_fps=args.fps, max_speed=args.max_speed)
+    session = Session(sc, speed=min(args.speed, args.max_speed), paused=args.paused, max_fps=args.fps, max_speed=args.max_speed,
+                      pause_when_idle=args.pause_when_idle)
     if args.warmup_h > 0:
         print(f"warming up {args.warmup_h:g} simulated hours before opening the port...", flush=True)
         session.warm_up(args.warmup_h * 3600.0, lambda f: print(f"\r  {f:4.0%}", end="", flush=True))
@@ -107,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="commands a viewer (no token) may send too, e.g. approve_action,reject_action,ack_step (default: none)")
     s.add_argument("--allow-origin", action="append", metavar="URL",
                    help="page allowed to open the socket from a browser, e.g. https://ares.daado.dev (repeatable; default: any)")
+    s.add_argument("--pause-when-idle", action="store_true",
+                   help="stand still while no client is connected (a server left running costs no CPU; time resumes on the first connection)")
     s.add_argument("--max-clients", type=int, default=100, help="simultaneous connections")
     s.add_argument("--max-speed", type=float, default=100_000.0, help="highest speed a client can ask for (a public server: 200)")
     s.add_argument("--warmup-h", type=float, default=0.0, metavar="H",
