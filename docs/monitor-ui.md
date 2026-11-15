@@ -1,139 +1,139 @@
-# Monitor: contratto per la UI
+# Monitor: contract for the UI
 
-La UI non ha logica di soglie: arriva tutto calcolato nel `SimulationTick` (`src/ares3/sdk/types.py` è la fonte di verità; lo
-specchio a mano è `dashboard/src/telemetry/types.ts`).
+The UI has no threshold logic: everything arrives already computed in the `SimulationTick` (`src/ares3/sdk/types.py` is the source of
+truth; the hand-kept mirror is `dashboard/src/telemetry/types.ts`).
 
-## Stati del sistema (`tick.monitor_mode`)
+## System states (`tick.monitor_mode`)
 
-| Valore | Quando | Banner suggerito |
+| Value | When | Suggested banner |
 |---|---|---|
-| `passive` | nessuna emergenza aperta | verde, nessuna interruzione |
-| `alert` | almeno un'emergenza `suspected`, oppure una `confirmed` di classe `caution`/`advisory` senza playbook | giallo |
-| `reaction` | almeno un'emergenza `confirmed` di classe `emergency`/`warning`, o con un playbook in corso | rosso (emergency) o arancio (warning) |
+| `passive` | no emergency open | green, no interruption |
+| `alert` | at least one `suspected` emergency, or a `confirmed` one of class `caution`/`advisory` without a playbook | yellow |
+| `reaction` | at least one `confirmed` emergency of class `emergency`/`warning`, or with a playbook running | red (emergency) or orange (warning) |
 
-Il modo è il massimo sulle emergenze aperte. Sale subito e scende solo dopo `classifier.mode_hold_s` (60 s) senza il livello
-più alto, quindi non sfarfalla. Ogni cambio è un `MonitorEvent` con `kind: "mode_changed"` (`"monitoring: alert -> reaction"`).
+The mode is the maximum over the open emergencies. It rises at once and falls only after `classifier.mode_hold_s` (60 s) without the
+highest level, so it does not flicker. Every change is a `MonitorEvent` with `kind: "mode_changed"` (`"monitoring: alert -> reaction"`).
 
-## Classe di allerta (`Emergency.alert_class`)
+## Alert class (`Emergency.alert_class`)
 
-`emergency` rosso, `warning` arancio, `caution` giallo, `advisory` blu. Viene da `classifier.classes` nel YAML del monitor
-(chiavi `kind:severity:cause`, `kind:severity` o `kind`; senza voce: critical -> `emergency`, warning -> `warning`).
-Livelli ISS: NASA, *CLD HSI Workshop - Alerts* (piano §11 [R1]).
+`emergency` red, `warning` orange, `caution` yellow, `advisory` blue. It comes from `classifier.classes` in the monitor's YAML
+(keys `kind:severity:cause`, `kind:severity` or `kind`; with no entry: critical -> `emergency`, warning -> `warning`).
+ISS levels: NASA, *CLD HSI Workshop - Alerts* (plan §11 [R1]).
 
-## Spiegazione (`Emergency.evidence`, `tick.ml`)
+## Explanation (`Emergency.evidence`, `tick.ml`)
 
-`Emergency.evidence` è una lista di frasi per l'equipaggio: per le anomalie ML sono i 3 contributi più grandi alla decisione
-("usl_ppCO2_a: slope over 6 h (+4.1 sigma)"), per gli altri rilevatori è vuota (c'è `detail`). Mostrarla nella scheda del problema,
-sotto il titolo. `tick.ml` è il punteggio di ogni rilevatore ML sopra il suo limite (`ml_atmosphere_co2: 0.3`; >= 1 è un'anomalia):
-utile per un indicatore per sottosistema, non serve per la logica di allerta.
+`Emergency.evidence` is a list of sentences for the crew: for ML anomalies they are the 3 largest contributions to the decision
+("usl_ppCO2_a: slope over 6 h (+4.1 sigma)"), for the other detectors it is empty (there is `detail`). Show it on the problem card,
+under the title. `tick.ml` is the score of every ML detector above its floor (`ml_atmosphere_co2: 0.3`; >= 1 is an anomaly):
+useful for a per-subsystem indicator, not needed for the alert logic.
 
-## Tipi di emergenza nuovi
+## New emergency types
 
-* `anomaly`: "qualcosa di anomalo nel sottosistema, senza causa nota" (stadio A, classe `caution`); `module_id` è il modulo del
-  sensore che spiega di più, oppure `station` se è un canale di telemetria di un attuatore.
-* `sensor_fault`: un sensore non va creduto. `subject` è l'id del SENSORE (o `a~b` se la coppia ridondante non dice quale dei due).
+* `anomaly`: "something anomalous in the subsystem, cause unknown" (stage A, class `caution`); `module_id` is the module of the
+  sensor that explains the most, or `station` if it is an actuator telemetry channel.
+* `sensor_fault`: a sensor must not be believed. `subject` is the id of the SENSOR (or `a~b` if the redundant pair does not say which of the two).
 
-## Procedure (`tick.procedures`) e il comando `ack_step`
+## Procedures (`tick.procedures`) and the `ack_step` command
 
-Una procedura è la checklist per le persone di un'emergenza confermata; parte da sola, il playbook resta la messa in sicurezza
-della macchina. Ogni `ProcedureState` ha il titolo, lo stato (`running | done | escalated | closed`), il passo attivo (`current`) e
-la lista dei passi con il loro stato (`pending | active | done | failed | skipped`, `by`, `answer`, `deadline_s`). Tipi di passo:
+A procedure is the checklist for the people of a confirmed emergency; it starts by itself, the playbook remains the safing of the
+machine. Every `ProcedureState` has the title, the status (`running | done | escalated | closed`), the active step (`current`) and
+the list of steps with their status (`pending | active | done | failed | skipped`, `by`, `answer`, `deadline_s`). Step types:
 
-| `kind` | La UI mostra | Chi lo chiude |
+| `kind` | The UI shows | Who closes it |
 |---|---|---|
-| `instruction` | testo + pulsante "fatto" | comando `ack_step`, oppure un NPC del ruolo dopo qualche secondo |
-| `question` | testo + sì / no | `ack_step` con `answer: "yes" \| "no"`, oppure un NPC (risposta di default) |
-| `check` | "verifica in corso" con conto alla rovescia (`deadline_s`) | il sistema, sui valori misurati |
-| `action` | come una `pending_action` (anche lì c'è il passo da approvare) | il sistema, quando l'azione è eseguita o scartata |
-| `escalate` | avviso rosso: "chiama il chirurgo di volo / evacua" | la procedura finisce come `escalated` |
+| `instruction` | text + "done" button | `ack_step` command, or an NPC of the role after a few seconds |
+| `question` | text + yes / no | `ack_step` with `answer: "yes" \| "no"`, or an NPC (default answer) |
+| `check` | "check in progress" with a countdown (`deadline_s`) | the system, on the measured values |
+| `action` | like a `pending_action` (there too is the step to approve) | the system, when the action is executed or discarded |
+| `escalate` | red notice: "call the flight surgeon / evacuate" | the procedure ends as `escalated` |
 
-Comando WebSocket: `{"type": "command", "cmd": "ack_step", "args": {"procedure_id": "...", "step_id": "...", "by": "...", "answer": "yes"}}`
-(`answer` solo per le domande). Chiunque può chiudere un passo: il monitor è aperto a tutti. Un'azione dell'equipaggio (`ack_step`)
-su un passo non attivo risponde `ok: false`.
+WebSocket command: `{"type": "command", "cmd": "ack_step", "args": {"procedure_id": "...", "step_id": "...", "by": "...", "answer": "yes"}}`
+(`answer` only for questions). Anyone can close a step: the monitor is open to everyone. A crew action (`ack_step`)
+on a step that is not active answers `ok: false`.
 
-Eventi nuovi in `monitor_events`: `procedure_started`, `step_done`, `step_failed`, `procedure_done`, `procedure_escalated`.
+New events in `monitor_events`: `procedure_started`, `step_done`, `step_failed`, `procedure_done`, `procedure_escalated`.
 
-La procedura giusta per un'emergenza ancora solo `suspected` (nessuna procedura gira) la propone la UI dal CATALOGO: `hello.procedures`
-(`id, emergency, cause, severity, title, steps[{id, kind, text, role}]`, statico, con `{subject}` e `{module}` ancora nei testi). La
-scelta replica `ProcedureRunner._choose` (tipo, poi causa, poi gravità; chi nomina la causa batte quella generica):
-`dashboard/src/domain/procedures.ts`. Appena l'emergenza è confermata il backend avvia la procedura vera (`tick.procedures`) e la UI
-passa alla checklist viva.
+The right procedure for an emergency that is still only `suspected` (no procedure is running) is proposed by the UI from the CATALOG: `hello.procedures`
+(`id, emergency, cause, severity, title, steps[{id, kind, text, role}]`, static, with `{subject}` and `{module}` still in the texts). The
+choice replicates `ProcedureRunner._choose` (type, then cause, then severity; the one naming the cause beats the generic one):
+`dashboard/src/domain/procedures.ts`. As soon as the emergency is confirmed the backend starts the real procedure (`tick.procedures`) and the UI
+switches to the live checklist.
 
-## Procedure mediche e avviso
+## Medical procedures and notice
 
-Contratto per la UI (solo documento: nessun campo nuovo in `sdk/types.py`, nessuna modifica a `dashboard/`). Il contenuto clinico è in
+Contract for the UI (document only: no new field in `sdk/types.py`, no change to `dashboard/`). The clinical content is in
 `docs/procedure-mediche.md`.
 
-**Campi del tick che servono.** Dell'emergenza (`tick.emergencies`, `kind == "medical"`): `subject` (la persona), `module_id` (dove
-si trova), `cause` (quale problema; sceglie la procedura), `evidence` (i valori che hanno fatto scattare l'allarme), `alert_class`
-(il colore), `severity`. Della procedura (`tick.procedures`, si collega con `emergency_id`): `title`, `status`, `current`, `steps[]`
-(`kind`, `text`, `status`, `by`, `answer`, `deadline_s`), `t_start_s`, `t_end_s`. Lo stesso `cause` può non avere una procedura
-dedicata (allora c'è `med_generic`): la UI non deve presumere che il titolo dica la causa, lo dice `Emergency.cause`.
+**Tick fields that are needed.** From the emergency (`tick.emergencies`, `kind == "medical"`): `subject` (the person), `module_id` (where
+they are), `cause` (which problem; it picks the procedure), `evidence` (the values that triggered the alarm), `alert_class`
+(the colour), `severity`. From the procedure (`tick.procedures`, linked by `emergency_id`): `title`, `status`, `current`, `steps[]`
+(`kind`, `text`, `status`, `by`, `answer`, `deadline_s`), `t_start_s`, `t_end_s`. The same `cause` may have no dedicated
+procedure (then there is `med_generic`): the UI must not assume that the title says the cause, `Emergency.cause` does.
 
-**Stati e transizioni dei passi.** `pending` -> `active` (uno solo alla volta, `current`) -> `done` | `failed`; i passi mai raggiunti
-finiscono `skipped`. Un `check` che non passa entro `deadline_s` diventa `failed` e la procedura salta al ramo di fallimento
-(quasi sempre un passo `escalate`). Un passo `escalate` è l'ultimo: diventa `done` e la procedura `escalated`. La procedura
-`running` -> `done` (tutti i rami arrivati in fondo), `escalated` (arrivata a un passo `escalate`), `closed` (l'emergenza è finita
-prima: i passi aperti diventano `skipped`). Resta nel tick 300 s dopo la fine, con l'esito.
+**Step states and transitions.** `pending` -> `active` (only one at a time, `current`) -> `done` | `failed`; steps never reached
+end up `skipped`. A `check` that does not pass within `deadline_s` becomes `failed` and the procedure jumps to the failure branch
+(almost always an `escalate` step). An `escalate` step is the last: it becomes `done` and the procedure `escalated`. The procedure
+goes `running` -> `done` (all branches reached the end), `escalated` (reached an `escalate` step), `closed` (the emergency ended
+first: the open steps become `skipped`). It stays in the tick for 300 s after the end, with the outcome.
 
-**Avviso fisso, da mostrare in ogni procedura medica** (in alto, sempre visibile, non chiudibile):
+**Fixed notice, to show in every medical procedure** (at the top, always visible, not dismissible):
 
 > Simulation checklist, NOT medical advice. The steps are reconstructed from public sources and have not been reviewed by a flight
 > surgeon. In a real emergency follow the ISS Medical Checklist and the instructions of the flight surgeon.
 
-**Ordine di visualizzazione.** 1) avviso fisso; 2) titolo con la persona e il modulo, `alert_class` come colore, `evidence`
-sotto (perché il monitor ha aperto l'allarme); 3) i passi nell'ordine della lista, quello `active` evidenziato con il suo pulsante
-("fatto", sì / no) o il conto alla rovescia del `check`; i passi `skipped` attenuati; 4) se ci sono due procedure mediche aperte
-(due persone), prima la più grave (`severity` poi `alert_class`) e l'altra in elenco.
+**Display order.** 1) fixed notice; 2) title with the person and the module, `alert_class` as the colour, `evidence`
+below (why the monitor opened the alarm); 3) the steps in list order, the `active` one highlighted with its button
+("done", yes / no) or the `check` countdown; `skipped` steps dimmed; 4) if two medical procedures are open
+(two people), the more serious first (`severity` then `alert_class`) and the other in a list.
 
-**Quando una procedura va in `escalated`** l'equipaggio deve vedere, al posto della checklist, un riquadro rosso con il testo del
-passo `escalate` (es. "chiama il chirurgo di volo"), l'elenco dei passi già fatti e quelli che non hanno funzionato (`failed`) per
-riferirli a terra, e i valori attuali della persona. L'evacuazione o la chiamata a terra le decidono le persone: il sistema non le fa.
-La procedura non si riapre da sola; se l'emergenza si riaccende, ne parte una nuova.
+**When a procedure goes `escalated`** the crew must see, in place of the checklist, a red box with the text of the
+`escalate` step (e.g. "call the flight surgeon"), the list of steps already done and those that did not work (`failed`) to
+report them to the ground, and the person's current values. Evacuation or the call to the ground are decided by people: the system does not do them.
+The procedure does not reopen by itself; if the emergency flares up again, a new one starts.
 
-## Alimentazione e sensori sostitutivi
+## Power and substitute sensors
 
-* `Action.kind = "power"` (`command: off | on`, `target` = modulo): togliere l'alimentazione a un modulo (risposta ISS al fumo). Quando è
-  attiva, `tick.powered_off` elenca i moduli. Per i moduli vitali (USL, NOD3) è un passo `confirm` con il conto alla rovescia e
-  `on_timeout: execute`; il ripristino viene solo PROPOSTO (`pending_actions`, `power on`) quando l'emergenza finisce: lo decide l'equipaggio.
-  Il lifeboat e il volume EVA non si possono spegnere (l'azione è bloccata).
-* `Action.kind = "sensor"` (`command: substitute`, `target` = sensore guasto, `value_id` = sostituto): da quel momento i controlli
-  (CDRA, OGA...) leggono il sostituto. Passo `confirm` con `on_timeout: discard`; si annulla da solo a emergenza chiusa.
+* `Action.kind = "power"` (`command: off | on`, `target` = module): cut the power to a module (the ISS response to smoke). When it is
+  active, `tick.powered_off` lists the modules. For vital modules (USL, NOD3) it is a `confirm` step with a countdown and
+  `on_timeout: execute`; the restoration is only PROPOSED (`pending_actions`, `power on`) when the emergency ends, and runs on timeout if nobody answers.
+  The lifeboat and the EVA volume cannot be switched off (the action is blocked).
+* `Action.kind = "sensor"` (`command: substitute`, `target` = faulty sensor, `value_id` = substitute): from then on the control loops
+  (CDRA, OGA...) read the substitute. `confirm` step with `on_timeout: discard`; it cancels itself when the emergency is closed.
 
-## Storia per i grafici (`history`) e avvio del backend
+## History for the charts (`history`) and backend start
 
-Subito dopo `hello` il backend manda UNA volta `{"type": "history", "samples": [{"t_sim_s", "npcs", "modules"}, ...]}`: le ultime 6 ore
-simulate, un campione al minuto (stessi `npcs` e `modules` di un tick). La UI ci riempie i grafici subito invece di partire vuota (prima
-li costruiva da sola, un punto al minuto SIMULATO dal momento della connessione: a 10x un punto ogni 6 s reali, a 1x uno ogni minuto).
-Se la storia è vuota il messaggio non viene inviato. Un `reset` riparte da zero e svuota la storia.
+Right after `hello` the backend sends ONCE `{"type": "history", "samples": [{"t_sim_s", "npcs", "modules"}, ...]}`: the last 6 simulated
+hours, one sample per minute (same `npcs` and `modules` as a tick). The UI fills the charts with it at once instead of starting empty (it used to
+build them itself, one point per SIMULATED minute from the moment of connection: at 10x one point every 6 real s, at 1x one every minute).
+If the history is empty the message is not sent. A `reset` starts from zero and empties the history.
 
-I segni vitali dell'equipaggio hanno una storia più fine: `"vitals": [{"t_sim_s", "w": {crew: {hr, spo2, resp_rate, core_temp_c, cohb_pct}}}, ...]`,
-un punto ogni 10 s simulati (2160 punti = 6 h). Sono le letture dei WEARABLE (misurate: rumore e guasti dei sensori inclusi, come le vede il
-monitor), non la verità del modello; `samples` (un punto al minuto) resta per moduli e verità. Ogni `tick` porta anche `"wearables"` (ultima
-lettura per persona e metrica): la UI li disegna nel grafico dei segni vitali. L'asse del tempo è l'ora di bordo (`time_of_day_h`).
+The crew's vital signs have a finer history: `"vitals": [{"t_sim_s", "w": {crew: {hr, spo2, resp_rate, core_temp_c, cohb_pct}}}, ...]`,
+one point every 10 simulated s (2160 points = 6 h). They are the WEARABLE readings (measured: sensor noise and faults included, as the
+monitor sees them), not the model's truth; `samples` (one point per minute) stays for modules and truth. Every `tick` also carries `"wearables"` (last
+reading per person and metric): the UI draws them in the vital-signs chart. The time axis is on-board time (`time_of_day_h`).
 
-`ares3 serve --vital-variability K` (default 0.3) aggiunge al modello fisiologico (HumanModel, `variability`) una piccola oscillazione a breve
-termine su hr / spo2 / resp_rate, perché un adulto vero non ha una riga dritta (K=1: hr ±2.5 bpm, spo2 ±0.4 %, resp ±1/min). 0 = il modello liscio
-di prima (dataset ed ML restano identici: il default del motore è 0). Con K >= 0.5 il `crew_baseline` ML (`models/station_v2`, addestrato su
-vitali lisci) segnala tutti: per usare K=1 va riaddestrato con dati generati con la stessa variabilità.
+`ares3 serve --vital-variability K` (default 0.3) adds to the physiology model (HumanModel, `variability`) a small short-term
+wobble on hr / spo2 / resp_rate, because a real adult does not have a ruler-straight line (K=1: hr ±2.5 bpm, spo2 ±0.4 %, resp ±1/min). 0 = the earlier
+smooth model (datasets and ML stay identical: the engine default is 0). With K >= 0.5 the `crew_baseline` ML (`models/station_v2`, trained on
+smooth vitals) flags everyone: to use K=1 it must be retrained with data generated with the same variability.
 
-`ares3 serve ... --warmup-h 4` fa avanzare la simulazione di 4 ore (circa un minuto reale) prima di andare in diretta: i rilevatori ML hanno
-bisogno di 3 ore simulate di storia prima di giudicare, e la storia dei grafici parte già piena. La porta si apre SUBITO (dopo il
-caricamento di scenario e modelli, qualche secondo): durante il warmup il server è nello stato `warming`.
+`ares3 serve ... --warmup-h 4` advances the simulation by 4 hours (about a real minute) before going live: the ML detectors need
+3 simulated hours of history before judging, and the charts' history starts already full. The port opens IMMEDIATELY (after
+scenario and models load, a few seconds): during the warm-up the server is in the `warming` state.
 
-- `hello` porta `"state": "warming" | "live"`.
-- Mentre è `warming` arrivano circa 4 volte al secondo `{"type": "warming", "progress": 0..1, "sim_s", "total_s"}` (anche subito dopo
-  `hello` per chi si connette a metà); NON arrivano `tick` né `history`, e ogni comando è rifiutato (`ok: false`, "warming up").
-- A fine warmup: `history` a TUTTI i client, poi `{"type": "ready"}`, poi i tick. Un `hello` con `state: "live"` vale come `ready`.
+- `hello` carries `"state": "warming" | "live"`.
+- While `warming`, about 4 times a second `{"type": "warming", "progress": 0..1, "sim_s", "total_s"}` arrives (also right after
+  `hello` for whoever connects midway); NO `tick` or `history` arrives, and every command is rejected (`ok: false`, "warming up").
+- At the end of the warm-up: `history` to ALL clients, then `{"type": "ready"}`, then the ticks. A `hello` with `state: "live"` counts as `ready`.
 
-La UI (`dashboard/src/app/WarmupScreen.tsx`, stato `warming` in `telemetry/store.ts`) mostra una schermata di caricamento con
-percentuale e tempo stimato, e si dissolve su `ready`; l'app sotto è `inert` nel frattempo.
+The UI (`dashboard/src/app/WarmupScreen.tsx`, `warming` state in `telemetry/store.ts`) shows a loading screen with
+percentage and estimated time, and dissolves on `ready`; the app underneath is `inert` meanwhile.
 
-Un avviso "fuori range" della UI su un astronauta che lavora (es. 126 bpm a 7 MET) non viene dal backend: il monitor lo giudica con
-l'`EarlyWarningScore`, che non valuta FC e frequenza respiratoria durante e 30 min dopo lo sforzo. Conviene che la UI usi
-`tick.emergencies` / `tick.monitor_mode` per gli avvisi.
+An "out of range" warning in the UI about an astronaut who is working (e.g. 126 bpm at 7 MET) does not come from the backend: the monitor judges it with
+the `EarlyWarningScore`, which does not score HR and respiratory rate during and 30 min after exertion. The UI should use
+`tick.emergencies` / `tick.monitor_mode` for its warnings.
 
-## Ancora da fare
+## Still to do
 
-La classificazione (stadio B) darà a `Emergency.cause` la diagnosi (quale guasto) con la sua probabilità; il tipo `crew` (ordini a un
-NPC, es. spostare una persona) non esiste ancora: oggi lo spostamento è un passo `instruction`. Questa nota si aggiorna quando entrano.
+The classification (stage B) will give `Emergency.cause` the diagnosis (which fault) with its probability; the `crew` type (orders to an
+NPC, e.g. moving a person) does not exist yet: today moving is an `instruction` step. This note will be updated when they land.

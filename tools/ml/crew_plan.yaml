@@ -1,4 +1,4 @@
-# The job list of the crew dataset (docs/piano-ml-equipaggio.md, section 1). Read by tools/ml/crew_plan.py:
+# The job list of the crew dataset. Read by tools/ml/crew_plan.py:
 #   uv run python tools/ml/make_dataset.py --plan tools/ml/crew_plan.yaml --wave 1 --list
 # EVERY machine builds the SAME list from the SAME commit and takes its --shard: changing this file changes the shards, so it is frozen before
 # the launch. All ranges are PLACEHOLDER (awaiting review by Luca / Mario) and ESTIMATE unless a source is named.

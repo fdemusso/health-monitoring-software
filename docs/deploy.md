@@ -1,73 +1,73 @@
-# Distribuzione: `ares.daado.dev` + `ares-api.daado.dev`
+# Deployment: `ares.daado.dev` + `ares-api.daado.dev`
 
 ```
-browser ──https──▶ ares.daado.dev       dashboard (file statici su Cloudflare Workers, gratis)
+browser ──https──▶ ares.daado.dev       dashboard (static files on Cloudflare Workers, free)
    │
-   └────wss─────▶ ares-api.daado.dev    Cloudflare ──tunnel──▶ container `ares3` (ares3 serve) sul Proxmox
+   └────wss─────▶ ares-api.daado.dev    Cloudflare ──tunnel──▶ `ares3` container (ares3 serve) on the Proxmox
 ```
 
-Il backend non apre nessuna porta sul router: il container `cloudflared` esce verso Cloudflare e il traffico torna dentro quel
-tunnel. `.dev` è un dominio solo-HTTPS (HSTS): per questo il socket deve essere `wss://`, ed è quello che dà il tunnel.
+The backend opens no port on the router: the `cloudflared` container connects out to Cloudflare and the traffic comes back in through that
+tunnel. `.dev` is an HTTPS-only domain (HSTS): that is why the socket must be `wss://`, which is what the tunnel provides.
 
-## Sicurezza (cosa è attivo)
+## Security (what is active)
 
-| Misura | Dove |
+| Measure | Where |
 |---|---|
-| **Token operatore**: chi collega con `?token=<ARES3_TOKEN>` può mandare comandi; gli altri (spettatori) ricevono tutto, i loro comandi sono rifiutati (`read-only connection`) | `ares3 serve --token` / `ARES3_TOKEN` |
-| **Visitatori (giudici) senza login**: nessun accesso Cloudflare, nessun token. Vedono tutto in diretta e possono solo `approve_action`, `reject_action` e `ack_step` (partecipare alla risposta); iniettare guasti, `reset`, velocità, pausa e `declare_emergency` richiedono il token. Per sola lettura: `ARES3_GUEST_COMMANDS=` vuoto in `deploy/.env` | `--guest-commands` |
-| **Origin**: da un browser il socket si apre solo dalla pagina `https://ares.daado.dev` (403 per le altre) | `--allow-origin` |
-| **Velocità massima** chiesta da un client: 60x (altrimenti `set_speed` potrebbe tenere la CPU al 100%) | `--max-speed` |
-| **Connessioni**: al massimo 8 (`ARES3_MAX_CLIENTS`), messaggi dal client al massimo 64 KB | `--max-clients`, automatico |
-| Container non root, filesystem in sola lettura, nessuna capability, 1 GB di RAM e 1,5 CPU | `deploy/docker-compose.yml` |
-| Nessuna porta pubblicata: l'unica via d'ingresso è il tunnel | `deploy/docker-compose.yml` |
-| Segreti solo in `deploy/.env` (ignorato da git) | `.gitignore` |
+| **Operator token**: whoever connects with `?token=<ARES3_TOKEN>` can send commands; the others (viewers) receive everything, their commands are rejected (`read-only connection`) | `ares3 serve --token` / `ARES3_TOKEN` |
+| **Visitors (judges) without login**: no Cloudflare access, no token. They see everything live and may only `approve_action`, `reject_action`, `ack_step` (take part in the response) and `inject_event` / `stop_event` (the scenarios menu); `reset`, speed, pause and `declare_emergency` need the token. For read-only: empty `ARES3_GUEST_COMMANDS=` in `deploy/.env` | `--guest-commands` |
+| **Origin**: from a browser the socket opens only from the page `https://ares.daado.dev` (403 for the others) | `--allow-origin` |
+| **Maximum speed** a client may ask for: 60x (otherwise `set_speed` could keep the CPU at 100%) | `--max-speed` |
+| **Connections**: at most 8 (`ARES3_MAX_CLIENTS`), client messages at most 64 KB | `--max-clients`, automatic |
+| Non-root container, read-only filesystem, no capabilities, 1 GB of RAM and 1.5 CPU | `deploy/docker-compose.yml` |
+| No published port: the only way in is the tunnel | `deploy/docker-compose.yml` |
+| Secrets only in `deploy/.env` (ignored by git) | `.gitignore` |
 
-Il token del browser sta nel **frammento** dell'indirizzo (`https://ares.daado.dev/#token=...`): un frammento non arriva mai al server
-né ai log. Dal browser lo legge `dashboard/src/telemetry/createBackend.ts` e lo aggiunge a `wss://...?token=` (la UI non lo mostra).
-Senza token la pagina è per i visitatori: va bene per la giuria (vedi sopra cosa possono fare).
+The browser token lives in the address **fragment** (`https://ares.daado.dev/#token=...`): a fragment never reaches the server
+or the logs. In the browser it is read by `dashboard/src/telemetry/createBackend.ts` and appended to `wss://...?token=` (the UI does not show it).
+Without a token the page is for visitors: fine for the jury (see above for what they can do).
 
-## 1. Tunnel (Cloudflare, nel browser)
+## 1. Tunnel (Cloudflare, in the browser)
 
-1. `dash.cloudflare.com` → **Zero Trust** → **Networks** → **Tunnels** → **Create a tunnel** → **Cloudflared** → nome `ares`.
-2. Copia il **token** (la stringa lunga dopo `--token`): è il `TUNNEL_TOKEN`.
-3. Scheda **Public Hostname** → **Add**: sottodominio `ares-api`, dominio `daado.dev`, servizio **HTTP** `ares3:8765`.
-   (I WebSocket passano senza altre opzioni. Il record DNS lo crea Cloudflare.)
+1. `dash.cloudflare.com` → **Zero Trust** → **Networks** → **Tunnels** → **Create a tunnel** → **Cloudflared** → name `ares`.
+2. Copy the **token** (the long string after `--token`): it is the `TUNNEL_TOKEN`.
+3. **Public Hostname** tab → **Add**: subdomain `ares-api`, domain `daado.dev`, service **HTTP** `ares3:8765`.
+   (WebSockets pass without any other option. Cloudflare creates the DNS record.)
 
-## 2. Backend (sul docker host del Proxmox)
+## 2. Backend (on the Proxmox docker host)
 
 ```bash
-git clone <repo> /opt/stacks/ares3 && cd /opt/stacks/ares3      # oppure copia la cartella: serve tutto tranne output/
+git clone <repo> /opt/stacks/ares3 && cd /opt/stacks/ares3      # or copy the folder: everything except output/ is needed
 cp deploy/.env.example deploy/.env
-openssl rand -hex 24                                            # il valore di ARES3_TOKEN
+openssl rand -hex 24                                            # the value of ARES3_TOKEN
 nano deploy/.env                                                # ARES3_TOKEN=... TUNNEL_TOKEN=...
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
-docker compose -f deploy/docker-compose.yml logs -f ares3       # "warming up 4 simulated hours ..." poi "serving ..."
+docker compose -f deploy/docker-compose.yml logs -f ares3       # "warming up 4 simulated hours ..." then "serving ..."
 ```
 
-Il primo avvio richiede circa un minuto in più per il riscaldamento (4 ore simulate: i rilevatori ML ne hanno bisogno di 3 e i grafici
-partono già pieni). Alla fine lo stato viene salvato nel volume `ares3-cache` (`--warmup-cache=/cache`): ai riavvii successivi
-(crash, `restart`, reboot dell'host) il log dice `warm-up of 4 h restored from /cache (no wait)` e il backend è pronto in pochi secondi.
+The first start takes about a minute longer for the warm-up (4 simulated hours: the ML detectors need 3 and the charts
+start already full). At the end the state is saved in the `ares3-cache` volume (`--warmup-cache=/cache`): on later restarts
+(crash, `restart`, host reboot) the log says `warm-up of 4 h restored from /cache (no wait)` and the backend is ready in a few seconds.
 
-La cache ha una chiave che comprende codice (`src/ares3`), scenario risolto, modelli `.joblib` e `--warmup-h`: dopo un aggiornamento
-(`git pull` + `up -d --build`) la chiave cambia, il primo avvio rifà il riscaldamento e sostituisce il file (resta un solo file).
-Uno stato vecchio non viene mai caricato. Se il file è illeggibile si ricomincia da zero, senza errori. È un pickle: il volume deve
-restare solo nostro. Per forzare un nuovo riscaldamento: `docker compose -f deploy/docker-compose.yml down && docker volume rm deploy_ares3-cache`
-(il nome del volume è `<cartella del compose>_ares3-cache`: controlla con `docker volume ls`).
+The cache has a key made of the code (`src/ares3`), the resolved scenario, the `.joblib` models and `--warmup-h`: after an update
+(`git pull` + `up -d --build`) the key changes, the first start redoes the warm-up and replaces the file (only one file is kept).
+An old state is never loaded. If the file is unreadable it starts over, without errors. It is a pickle: the volume must
+stay ours alone. To force a new warm-up: `docker compose -f deploy/docker-compose.yml down && docker volume rm deploy_ares3-cache`
+(the volume name is `<compose folder>_ares3-cache`: check with `docker volume ls`).
 
-**Aggiornare un server già in funzione** (prima del merge non ha il volume, dopo sì):
+**Updating a server that is already running** (before the merge it has no volume, after it does):
 
 ```bash
-cd /opt/stacks/ares3 && git pull                                 # porta compose, Dockerfile e codice nuovi
+cd /opt/stacks/ares3 && git pull                                 # brings the new compose, Dockerfile and code
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
-docker compose -f deploy/docker-compose.yml logs -f ares3        # 1° avvio: "warming up..." e "warm-up cache written: /cache/warmup-<chiave>.pkl"
-docker compose -f deploy/docker-compose.yml restart ares3        # prova: ora "restored from /cache (no wait)"
+docker compose -f deploy/docker-compose.yml logs -f ares3        # 1st start: "warming up..." and "warm-up cache written: /cache/warmup-<key>.pkl"
+docker compose -f deploy/docker-compose.yml restart ares3        # test: now "restored from /cache (no wait)"
 ```
 
-Il Dockerfile cambia (cartella `/cache` di proprietà dell'utente `ares`), quindi serve `--build`; `.env` e il tunnel non cambiano.
-Se il compose è gestito da un'interfaccia (Portainer o simili), aggiungere a mano al servizio `ares3` l'argomento
-`--warmup-cache=/cache` e il volume nominato `ares3-cache:/cache`, e ricostruire l'immagine.
+The Dockerfile changes (`/cache` folder owned by the `ares` user), so `--build` is needed; `.env` and the tunnel do not change.
+If the compose is managed through an interface (Portainer or similar), add by hand to the `ares3` service the argument
+`--warmup-cache=/cache` and the named volume `ares3-cache:/cache`, and rebuild the image.
 
-Prova da un altro computer (non serve la UI):
+Test from another computer (no UI needed):
 
 ```bash
 uv run python tools/demo_client.py --url wss://ares-api.daado.dev --token <ARES3_TOKEN> --fault none --seconds 5
@@ -79,60 +79,60 @@ uv run python tools/demo_client.py --url wss://ares-api.daado.dev --token <ARES3
 cd dashboard
 pnpm install
 VITE_ARES_WS_URL=wss://ares-api.daado.dev pnpm build
-npx wrangler login                                   # una volta: apre il browser
-npx wrangler deploy -c wrangler.production.jsonc     # pubblica ./dist come Worker `ares-dashboard` E collega il dominio ares.daado.dev
+npx wrangler login                                   # once: opens the browser
+npx wrangler deploy -c wrangler.production.jsonc     # publishes ./dist as the `ares-dashboard` Worker AND attaches the domain ares.daado.dev
 ```
 
-`dashboard/wrangler.production.jsonc` dichiara il dominio personalizzato (`routes: ares.daado.dev, custom_domain`): il deploy crea da solo
-il record DNS e il certificato. Il `wrangler.jsonc` del team (progetto `body-hologram`, senza dominio) resta com'è per chi pubblica sul
-proprio account.
+`dashboard/wrangler.production.jsonc` declares the custom domain (`routes: ares.daado.dev, custom_domain`): the deploy creates the DNS record
+and the certificate by itself. The team's `wrangler.jsonc` (project `body-hologram`, no domain) stays as it is for whoever publishes on their
+own account.
 
-Dopo il deploy controllare che NESSUNA applicazione di Cloudflare Access copra `ares.daado.dev` e `ares-api.daado.dev`
-(Zero Trust -> Access controls -> Applications): una applicazione senza policy manda tutti a una pagina di login e il WebSocket
-non si collega. Per un hostname pubblico serve una policy `Bypass` per `Everyone`, oppure nessuna applicazione.
+After the deploy check that NO Cloudflare Access application covers `ares.daado.dev` and `ares-api.daado.dev`
+(Zero Trust -> Access controls -> Applications): an application without a policy sends everyone to a login page and the WebSocket
+cannot connect. For a public hostname you need a `Bypass` policy for `Everyone`, or no application at all.
 
-Se il browser mostra "Backend unreachable" subito dopo la creazione dei record, e solo su una rete, il resolver DNS di quella rete sta
-ancora ricordando "nome inesistente" (TTL negativo fino a 30 minuti): provare da un'altra rete o svuotare la cache del resolver.
+If the browser shows "Backend unreachable" right after the records are created, and only on one network, that network's DNS resolver is
+still remembering "no such name" (negative TTL of up to 30 minutes): try from another network or flush the resolver cache.
 
-La UI deve contenere `dashboard/src/lib/utils.ts` (il `.gitignore` ora lo lascia passare), `types.ts` / `websocket.ts` / `store.ts`
-(storia, `ack_step`, ruolo).
+The UI must contain `dashboard/src/lib/utils.ts` (the `.gitignore` now lets it through), `types.ts` / `websocket.ts` / `store.ts`
+(history, `ack_step`, role).
 
-Licenza: la UI contiene `anatomy.json` derivato da gganatogram (GPL-2). Pubblicarla la distribuisce: tenere un link ai sorgenti
-e `dashboard/LICENSE` / `THIRD_PARTY_NOTICES.md` raggiungibili dal sito.
+Licence: the UI contains `anatomy.json` derived from gganatogram (GPL-2). Publishing it distributes it: keep a link to the sources
+and keep `dashboard/LICENSE` / `THIRD_PARTY_NOTICES.md` reachable from the site.
 
-## 4. Operare
+## 4. Operating
 
-| Cosa | Come |
+| What | How |
 |---|---|
-| Aprire come operatore | `https://ares.daado.dev/#token=<ARES3_TOKEN>` |
-| Aprire come visitatore / giudice | `https://ares.daado.dev/` (senza login: guarda e può approvare le richieste e chiudere i passi delle procedure) |
-| Iniettare un guasto per la demo | dal pannello debug della UI, o `tools/demo_client.py --fault fire --module COL ...` |
-| Riavviare la simulazione da zero | `docker compose -f deploy/docker-compose.yml restart ares3` (con il riscaldamento). Il comando `reset` dalla UI riparte freddo |
-| Cambiare token | modificare `deploy/.env` e `docker compose ... up -d` |
-| Vedere chi è collegato / errori | `docker compose ... logs ares3` e, per il tunnel, `logs cloudflared` |
+| Open as operator | `https://ares.daado.dev/#token=<ARES3_TOKEN>` |
+| Open as visitor / judge | `https://ares.daado.dev/` (no login: they watch, can approve requests, close procedure steps and use the scenarios menu) |
+| Inject a fault for the demo | from the UI's Scenarios menu, or `tools/demo_client.py --fault fire --module COL ...` |
+| Restart the simulation from zero | `docker compose -f deploy/docker-compose.yml restart ares3` (with the warm-up). The `reset` command from the UI restarts cold |
+| Change the token | edit `deploy/.env` and `docker compose ... up -d` |
+| See who is connected / errors | `docker compose ... logs ares3` and, for the tunnel, `logs cloudflared` |
 
-## Quanto pesa sul server (misurato)
+## Load on the server (measured)
 
-Misure sul container `docker-host` (i5-9500, 6 core, 8 GB) con un visitatore collegato:
+Measured on the `docker-host` container (i5-9500, 6 cores, 8 GB) with one visitor connected:
 
-| | CPU | RAM | Rete |
+| | CPU | RAM | Network |
 |---|---|---|---|
-| `ares3` (backend) | circa 6-7% di un core a 10x | 236 MB (tetto 1 GB) | circa 13 KB per frame, 9 frame/s = 1 Mbit/s per spettatore non compresso; circa 0,6 Mbit/s sul filo |
-| `cloudflared` | circa 0,7% | 20 MB | uguale al traffico dei client |
-| Avvio (warm-up 4 h simulate) | 1 core per 3-4 minuti, una volta | - | - |
+| `ares3` (backend) | about 6-7% of a core at 10x | 236 MB (cap 1 GB) | about 13 KB per frame, 9 frames/s = 1 Mbit/s per viewer uncompressed; about 0.6 Mbit/s on the wire |
+| `cloudflared` | about 0.7% | 20 MB | same as the clients' traffic |
+| Start (4 simulated h warm-up) | 1 core for 3-4 minutes, once | - | - |
 
-Il server Proxmox resta al 97% libero. Con `--pause-when-idle` (attivo nel compose) la simulazione **si ferma quando non c'è nessuno
-collegato** e riparte al primo visitatore: a vuoto non usa CPU. Il tempo simulato non avanza durante la pausa.
+The Proxmox server stays 97% free. With `--pause-when-idle` (on in the compose) the simulation **stops when nobody is
+connected** and resumes with the first visitor: idle, it uses no CPU. Simulated time does not advance during the pause.
 
-Il collo di bottiglia è la **banda in uscita** del collegamento di casa: ogni spettatore costa circa 0,5 Mbit/s a 5 frame/s
-(`ARES3_FPS`, predefinito 5) e circa 1 Mbit/s a 10; con `ARES3_MAX_CLIENTS=8` il massimo è circa 15-30 Mbit/s.
+The bottleneck is the home connection's **upload bandwidth**: each viewer costs about 0.5 Mbit/s at 5 frames/s
+(`ARES3_FPS`, default 5) and about 1 Mbit/s at 10; with `ARES3_MAX_CLIENTS=8` the maximum is about 15-30 Mbit/s.
 
-## Costi e limiti
+## Costs and limits
 
-Cloudflare Workers (file statici), il Tunnel e il DNS sono gratuiti. Il backend gira su una macchina tua: una simulazione condivisa
-da tutti i client (un solo processo, circa 4,4 ms per tick, meno del 10% di un core a 10x). Più spettatori non la rallentano; i
-comandi di un operatore valgono per tutti.
+Cloudflare Workers (static files), the Tunnel and DNS are free. The backend runs on a machine of yours: one simulation shared
+by all clients (a single process, about 4.4 ms per tick, under 10% of a core at 10x). More viewers do not slow it down; an operator's
+commands apply to everyone.
 
-Azure: la prova gratuita blocca le dimensioni di VM in tutte le regioni europee controllate (`NotAvailableForSubscription`, quota di
-calcolo a zero e non aumentabile). Se si vuole usare comunque, serve passare a pay-as-you-go; il compose di `deploy/` funziona uguale su
-qualsiasi macchina con Docker.
+Azure: the free trial blocks VM sizes in all the European regions checked (`NotAvailableForSubscription`, compute quota at
+zero and not increasable). If you want to use it anyway, you need to switch to pay-as-you-go; the compose in `deploy/` works the same on
+any machine with Docker.

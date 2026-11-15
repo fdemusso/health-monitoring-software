@@ -358,7 +358,6 @@ docs/         station notes, UI contract, deployment, references and sources
 | The official station, estimates and verified behaviour | `docs/station.md` |
 | UI contract for the monitor | `docs/monitor-ui.md` |
 | Crew medical procedures | `docs/procedure-mediche.md` |
-| Crew ML plan | `docs/piano-ml-equipaggio.md` |
 | Deployment | `docs/deploy.md`, `docs/USO-DOCKER.md` |
 | Sources (physiology, toxicology, depressurisation, monitoring/ML) | `docs/reference/` |
 | Monitoring design plan | `piano.md` |

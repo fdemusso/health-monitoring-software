@@ -23,7 +23,7 @@ import time
 
 import make_dataset as md
 
-THRESHOLDS = {"ppco2": 4.0, "cohb": 2.5, "pio2": 135.0}  # the early thresholds of the labels (docs/piano-ml-equipaggio.md, 2.2)
+THRESHOLDS = {"ppco2": 4.0, "cohb": 2.5, "pio2": 135.0}  # the early thresholds of the labels
 HOUR = 3600.0
 START_S = 1800.0  # the source starts after half an hour
 
