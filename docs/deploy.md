@@ -44,8 +44,28 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/docker-compose.yml logs -f ares3       # "warming up 4 simulated hours ..." poi "serving ..."
 ```
 
-L'avvio richiede circa un minuto in più per il riscaldamento (4 ore simulate: i rilevatori ML ne hanno bisogno di 3 e i grafici
-partono già pieni). Se il container viene riavviato l'attesa si ripete: per la demo, avviarlo con qualche minuto di anticipo.
+Il primo avvio richiede circa un minuto in più per il riscaldamento (4 ore simulate: i rilevatori ML ne hanno bisogno di 3 e i grafici
+partono già pieni). Alla fine lo stato viene salvato nel volume `ares3-cache` (`--warmup-cache=/cache`): ai riavvii successivi
+(crash, `restart`, reboot dell'host) il log dice `warm-up of 4 h restored from /cache (no wait)` e il backend è pronto in pochi secondi.
+
+La cache ha una chiave che comprende codice (`src/ares3`), scenario risolto, modelli `.joblib` e `--warmup-h`: dopo un aggiornamento
+(`git pull` + `up -d --build`) la chiave cambia, il primo avvio rifà il riscaldamento e sostituisce il file (resta un solo file).
+Uno stato vecchio non viene mai caricato. Se il file è illeggibile si ricomincia da zero, senza errori. È un pickle: il volume deve
+restare solo nostro. Per forzare un nuovo riscaldamento: `docker compose -f deploy/docker-compose.yml down && docker volume rm deploy_ares3-cache`
+(il nome del volume è `<cartella del compose>_ares3-cache`: controlla con `docker volume ls`).
+
+**Aggiornare un server già in funzione** (prima del merge non ha il volume, dopo sì):
+
+```bash
+cd /opt/stacks/ares3 && git pull                                 # porta compose, Dockerfile e codice nuovi
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+docker compose -f deploy/docker-compose.yml logs -f ares3        # 1° avvio: "warming up..." e "warm-up cache written: /cache/warmup-<chiave>.pkl"
+docker compose -f deploy/docker-compose.yml restart ares3        # prova: ora "restored from /cache (no wait)"
+```
+
+Il Dockerfile cambia (cartella `/cache` di proprietà dell'utente `ares`), quindi serve `--build`; `.env` e il tunnel non cambiano.
+Se il compose è gestito da un'interfaccia (Portainer o simili), aggiungere a mano al servizio `ares3` l'argomento
+`--warmup-cache=/cache` e il volume nominato `ares3-cache:/cache`, e ricostruire l'immagine.
 
 Prova da un altro computer (non serve la UI):
 

@@ -17,6 +17,7 @@ services:
       - --pause-when-idle            # nobody connected: the simulation stands still (0 % CPU); it resumes with the first visitor
       - --fps=${ARES3_FPS:-5}        # frames per second to each client: ~1 Mbit/s per viewer at 10, about half at 5
       - --warmup-h=4                 # ~1 min at start: the ML is ready and the charts start full
+      - --warmup-cache=/cache        # saved after the first warm-up: a restart (same code and scenario) is instant
       - --allow-origin=${ARES3_ORIGIN:-https://ares.daado.dev}
       - --max-speed=60               # what a client can ask for (a public server must not run flat out)
       - --max-clients=${ARES3_MAX_CLIENTS:-8}
@@ -29,6 +30,8 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     tmpfs: [/tmp]
+    volumes:
+      - ares3-cache:/cache           # survives restarts and rebuilds; `docker compose down -v` deletes it
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -41,3 +44,6 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+
+volumes:
+  ares3-cache:

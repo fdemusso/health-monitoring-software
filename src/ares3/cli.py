@@ -73,14 +73,27 @@ def _serve(args: argparse.Namespace) -> int:
                 member.physiology.params = deep_merge(member.physiology.params, patch)
     session = Session(sc, speed=min(args.speed, args.max_speed), paused=args.paused, max_fps=args.fps, max_speed=args.max_speed,
                       pause_when_idle=args.pause_when_idle)
-    if args.warmup_h > 0:
+    warmup_s, on_warm = args.warmup_h * 3600.0, None
+    if args.warmup_cache and warmup_s > 0:
+        from ares3.serve import cache
+
+        key = cache.cache_key(sc, warmup_s)
+        if cache.load(session, args.warmup_cache, key):
+            print(f"warm-up of {args.warmup_h:g} h restored from {args.warmup_cache} (no wait)", flush=True)
+            warmup_s = 0.0
+        else:
+            def on_warm() -> None:
+                path = cache.save(session, args.warmup_cache, key)
+                if path is not None:
+                    print(f"warm-up cache written: {path}", flush=True)
+    if warmup_s > 0:
         print(f"warming up {args.warmup_h:g} simulated hours after opening the port (clients see a progress screen)...", flush=True)
     print(f"serving {sc.file.name} on ws://{args.host}:{args.port} (speed {args.speed:g}x, Ctrl-C to stop)")
     try:
         asyncio.run(serve(session, args.host, args.port, token=args.token or os.environ.get("ARES3_TOKEN") or None,
                           origins=args.allow_origin or None, max_clients=args.max_clients,
                           guest_commands=frozenset(c for c in args.guest_commands.split(",") if c),
-                          warmup_s=args.warmup_h * 3600.0))
+                          warmup_s=warmup_s, warmup_done=on_warm))
     except KeyboardInterrupt:
         pass
     return 0
@@ -120,6 +133,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--warmup-h", type=float, default=0.0, metavar="H",
                    help="simulated hours to run ahead at startup: the ML detectors are ready (they need 3 h) and the charts start full "
                         "(~1 min of real time per 4 h). The port is open meanwhile: clients get a `warming` state with progress")
+    s.add_argument("--warmup-cache", metavar="DIR",
+                   help="save the warmed-up state in DIR and, on the next start with the same code, scenario, models and --warmup-h, "
+                        "load it instead of simulating the hours again (a restart is instant). DIR must be ours alone: it is a pickle")
     s.add_argument("--vital-variability", type=float, default=0.3, metavar="K",
                    help="short-term wobble of hr / spo2 / resp_rate, as a multiple of a resting adult's (0 = the smooth model; 1 = a real person, "
                         "but the crew baseline ML of models/station_v2 was trained on smooth vitals and flags everyone from ~0.5: retrain it first)")

@@ -282,3 +282,32 @@ def test_hello_carries_the_procedure_catalog(station):
     procs = json.loads(s.hello())["procedures"]
     assert procs and all({"id", "emergency", "cause", "title", "steps"} <= p.keys() for p in procs)
     assert all(st["kind"] in {"instruction", "action", "check", "question", "escalate"} for p in procs for st in p["steps"])
+
+
+def test_warm_up_cache_restores_the_same_state(station, tmp_path):
+    from ares3.serve import cache
+
+    key = cache.cache_key(station, 600)
+    assert cache.cache_key(station, 1200) != key  # another warm-up length, another cache
+    a = Session(station, paused=True)
+    assert not cache.load(a, tmp_path, key)  # nothing cached yet: the session is untouched
+    a.warm_up(600)
+    assert cache.save(a, tmp_path, key) is not None
+    b = Session(station, paused=True)
+    assert cache.load(b, tmp_path, key) and b.state == "live"
+    assert json.loads(b.history()) == json.loads(a.history())
+    a.advance(30)
+    b.advance(30)
+    assert json.loads(a.frame())["tick"] == json.loads(b.frame())["tick"]  # the restored engine continues exactly like the original
+
+
+def test_warm_up_cache_keeps_only_the_latest_and_survives_garbage(station, tmp_path):
+    from ares3.serve import cache
+
+    s = Session(station, paused=True)
+    s.warm_up(60)
+    cache.save(s, tmp_path, "old")
+    cache.save(s, tmp_path, "new")
+    assert [p.name for p in tmp_path.glob("warmup-*.pkl")] == ["warmup-new.pkl"]
+    (tmp_path / "warmup-bad.pkl").write_bytes(b"not a pickle")
+    assert not cache.load(Session(station, paused=True), tmp_path, "bad")  # unreadable: warm up normally
