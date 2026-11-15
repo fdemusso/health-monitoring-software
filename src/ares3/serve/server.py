@@ -14,7 +14,7 @@ MAX_CLIENT_MESSAGE = 64 * 1024  # bytes: a command is a few hundred
 
 async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, ready: asyncio.Future | None = None, *,
                 token: str | None = None, origins: list[str] | None = None, max_clients: int = 100,
-                guest_commands: frozenset[str] = frozenset()) -> None:
+                guest_commands: frozenset[str] = frozenset(), warmup_s: float = 0.0) -> None:
     """Serve until cancelled. Every client gets the same frames. ``ready`` (optional) receives the port.
 
     Without ``token`` every client may send commands (local development). With one, a client that connects with ``?token=<token>`` is
@@ -22,7 +22,8 @@ async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, rea
     (e.g. ``["https://ares.daado.dev"]``) lists the pages allowed to open the socket from a browser; clients that send no Origin
     (scripts) are let in, a browser always sends one. At most ``max_clients`` connections at a time. A viewer may still send the
     commands named in ``guest_commands`` (e.g. ``approve_action``, ``ack_step``: the crew-facing ones, so a visitor can take part in
-    the response without being able to inject faults, reset or change the speed)."""
+    the response without being able to inject faults, reset or change the speed). With ``warmup_s`` the port opens at once and the
+    simulation runs that many seconds ahead while the clients get ``warming`` frames (see ``session.py``)."""
     from websockets.asyncio.server import broadcast
     from websockets.asyncio.server import serve as ws_serve
 
@@ -43,6 +44,8 @@ async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, rea
         session.watchers = len(clients)
         try:
             await ws.send(session.hello(role))
+            if session.state == "warming":
+                await ws.send(session.warming_frame())
             history = session.history()
             if history is not None:
                 await ws.send(history)
@@ -66,7 +69,12 @@ async def serve(session: Session, host: str = "127.0.0.1", port: int = 8765, rea
     async with ws_serve(handler, host, port, origins=allowed, max_size=MAX_CLIENT_MESSAGE) as server:
         if ready is not None:
             ready.set_result(next(iter(server.sockets)).getsockname()[1])
-        runner = asyncio.create_task(session.run(lambda frame: broadcast(clients, frame)))
+        def emit(frame: str) -> None:
+            broadcast(clients, frame)
+
+        if warmup_s > 0:
+            await session.warm_up_async(warmup_s, emit)
+        runner = asyncio.create_task(session.run(emit))
         try:
             await server.serve_forever()
         finally:

@@ -5,8 +5,15 @@ the frames to broadcast, so the protocol is testable without a socket (``server.
 Everything runs on one asyncio loop, so the engine is never touched from two places at once.
 
 Server -> client (JSON text frames):
-  {"type": "hello", "scenario": str, "dt_s": float, "paused": bool, "speed": float, "role": "operator" | "viewer"}
-      a viewer (connected without the server's token) gets the frames but every command is refused.
+  {"type": "hello", "scenario": str, "dt_s": float, "paused": bool, "speed": float, "role": "operator" | "viewer",
+   "state": "warming" | "live"}
+      a viewer (connected without the server's token) gets the frames but every command is refused. ``state`` is "warming" while the
+      server runs the simulation ahead (``--warmup-h``): the port is open from the start so a UI can show progress instead of a dead
+      page. No ``tick`` or ``history`` is sent and every command is refused until the state is "live".
+  {"type": "warming", "progress": 0..1, "sim_s": float, "total_s": float}
+      during the warm-up, about four times a second (and right after ``hello`` for a client that connects late).
+  {"type": "ready"}
+      the warm-up is over: ``history`` (to every client) then this, then ticks start. Not sent when there was no warm-up.
   {"type": "history", "samples": [{"t_sim_s", "npcs", "modules"}, ...]}
       sent once to a new client right after ``hello``: the last 6 simulated hours, one sample per simulated minute, so the charts are
       full at once instead of starting empty at the moment of connection (nothing is sent when there is no history yet).
@@ -55,6 +62,8 @@ class Session:
         self._events: list[MonitorEvent] = []
         self._owed = 0.0  # fractional ticks carried to the next iteration
         self._history: deque[dict[str, Any]] = deque(maxlen=HISTORY_LEN)
+        self.state = "live"  # "warming" while warm_up_async runs
+        self._warm = (0.0, 0.0)  # simulated seconds done, total
 
     # ---- stepping --------------------------------------------------------------------------------
     def advance(self, n: int) -> None:
@@ -76,9 +85,36 @@ class Session:
                 progress(min(1.0, (done + 600) / todo))
         self._events = []
 
+    async def warm_up_async(self, seconds: float, emit: Callable[[str], None], *, chunk: int = 100, report_every_s: float = 0.25) -> None:
+        """Like :meth:`warm_up` but served: the engine advances ``chunk`` ticks at a time and hands the loop back in between, so
+        clients can connect and receive ``warming`` frames (``emit``); ends with ``history`` and ``ready``. Commands are refused meanwhile."""
+        dt = self.scenario.file.dt_s
+        todo = int(seconds / dt)
+        self.state, self._warm = "warming", (0.0, todo * dt)
+        last_report = 0.0
+        for done in range(0, todo, chunk):
+            self.advance(min(chunk, todo - done))
+            self._warm = (min(todo, done + chunk) * dt, todo * dt)
+            now = time.monotonic()
+            if now - last_report >= report_every_s:
+                emit(self.warming_frame())
+                last_report = now
+            await asyncio.sleep(0)
+        self._events = []
+        self.state = "live"
+        emit(self.warming_frame())  # 100 %: the last report may have been skipped
+        history = self.history()
+        if history is not None:
+            emit(history)
+        emit('{"type":"ready"}')
+
+    def warming_frame(self) -> str:
+        done, total = self._warm
+        return json.dumps({"type": "warming", "progress": min(1.0, done / total) if total else 1.0, "sim_s": done, "total_s": total})
+
     def history(self) -> str | None:
-        """The ``history`` message for a new client, or None when nothing was recorded."""
-        if not self._history:
+        """The ``history`` message for a new client, or None when nothing was recorded (or the warm-up is still running)."""
+        if not self._history or self.state == "warming":
             return None
         return json.dumps({"type": "history", "samples": list(self._history)})
 
@@ -93,7 +129,7 @@ class Session:
 
     def hello(self, role: str = "operator") -> str:
         return json.dumps({"type": "hello", "scenario": self.scenario.file.name, "dt_s": self.scenario.file.dt_s,
-                           "paused": self.paused, "speed": self.speed, "role": role})
+                           "paused": self.paused, "speed": self.speed, "role": role, "state": self.state})
 
     async def run(self, emit: Callable[[str], None]) -> None:
         """Pace the engine to the wall clock until cancelled; ``emit`` receives each frame (at most ``max_fps`` per second)."""
@@ -125,6 +161,8 @@ class Session:
         try:
             if not isinstance(msg, dict) or msg.get("type") != "command" or not isinstance(msg.get("cmd"), str):
                 raise ValueError('expected {"type": "command", "cmd": ..., "args": {...}}')
+            if self.state == "warming":
+                raise ValueError("the simulation is warming up: commands are accepted when it is ready")
             data = self._dispatch(msg["cmd"], msg.get("args") or {})
             if data is not None:
                 reply["data"] = data

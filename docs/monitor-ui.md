@@ -101,9 +101,17 @@ simulate, un campione al minuto (stessi `npcs` e `modules` di un tick). La UI ci
 li costruiva da sola, un punto al minuto SIMULATO dal momento della connessione: a 10x un punto ogni 6 s reali, a 1x uno ogni minuto).
 Se la storia è vuota il messaggio non viene inviato. Un `reset` riparte da zero e svuota la storia.
 
-`ares3 serve ... --warmup-h 4` fa avanzare la simulazione di 4 ore PRIMA di aprire la porta (circa un minuto reale): i rilevatori ML hanno
-bisogno di 3 ore simulate di storia prima di giudicare, e la storia dei grafici parte già piena. Per una demo avviare il backend con
-qualche minuto di anticipo.
+`ares3 serve ... --warmup-h 4` fa avanzare la simulazione di 4 ore (circa un minuto reale) prima di andare in diretta: i rilevatori ML hanno
+bisogno di 3 ore simulate di storia prima di giudicare, e la storia dei grafici parte già piena. La porta si apre SUBITO (dopo il
+caricamento di scenario e modelli, qualche secondo): durante il warmup il server è nello stato `warming`.
+
+- `hello` porta `"state": "warming" | "live"`.
+- Mentre è `warming` arrivano circa 4 volte al secondo `{"type": "warming", "progress": 0..1, "sim_s", "total_s"}` (anche subito dopo
+  `hello` per chi si connette a metà); NON arrivano `tick` né `history`, e ogni comando è rifiutato (`ok: false`, "warming up").
+- A fine warmup: `history` a TUTTI i client, poi `{"type": "ready"}`, poi i tick. Un `hello` con `state: "live"` vale come `ready`.
+
+La UI (`dashboard/src/app/WarmupScreen.tsx`, stato `warming` in `telemetry/store.ts`) mostra una schermata di caricamento con
+percentuale e tempo stimato, e si dissolve su `ready`; l'app sotto è `inert` nel frattempo.
 
 Un avviso "fuori range" della UI su un astronauta che lavora (es. 126 bpm a 7 MET) non viene dal backend: il monitor lo giudica con
 l'`EarlyWarningScore`, che non valuta FC e frequenza respiratoria durante e 30 min dopo lo sforzo. Conviene che la UI usi

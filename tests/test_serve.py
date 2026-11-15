@@ -241,3 +241,24 @@ def test_a_server_with_nobody_connected_stands_still(station):
             await asyncio.wait([task], timeout=5)
 
     asyncio.run(go())
+
+
+def test_a_warm_up_that_is_served_reports_progress_and_refuses_commands(station):
+    s = Session(station, paused=True)
+    frames, during = [], []
+
+    def emit(frame):
+        frames.append(json.loads(frame))
+        if len(frames) == 1:  # a client that asks something while the engine is running ahead
+            during.append((json.loads(s.hello())["state"], s.history(), s.handle(_cmd("pause"))))
+
+    asyncio.run(s.warm_up_async(1200, emit, chunk=100, report_every_s=0))
+    state, history, reply = during[0]
+    assert state == "warming" and history is None and not reply["ok"] and "warming up" in reply["error"]
+    kinds = [f["type"] for f in frames]
+    assert kinds[-2:] == ["history", "ready"] and kinds.count("warming") >= 3
+    progress = [f["progress"] for f in frames if f["type"] == "warming"]
+    assert progress == sorted(progress) and progress[-1] == 1.0 and frames[0]["total_s"] == 1200.0
+    assert len(frames[-2]["samples"]) == 20  # the charts of every client start full
+    assert json.loads(s.hello())["state"] == "live" and s.handle(_cmd("pause"))["ok"]
+    assert json.loads(s.frame())["tick"]["monitor_events"] == []  # the hours before are not replayed

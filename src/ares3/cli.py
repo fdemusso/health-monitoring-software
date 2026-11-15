@@ -68,14 +68,13 @@ def _serve(args: argparse.Namespace) -> int:
     session = Session(sc, speed=min(args.speed, args.max_speed), paused=args.paused, max_fps=args.fps, max_speed=args.max_speed,
                       pause_when_idle=args.pause_when_idle)
     if args.warmup_h > 0:
-        print(f"warming up {args.warmup_h:g} simulated hours before opening the port...", flush=True)
-        session.warm_up(args.warmup_h * 3600.0, lambda f: print(f"\r  {f:4.0%}", end="", flush=True))
-        print()
+        print(f"warming up {args.warmup_h:g} simulated hours after opening the port (clients see a progress screen)...", flush=True)
     print(f"serving {sc.file.name} on ws://{args.host}:{args.port} (speed {args.speed:g}x, Ctrl-C to stop)")
     try:
         asyncio.run(serve(session, args.host, args.port, token=args.token or os.environ.get("ARES3_TOKEN") or None,
                           origins=args.allow_origin or None, max_clients=args.max_clients,
-                          guest_commands=frozenset(c for c in args.guest_commands.split(",") if c)))
+                          guest_commands=frozenset(c for c in args.guest_commands.split(",") if c),
+                          warmup_s=args.warmup_h * 3600.0))
     except KeyboardInterrupt:
         pass
     return 0
@@ -113,8 +112,8 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--max-clients", type=int, default=100, help="simultaneous connections")
     s.add_argument("--max-speed", type=float, default=100_000.0, help="highest speed a client can ask for (a public server: 200)")
     s.add_argument("--warmup-h", type=float, default=0.0, metavar="H",
-                   help="simulated hours to run before the first client connects: the ML detectors are ready (they need 3 h) and the "
-                        "charts start full (~1 min of real time per 4 h)")
+                   help="simulated hours to run ahead at startup: the ML detectors are ready (they need 3 h) and the charts start full "
+                        "(~1 min of real time per 4 h). The port is open meanwhile: clients get a `warming` state with progress")
     s.set_defaults(fn=_serve)
     args = p.parse_args(argv)
     return args.fn(args)
