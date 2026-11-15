@@ -29,8 +29,11 @@ export function AlertList({ tick }: { tick: SimulationTick }) {
   const rows = alertRows(tick)
   return (
     <div>
-      <h2 className="mb-2 font-heading text-xl font-bold">Active alerts</h2>
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">No alerts.</p> : (
+      <h2 className="mb-2 flex items-center gap-2 font-heading text-xl font-bold">
+        Active alerts
+        {rows.length === 0 && <span className="font-sans text-sm font-normal text-muted-foreground">· none</span>}
+      </h2>
+      {rows.length === 0 ? null : (
         <ul className="space-y-2">
           {rows.slice(0, 4).map((r) => (
             <li key={r.key} className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">

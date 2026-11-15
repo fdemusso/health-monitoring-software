@@ -53,8 +53,8 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
   const emergency = tick.emergencies.find((e) => e.state !== 'cleared' && (e.subject === npc.id || (!e.subject && e.module_id === npc.module_id)))
   return (
     <>
-      <div>
-        <div className="mb-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+      <div data-void>
+        <div data-void className="mb-4 flex flex-wrap items-center gap-x-8 gap-y-3">
           <Button variant="outline" onClick={onBack}><ArrowLeft size={16} /> Crew</Button>
           <div>
             <CrewChip id={npc.id} large />
@@ -64,7 +64,7 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
           <Field label={phase ? 'Emergency response' : 'Activity'} value={phase ?? activityLabel(npc.activity)} />
           <StatusBadge status={st} className="ml-auto">{statusLabel[st]}</StatusBadge>
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div data-void className="grid grid-cols-4 gap-4">
           <Trend title={`${id.label} HR`} value={fmt0(v.hr)} unit="bpm" status={vitalStatus('hr', v.hr, npc.activity)} values={series(hist, 'hr')} />
           <Trend title={`${id.label} SpO₂`} value={fmt0(v.spo2)} unit="%" status={vitalStatus('spo2', v.spo2)} values={series(hist, 'spo2')} />
           <Trend title={`${id.label} core temp.`} value={fmt1(v.core_temp_c)} unit="°C" status={vitalStatus('core_temp_c', v.core_temp_c)} values={series(hist, 'core')} />
@@ -73,8 +73,10 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
             : <Trend title={`ppCO₂ in ${npc.module_id.toUpperCase()}`} value={mod ? fmt1(ppco2Mmhg(mod)) : '—'} unit="mmHg" status={mod ? limitStatus(ENV_METRICS.ppco2, ppco2Mmhg(mod)) : 'ok'} values={ctx} />}
         </div>
       </div>
-      <div className="grid grid-cols-[1fr_290px] gap-[18px] animate-in fade-in-0 duration-(--duration-enter)">
-        <div ref={stageRef} className="relative min-w-0" style={{ height: H }}>
+      <div data-void className="grid grid-cols-[290px_1fr_290px] gap-[18px] animate-in fade-in-0 duration-(--duration-enter)">
+        {/* Empty column mirrors the side panel so the figure sits at the centre of the page. */}
+        <div data-void aria-hidden />
+        <div ref={stageRef} data-void className="relative min-w-0" style={{ height: H }}>
           <HologramFrame npc={npc} tick={tick} width={W} color={id.color} />
           <HologramCallouts npc={npc} anchors={anchors} width={stageW} height={H} />
         </div>

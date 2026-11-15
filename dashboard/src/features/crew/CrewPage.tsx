@@ -11,7 +11,12 @@ export function CrewPage() {
   if (!tick) return <div className="px-7 pt-[18px]"><Skeleton className="h-64" /></div>
   const npc = ui.selectedCrew ? tick.npcs[ui.selectedCrew] : undefined
   return (
-    <div className="grid min-h-full grid-cols-1 grid-rows-[auto_1fr] gap-y-4 px-7 pb-28 pt-[18px]">
+    <div
+      data-void
+      // In the detail view, a click on empty space goes back to the crew overview (only elements marked data-void count as empty).
+      onClick={npc ? (e) => { if ((e.target as HTMLElement).hasAttribute('data-void')) ui.closeCrew() } : undefined}
+      className="grid min-h-full grid-cols-1 grid-rows-[auto_1fr] gap-y-4 px-7 pb-28 pt-[18px]"
+    >
       {npc ? <CrewDetail npc={npc} tick={tick} onBack={ui.closeCrew} /> : (
         <>
           <div className="col-span-full">

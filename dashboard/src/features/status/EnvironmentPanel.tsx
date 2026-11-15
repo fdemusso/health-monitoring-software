@@ -1,9 +1,10 @@
-import { useMemo } from 'react'
+import { ChevronDown, Users } from 'lucide-react'
+import { Popover } from 'radix-ui'
+import { useMemo, useState } from 'react'
 import { CrewChip } from '@/components/CrewChip'
 import { Sparkline } from '@/components/Sparkline'
 import { StatusDot } from '@/components/StatusDot'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { ToggleGroup } from '@/components/ui/toggle-group'
 import { ALARM_METRIC, ENV_METRICS, limitStatus, type EnvMetric } from '@/domain/limits'
 import { maxStatus, primaryEmergency, statusText, type Status } from '@/domain/status'
 import { cn } from '@/lib/utils'
@@ -42,17 +43,65 @@ export function defaultModule(tick: SimulationTick, chosen: string | null): stri
   return [...ids].sort((a, b) => tick.modules[b].occupants.length - tick.modules[a].occupants.length)[0]
 }
 
+/** Worst status of a module: open emergencies and active alarms. */
+function moduleStatus(tick: SimulationTick, id: string): Status {
+  let st: Status = 'ok'
+  for (const e of tick.emergencies) if (e.module_id === id && e.state !== 'cleared') st = maxStatus(st, e.alert_class === 'emergency' || e.alert_class === 'warning' ? 'crit' : 'warn')
+  for (const a of tick.alarms) if (a.module_id === id) st = maxStatus(st, a.severity === 'alarm' ? 'crit' : 'warn')
+  return st
+}
+
+function ModulePicker({ tick, value, onChange }: { tick: SimulationTick; value: string; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const ids = Object.keys(tick.modules)
+  const status = moduleStatus(tick, value)
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button type="button" aria-label="Choose module" className="inline-flex h-8 items-center gap-2 rounded-control border border-input px-3 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:bg-muted">
+          <StatusDot status={status} />
+          {value.toUpperCase()}
+          <ChevronDown className="size-4 text-muted-foreground" />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content align="start" sideOffset={6} className="z-50 w-[420px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in-0 zoom-in-95">
+          <div className="grid grid-cols-4 gap-1">
+            {ids.map((id) => {
+              const st = moduleStatus(tick, id)
+              const n = tick.modules[id].occupants.length
+              const selected = id === value
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => { onChange(id); setOpen(false) }}
+                  className={cn('flex h-9 items-center rounded-control px-2.5 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50',
+                    selected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {id.toUpperCase()}
+                    {n > 0 && <Users className={cn('size-3.5', selected ? 'text-primary-foreground/70' : 'text-muted-foreground')} aria-label={`${n} in module`} />}
+                    {st !== 'ok' && <StatusDot status={st} />}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  )
+}
+
 export function EnvironmentHead({ tick, chosen, onChoose }: { tick: SimulationTick; chosen: string | null; onChoose: (id: string) => void }) {
   const moduleId = defaultModule(tick, chosen)
   if (!moduleId) return null
   const m = tick.modules[moduleId]
-  // Modules with occupants or an emergency first.
-  const hot = new Set(tick.emergencies.filter((e) => e.state !== 'cleared').map((e) => e.module_id))
-  const sorted = Object.keys(tick.modules).sort((a, b) => Number(hot.has(b) || tick.modules[b].occupants.length > 0) - Number(hot.has(a) || tick.modules[a].occupants.length > 0))
   return (
     <div className="flex flex-wrap items-center gap-3">
       <span className="text-sm font-medium">Environment of</span>
-      <div className="no-scrollbar max-w-full overflow-x-auto"><ToggleGroup joined className="flex-nowrap [&>button]:shrink-0" value={moduleId} onChange={onChoose} options={sorted.map((id) => ({ value: id, label: id.toUpperCase() }))} /></div>
+      <ModulePicker tick={tick} value={moduleId} onChange={onChoose} />
       <span className="ml-2 text-sm font-medium">Occupants</span>
       {m.occupants.length ? m.occupants.map((o) => <CrewChip key={o} id={o} />) : <span className="text-xs text-muted-foreground">none</span>}
       {!m.fans_on && <StatusBadge status="warn">ventilation off</StatusBadge>}

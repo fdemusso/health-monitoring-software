@@ -226,6 +226,10 @@ button { font-family: inherit; cursor: pointer; }
   50% { top: calc(100% - 14px); }
   100% { top: 0; }
 }
+@keyframes rotate-hint {
+  0%, 20% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
 @keyframes crit-ping {
   0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--status-danger) 60%, transparent); }
   70%, 100% { box-shadow: 0 0 0 10px transparent; }
@@ -234,8 +238,9 @@ button { font-family: inherit; cursor: pointer; }
 .anim-ping { animation: crit-ping 1.6s infinite; }
 .anim-glow { animation: alert-glow 2.4s ease-in-out infinite; }
 .anim-scan { animation: scan 6s ease-in-out infinite; }
+.anim-rotate-hint { animation: rotate-hint 2.4s ease-in-out infinite alternate; }
 @media (prefers-reduced-motion: reduce) {
-  .anim-breathe, .anim-ping, .anim-glow, .anim-scan { animation: none; }
+  .anim-breathe, .anim-ping, .anim-glow, .anim-scan, .anim-rotate-hint { animation: none; }
 }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

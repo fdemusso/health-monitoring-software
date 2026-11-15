@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress'
 import { emergencyTitle } from '@/domain/emergencyText'
 import { fmtClock } from '@/domain/units'
 import { cn } from '@/lib/utils'
+import { DragHandles, useDraggable } from '@/lib/useDraggable'
 import type { Emergency, PendingAction } from '@/telemetry'
 import { useCommands, usePendingActions, useTick } from '@/telemetry/useTelemetry'
 
@@ -26,6 +27,7 @@ export function PendingPopover() {
   const { pendingReopen } = useUi()
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [index, setIndex] = useState(0)
+  const { ref, offset, dragging, handleProps } = useDraggable<HTMLDivElement>()
 
   // The banner badge asks to show the popover again.
   useEffect(() => { if (pendingReopen) setHidden(new Set()) }, [pendingReopen])
@@ -38,7 +40,10 @@ export function PendingPopover() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center p-4">
-      <div role="alertdialog" aria-label="Action to confirm" className="pointer-events-auto w-[760px] max-w-full overflow-hidden rounded-lg border border-border bg-card animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-(--duration-enter)">
+      {/* the wrapper is moved (relative offset) and carries the handles; the card inside keeps its rounded, clipped look */}
+      <div ref={ref} className="pointer-events-auto relative w-[760px] max-w-full" style={{ left: offset.x, top: offset.y }}>
+      <DragHandles handleProps={handleProps} dragging={dragging} />
+      <div role="alertdialog" aria-label="Action to confirm" className="overflow-hidden rounded-lg border border-border bg-card animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-(--duration-enter)">
         <div className="h-1 bg-status-warning" />
         <div className="p-7">
           <div className="mb-6 flex items-center justify-between gap-3">
@@ -59,6 +64,7 @@ export function PendingPopover() {
           </div>
           <ActionView key={visible[i].action.id} pa={visible[i]} tSim={tick.t_sim_s} emergency={emergency} />
         </div>
+      </div>
       </div>
     </div>
   )

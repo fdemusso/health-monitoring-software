@@ -9,8 +9,10 @@ const SOFT = 'rounded-control text-muted-foreground hover:bg-muted data-[state=o
 const JOINED = 'border border-input first:rounded-l-control last:rounded-r-control not-first:-ml-px text-foreground hover:bg-muted data-[state=on]:bg-primary data-[state=on]:text-primary-foreground'
 
 /** Single-select segmented control (shadcn ToggleGroup type="single"). `joined` draws a button group. */
-export function ToggleGroup<T extends string>({ value, onChange, options, className, joined }: {
+export function ToggleGroup<T extends string>({ value, onChange, options, className, joined, size }: {
   value: T; onChange: (v: T) => void; options: ToggleOption<T>[]; className?: string; joined?: boolean
+  /** `lg`: 44 px touch targets (iPad). */
+  size?: 'lg'
 }) {
   return (
     <ToggleGroupPrimitive.Root
@@ -21,7 +23,7 @@ export function ToggleGroup<T extends string>({ value, onChange, options, classN
       className={cn('inline-flex flex-wrap', !joined && 'gap-1', className)}
     >
       {options.map((o) => (
-        <ToggleGroupPrimitive.Item key={o.value} value={o.value} className={cn(ITEM, joined ? JOINED : SOFT)}>{o.label}</ToggleGroupPrimitive.Item>
+        <ToggleGroupPrimitive.Item key={o.value} value={o.value} className={cn(ITEM, joined ? JOINED : SOFT, size === 'lg' && 'h-11 px-4 text-base')}>{o.label}</ToggleGroupPrimitive.Item>
       ))}
     </ToggleGroupPrimitive.Root>
   )

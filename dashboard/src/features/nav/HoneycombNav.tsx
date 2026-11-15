@@ -64,7 +64,6 @@ export function HoneycombNav() {
         onClick={() => setOpen(false)}
         className={cn('absolute inset-0 bg-scrim transition-opacity', open ? 'pointer-events-auto opacity-100 duration-(--duration-enter)' : 'opacity-0 duration-(--duration-exit)')}
       />
-      {open && <div aria-hidden className="absolute rounded-full border border-dashed border-border" style={{ left: TRIGGER.cx - 335, bottom: TRIGGER.cy - 335, width: 670, height: 670 }} />}
 
       {CELLS.map((c, k) => {
         const Icon = ICON[c.id]
