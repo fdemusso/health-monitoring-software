@@ -222,7 +222,7 @@ def _job(plan: dict, name: str, event: str, spec: dict, seed: int, split: str, o
             per_fault.update(drawn)
         if "scale" in spec:
             per_fault[next(iter(_catalog_ids(catalog_ids[0])))]["scale"] = round(float(rng.uniform(*spec["scale"])), 6)
-        job["per_fault"] = per_fault
+        job["per_fault"] = per_fault = _rounded(per_fault)
         if anchor or len(catalog_ids) > 1:
             job["extra_faults"] = catalog_ids if anchor else catalog_ids[1:]
         job["drawn_catalog"] = {k: {"start_s": round(v["start_s"], 3), **({"scale": v["scale"]} if "scale" in v else {}),
@@ -231,6 +231,18 @@ def _job(plan: dict, name: str, event: str, spec: dict, seed: int, split: str, o
         job["faults"] = faults
     job["out"] = str(out / md.job_id(job))
     return job
+
+
+def _rounded(obj):
+    """The floats of a nested value rounded to 6 decimals: ``rng.uniform`` differs in the last bit between numpy 2.4 and 2.5, and the job lists of
+    two machines must be identical (1e-6 s is nothing for a start and 1e-6 relative nothing for a parameter)."""
+    if isinstance(obj, float):
+        return round(obj, 6)
+    if isinstance(obj, dict):
+        return {k: _rounded(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_rounded(v) for v in obj]
+    return obj
 
 
 def _catalog_ids(fid: str) -> list[str]:
@@ -264,6 +276,7 @@ def build_plan_jobs(plan: dict, wave: int, out: Path, ticks: int | None = None) 
                 event = Path(job["scenario"]).stem + "".join("+" + e for e in job.get("extra_faults", []))
                 job |= {"name": f"crew-{name}-{event}", "group": name, "split": _split_of(group, job["seed"]), "event": event,
                         "npc": None, "activity_at_start": None, "module": None}
+                job["per_fault"] = _rounded(job["per_fault"])
                 job["out"] = str(out / md.job_id(job))
                 last.append(job)
             continue
