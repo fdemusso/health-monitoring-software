@@ -14,7 +14,7 @@ tunnel. `.dev` is an HTTPS-only domain (HSTS): that is why the socket must be `w
 | Measure | Where |
 |---|---|
 | **Operator token**: whoever connects with `?token=<ARES3_TOKEN>` can send commands; the others (viewers) receive everything, their commands are rejected (`read-only connection`) | `ares3 serve --token` / `ARES3_TOKEN` |
-| **Visitors (judges) without login**: no Cloudflare access, no token. They see everything live and may only `approve_action`, `reject_action`, `ack_step` (take part in the response) and `inject_event` / `stop_event` (the scenarios menu); `reset`, speed, pause and `declare_emergency` need the token. For read-only: empty `ARES3_GUEST_COMMANDS=` in `deploy/.env` | `--guest-commands` |
+| **Visitors (judges) without login**: no Cloudflare access, no token. They see everything live and may only `approve_action`, `reject_action`, `ack_step` (take part in the response) and `inject_event` / `stop_event` (the scenarios menu) and `reset` (restart the simulation); speed, pause and `declare_emergency` need the token. For read-only: empty `ARES3_GUEST_COMMANDS=` in `deploy/.env` | `--guest-commands` |
 | **Origin**: from a browser the socket opens only from the page `https://ares.daado.dev` (403 for the others) | `--allow-origin` |
 | **Maximum speed** a client may ask for: 60x (otherwise `set_speed` could keep the CPU at 100%) | `--max-speed` |
 | **Connections**: at most 8 (`ARES3_MAX_CLIENTS`), client messages at most 64 KB | `--max-clients`, automatic |
@@ -107,7 +107,7 @@ and keep `dashboard/LICENSE` / `THIRD_PARTY_NOTICES.md` reachable from the site.
 | Open as operator | `https://ares.daado.dev/#token=<ARES3_TOKEN>` |
 | Open as visitor / judge | `https://ares.daado.dev/` (no login: they watch, can approve requests, close procedure steps and use the scenarios menu) |
 | Inject a fault for the demo | from the UI's Scenarios menu, or `tools/demo_client.py --fault fire --module COL ...` |
-| Restart the simulation from zero | `docker compose -f deploy/docker-compose.yml restart ares3` (with the warm-up). The `reset` command from the UI restarts cold |
+| Restart the simulation from zero | `docker compose -f deploy/docker-compose.yml restart ares3` (with the warm-up). The `reset` command (open to visitors) restarts cold |
 | Change the token | edit `deploy/.env` and `docker compose ... up -d` |
 | See who is connected / errors | `docker compose ... logs ares3` and, for the tunnel, `logs cloudflared` |
 

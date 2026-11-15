@@ -21,7 +21,7 @@ services:
       - --allow-origin=${ARES3_ORIGIN:-https://ares.daado.dev}
       - --max-speed=60               # what a client can ask for (a public server must not run flat out)
       - --max-clients=${ARES3_MAX_CLIENTS:-8}
-      - --guest-commands=${ARES3_GUEST_COMMANDS-approve_action,reject_action,ack_step,inject_event,stop_event}   # what a visitor without token may do; empty = watch only
+      - --guest-commands=${ARES3_GUEST_COMMANDS-approve_action,reject_action,ack_step,inject_event,stop_event,reset}   # what a visitor without token may do; empty = watch only
     environment:
       ARES3_TOKEN: ${ARES3_TOKEN:?set ARES3_TOKEN in deploy/.env}   # whoever has it can send commands; the others only watch
     mem_limit: 1g
