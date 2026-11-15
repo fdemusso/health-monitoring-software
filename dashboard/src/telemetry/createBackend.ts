@@ -3,7 +3,7 @@ import { endWarming, ingestHistory, ingestTick, ingestWarming, setState } from '
 import { WebSocketBackend } from './websocket'
 
 const env = import.meta.env as Record<string, string | undefined>
-const BACKEND_URL = env.VITE_ARES_WS_URL ?? 'ws://127.0.0.1:8765'
+const BACKEND_URL = env.VITE_ARES_WS_URL ?? `ws://${window.location.hostname || '127.0.0.1'}:8765` // the machine that served the page: works from another device too
 
 /** The operator token comes from the page address (`https://ares.example/#token=...`): a fragment never reaches a server or a log.
  *  Without it the backend treats this page as a viewer (it receives everything, its commands are refused). Kept out of BACKEND_URL,

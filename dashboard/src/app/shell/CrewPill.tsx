@@ -1,3 +1,4 @@
+import { Heart } from 'lucide-react'
 import { CrewChip } from '@/components/CrewChip'
 import { StatusDot } from '@/components/StatusDot'
 import { crewIdentity } from '@/domain/crewConfig'
@@ -19,14 +20,14 @@ export function CrewPill({ npc, emergencies, selected, onOpen }: { npc: NPCState
       style={selected ? { borderColor: color, boxShadow: `0 0 0 2px ${color}, 0 4px 14px -4px color-mix(in oklab, ${color} 55%, transparent)` } : undefined}
       aria-label={`Open details for ${crewIdentity(npc.id).person}, ${statusLabel[st].toLowerCase()}`}
       className={cn(
-        'flex min-w-0 items-center gap-3 rounded-full border border-border bg-card py-2 pl-2 pr-4 transition-[background-color,box-shadow,border-color,transform,opacity] duration-(--duration-enter) outline-none hover:bg-muted active:scale-[.97] focus-visible:ring-3 focus-visible:ring-ring/50',
+        'flex min-w-0 items-center gap-2 whitespace-nowrap rounded-full border border-border bg-card py-2 pl-2 pr-3 transition-[background-color,box-shadow,border-color,transform,opacity] duration-(--duration-enter) outline-none hover:bg-muted active:scale-[.97] focus-visible:ring-3 focus-visible:ring-ring/50',
         selected && 'bg-muted-strong',
         st === 'warn' && 'border-status-warning bg-status-warning-soft', st === 'crit' && 'border-status-danger bg-status-danger-soft',
       )}
     >
       <CrewChip id={npc.id} />
-      <span className="text-xs tabular-nums text-muted-foreground">{fmt0(npc.vitals.hr)} bpm</span>
-      <span className={cn('text-xs tabular-nums', spo2Crit ? 'font-medium text-status-danger-foreground' : 'text-muted-foreground')}>{fmt0(spo2)} %</span>
+      <span className="flex items-center gap-1 text-xs tabular-nums text-muted-foreground" title="Heart rate, beats per minute"><Heart aria-hidden className="size-3" />{fmt0(npc.vitals.hr)}</span>
+      <span title="Blood oxygen" className={cn('text-xs tabular-nums', spo2Crit ? 'font-medium text-status-danger-foreground' : 'text-muted-foreground')}>{fmt0(spo2)}%</span>
       <StatusDot status={st} />
     </button>
   )

@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
 export const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-control border border-transparent text-sm font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-control border border-transparent font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
@@ -16,14 +16,15 @@ export const buttonVariants = cva(
         link: 'text-foreground underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-8 px-3',
-        xs: 'h-6 px-2 text-xs',
-        sm: 'h-7 px-2.5',
-        lg: 'h-9 px-4',
-        icon: 'size-8',
-        'icon-xs': 'size-6',
-        'icon-sm': 'size-7',
-        'icon-lg': 'size-9',
+        // touch first: the default is 44 px at the base size (Apple HIG minimum), `lg` for the main action of a card
+        default: 'h-11 px-4 text-base',
+        xs: 'h-8 px-2.5 text-xs',
+        sm: 'h-9 px-3 text-sm',
+        lg: 'h-12 px-5 text-base',
+        icon: 'size-11',
+        'icon-xs': 'size-8',
+        'icon-sm': 'size-9',
+        'icon-lg': 'size-12',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

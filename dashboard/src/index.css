@@ -194,6 +194,12 @@
 
 * { box-sizing: border-box; border-color: var(--border); }
 html, body, #root { height: 100%; margin: 0; }
+/*
+ * One scale for the whole UI: everything is in rem, so the root font size is the only knob. It follows the HEIGHT (the app is landscape-only,
+ * the height is what limits it) and grows slowly: 16 px on an iPad 9 (1080x810 CSS px), ~18 on an iPad Air 13" (1376x1032) and on a 1080p
+ * monitor, ~21 on a 1440p ultrawide. Never below 16 (the 44 px touch targets), never so large that 67 rem of width do not fit.
+ */
+html { font-size: clamp(16px, min(calc(16px + (100dvh - 810px) * 0.008), calc(100vw / 67.5)), 22px); }
 body {
   font-family: var(--font-sans);
   background: radial-gradient(900px 480px at 75% -8%, color-mix(in oklab, var(--chart-1) 14%, transparent), transparent 70%), var(--background);

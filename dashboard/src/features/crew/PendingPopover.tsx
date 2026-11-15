@@ -34,7 +34,7 @@ export function PendingPopover() {
   return (
     <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center p-4">
       {/* the wrapper is moved (relative offset) and carries the handles; the card inside keeps its rounded, clipped look */}
-      <div ref={ref} className="pointer-events-auto relative w-[760px] max-w-full" style={{ left: offset.x, top: offset.y }}>
+      <div ref={ref} className="pointer-events-auto relative w-[47.5rem] max-w-full" style={{ left: offset.x, top: offset.y }}>
       <DragHandles handleProps={handleProps} dragging={dragging} />
         <div role="alertdialog" aria-label="Action to confirm" className="overflow-hidden rounded-lg border border-border bg-card animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-(--duration-enter)">
           <div className="h-1 bg-status-warning" />

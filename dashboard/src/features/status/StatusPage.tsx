@@ -12,7 +12,7 @@ export function StatusPage() {
   const tick = useTick()
   const [chosen, setChosen] = useState<string | null>(null)
   return (
-    <div className="flex h-full min-h-[560px] flex-col gap-3 px-7 pb-16 pt-[18px]">
+    <div className="flex h-full min-h-[35rem] flex-col gap-3 px-7 pb-16 pt-[18px]">
       {!tick ? (
         <div className="space-y-4">
           <Skeleton className="h-[90px]" />

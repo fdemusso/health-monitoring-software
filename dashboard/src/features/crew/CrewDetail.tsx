@@ -11,6 +11,7 @@ import { crewStatus, statusLabel, statusText, vitalStatus, type Status } from '@
 import { fmt0, fmt1, ppco2Mmhg } from '@/domain/units'
 import type { NPCState, SimulationTick } from '@/telemetry'
 import type { CrewSample } from '@/telemetry/store'
+import { useUiScale } from '@/lib/useUiScale'
 import { useElementWidth } from '@/lib/useElementWidth'
 import { useCrewHistory, useModuleHistory } from '@/telemetry/useTelemetry'
 import { HologramCallouts } from './HologramCallouts'
@@ -26,7 +27,7 @@ function Trend({ title, value, unit, status, values }: { title: string; value: s
   return (
     <div className="min-w-0 border-l border-border pl-4 first:border-l-0 first:pl-0">
       <div className="lbl truncate">{title}</div>
-      <div className={`num text-5xl leading-tight ${status !== 'ok' ? statusText[status] : ''}`}>{value}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{unit}</span></div>
+      <div className={`num text-4xl leading-tight min-[1200px]:text-5xl ${status !== 'ok' ? statusText[status] : ''}`}>{value}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{unit}</span></div>
       <Sparkline values={values} status={status} />
     </div>
   )
@@ -44,7 +45,8 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
   const [routineOpen, setRoutineOpen] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
   const [, stageW] = useElementWidth(stageRef)
-  const W = 280
+    const s = useUiScale()
+  const W = Math.round(280 * s)
   const H = Math.round(W * 1.78)
   const anchors = useOrganAnchors(stageRef, [W, stageW, npc.sex])
   const phase = phaseLabel(npc.response_phase)
@@ -74,7 +76,7 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
             : <Trend title={`Carbon dioxide in ${moduleName(npc.module_id)}`} value={mod ? fmt1(ppco2Mmhg(mod)) : '—'} unit="mmHg" status={mod ? limitStatus(ENV_METRICS.ppco2, ppco2Mmhg(mod)) : 'ok'} values={ctx} />}
         </div>
       </div>
-      <div data-void className="grid grid-cols-[290px_1fr_290px] gap-[18px] animate-in fade-in-0 duration-(--duration-enter)">
+      <div data-void className="grid grid-cols-[18rem_1fr_18rem] gap-[18px] animate-in fade-in-0 duration-(--duration-enter)">
         {/* Columns 1 and 3 are the same width, so the figure (column 2) sits at the centre of the page. */}
         <div ref={stageRef} data-void className="relative col-start-2 min-w-0" style={{ height: H }}>
           <HologramFrame npc={npc} tick={tick} width={W} color={id.color} />

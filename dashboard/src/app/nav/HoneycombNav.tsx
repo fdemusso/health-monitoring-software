@@ -5,7 +5,8 @@ import { isCriticalConfirmed, primaryEmergency } from '@/domain/status'
 import { cn } from '@/lib/utils'
 import { alertRows } from '@/features/status/alertRows'
 import { useEmergencies, usePendingActions, useTick } from '@/telemetry/useTelemetry'
-import { CELL, CELLS, CLIP, TRIGGER, cellOffset, type CellId } from './hexGeometry'
+import { useUiScale } from '@/lib/useUiScale'
+import { CELL as CELL0, CELLS, CLIP, TRIGGER as TRIGGER0, cellOffset, type CellId } from './hexGeometry'
 
 const ICON: Record<CellId, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   status: Activity, crew: Users, alerts: Bell, protocols: ClipboardList, history: History,
@@ -24,6 +25,10 @@ function Hex({ w, h, on, children, className }: { w: number; h: number; on?: boo
 /** Corner menu: one hexagon when closed (with emergency indicators); the cells fan out on an arc when open. */
 export function HoneycombNav() {
   const ui = useUi()
+  const sc = useUiScale()
+  // the geometry is drawn at 16 px per rem: scale it like the rest of the UI
+  const TRIGGER = { w: TRIGGER0.w * sc, h: TRIGGER0.h * sc, cx: TRIGGER0.cx * sc, cy: TRIGGER0.cy * sc }
+  const CELL = { w: CELL0.w * sc, h: CELL0.h * sc }
   const [open, setOpen] = useState(false)
   const emergencies = useEmergencies()
   const pending = usePendingActions()
@@ -67,7 +72,8 @@ export function HoneycombNav() {
 
       {CELLS.map((c, k) => {
         const Icon = ICON[c.id]
-        const o = cellOffset(k)
+        const o0 = cellOffset(k)
+        const o = { x: o0.x * sc, y: o0.y * sc }
         const disabled = c.id === 'alerts' && noAlerts
         return (
           <button
@@ -86,7 +92,7 @@ export function HoneycombNav() {
             }}
           >
             <Hex w={CELL.w} h={CELL.h} on={active(c.id)} className={c.id === 'alerts' && noAlerts ? 'opacity-35' : undefined}>
-              <Icon size={28} strokeWidth={1.5} />
+              <Icon size={28 * sc} strokeWidth={1.5} />
               <span className="text-xs font-medium">{c.label}</span>
             </Hex>
             {c.id === 'alerts' && critical && <span className="anim-ping absolute right-[22px] top-[18px] size-2.5 rounded-full bg-status-danger" />}
@@ -102,7 +108,7 @@ export function HoneycombNav() {
         className="pointer-events-auto absolute transition active:scale-[.94]"
         style={{ width: TRIGGER.w, height: TRIGGER.h, left: TRIGGER.cx - TRIGGER.w / 2, bottom: TRIGGER.cy - TRIGGER.h / 2 }}
       >
-        <Hex w={TRIGGER.w} h={TRIGGER.h}>{open ? <X size={26} strokeWidth={1.5} /> : <CurrentIcon size={26} strokeWidth={1.5} />}</Hex>
+        <Hex w={TRIGGER.w} h={TRIGGER.h}>{open ? <X size={26 * sc} strokeWidth={1.5} /> : <CurrentIcon size={26 * sc} strokeWidth={1.5} />}</Hex>
         {!open && <Menu aria-hidden size={12} className="absolute bottom-[22px] left-1/2 -translate-x-1/2 text-muted-foreground" />}
         {!open && critical && <span className="anim-ping absolute right-[16px] top-[14px] size-3 rounded-full bg-status-danger" />}
         {!open && !critical && primary && <span className="absolute right-[16px] top-[14px] size-3 rounded-full bg-status-warning" />}

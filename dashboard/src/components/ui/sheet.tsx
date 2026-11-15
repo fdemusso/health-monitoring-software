@@ -14,7 +14,7 @@ export function Sheet({ open, onClose, title, children, className, width = 420 }
         <SheetOverlay />
         <SheetPrimitive.Content
           aria-describedby={undefined}
-          style={{ width }}
+          style={{ width: `${width / 16}rem` }}
           className={cn(
             'fixed inset-y-0 right-0 z-50 flex h-full max-w-full flex-col border-l border-border bg-popover p-5 text-popover-foreground outline-none',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-right data-[state=open]:duration-(--duration-enter)',

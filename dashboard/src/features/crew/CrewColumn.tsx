@@ -5,6 +5,7 @@ import { crewIdentity } from '@/domain/crewConfig'
 import { activityLabel, phaseLabel, ROLE_LABEL } from '@/domain/emergencyText'
 import { crewStatus, statusLabel, statusText, vitalStatus } from '@/domain/status'
 import { fmt0, fmt1 } from '@/domain/units'
+import { useUiScale } from '@/lib/useUiScale'
 import { useElementWidth } from '@/lib/useElementWidth'
 import { cn } from '@/lib/utils'
 import type { NPCState, SimulationTick } from '@/telemetry'
@@ -14,6 +15,7 @@ export function CrewColumn({ npc, tick, onOpen }: { npc: NPCState; tick: Simulat
   const id = crewIdentity(npc.id)
   const st = crewStatus(npc, tick.emergencies)
   const [ref, w] = useElementWidth()
+  const s = useUiScale()
   const phase = phaseLabel(npc.response_phase)
   const v = npc.vitals
   return (
@@ -26,7 +28,7 @@ export function CrewColumn({ npc, tick, onOpen }: { npc: NPCState; tick: Simulat
         <StatusBadge status={st}>{statusLabel[st]}</StatusBadge>
       </div>
       <div ref={ref} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2">
-        {w > 0 && <HologramFrame npc={npc} tick={tick} width={Math.min(w, 200)} color={id.color} />}
+        {w > 0 && <HologramFrame npc={npc} tick={tick} width={Math.min(w, Math.round(220 * s))} color={id.color} />}
       </div>
       <h3 className="mt-3 flex items-center gap-2 font-heading text-2xl font-bold">
         <span aria-hidden className="size-2.5 rounded-full" style={{ background: id.color }} />

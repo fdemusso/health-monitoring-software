@@ -4,6 +4,7 @@ import { crewIdentity, sortCrewIds } from '@/domain/crewConfig'
 import { fmtHms } from '@/domain/units'
 import { ToggleGroup } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
+import { useUiScale } from '@/lib/useUiScale'
 import { useElementSize } from '@/lib/useElementSize'
 import type { CrewSample } from '@/telemetry/store'
 import { useAllCrewHistory, useEventLog, useStore } from '@/telemetry/useTelemetry'
@@ -32,7 +33,6 @@ type Win = keyof typeof WINDOWS
 /** Spacing of the time-axis labels, aligned to the clock on board (a label is always a round time). */
 const X_STEP: Record<Win, number> = { '15m': 180, '1h': 600, '6h': 3600 }
 
-const PADL = 44, PADR = 92, PADT = 14, PADB = 28
 
 const CLASS_COLOR: Record<AlertClass, string> = {
   emergency: 'var(--status-danger)', warning: 'var(--status-warning)', caution: 'var(--status-info)', advisory: 'var(--status-info)',
@@ -53,6 +53,8 @@ export const VitalsChart = memo(function VitalsChart() {
   const [focus, setFocus] = useState<string | null>(null)
   const [cursor, setCursor] = useState<number | null>(null) // sim time under the pointer
   const svgRef = useRef<SVGSVGElement>(null)
+  const ui = useUiScale()
+  const PADL = 44 * ui, PADR = 92 * ui, PADT = 14 * ui, PADB = 28 * ui
   const { ref: boxRef, w: W, h: Hraw } = useElementSize<HTMLDivElement>()
   const H = Math.max(200, Hraw), PW = W - PADL - PADR, PH = H - PADT - PADB
   const meta = METRICS[key]
@@ -81,7 +83,7 @@ export const VitalsChart = memo(function VitalsChart() {
     for (let t = Math.ceil((tMin + off) / X_STEP[win]) * X_STEP[win] - off; t <= tMax - X_STEP[win] * 0.25; t += X_STEP[win]) xTicks.push(t)
 
     // end-of-line labels, >= 18 px apart, kept inside the plot
-    const GAP = 18
+    const GAP = 18 * ui
     const tips = vis.filter((s) => s.pts.length)
       .map((s) => { const v = s.pts[s.pts.length - 1].v; return { id: s.id, v, y: y(v) } })
       .sort((a, b) => a.y - b.y)
@@ -91,7 +93,7 @@ export const VitalsChart = memo(function VitalsChart() {
     for (let i = tips.length - 2; i >= 0; i--) if (tips[i + 1].y - tips[i].y < GAP) tips[i].y = tips[i + 1].y - GAP
     if (tips.length && tips[0].y < yTop) tips[0].y = yTop
     return { series: vis, x, y, tips, tMin, tMax, lo, hi, yTicks, xTicks }
-  }, [history, ids, key, win, meta, PW, PH, off])
+  }, [history, ids, key, win, meta, PW, PH, PADL, PADT, off, ui])
 
   // Emergencies as spans on the time axis (opened ... cleared, or still open).
   const spans = useMemo<Span[]>(() => {
@@ -175,20 +177,20 @@ export const VitalsChart = memo(function VitalsChart() {
             {model.yTicks.map((v) => (
               <g key={v}>
                 <line x1={PADL} x2={W - PADR} y1={model.y(v)} y2={model.y(v)} stroke="var(--border)" strokeOpacity={0.7} />
-                <text x={PADL - 8} y={model.y(v) + 4} fontSize="12" textAnchor="end" className="fill-muted-foreground">{v.toFixed(meta.dec)}</text>
+                <text x={PADL - 8} y={model.y(v) + 4} fontSize={12 * ui} textAnchor="end" className="fill-muted-foreground">{v.toFixed(meta.dec)}</text>
               </g>
             ))}
             {model.xTicks.map((t) => (
               <g key={t}>
                 <line x1={model.x(t)} x2={model.x(t)} y1={PADT} y2={PADT + PH} stroke="var(--border)" strokeOpacity={0.45} />
-                <text x={model.x(t)} y={H - 8} fontSize="12" textAnchor="middle" className="fill-muted-foreground">{clock(t, off).slice(0, 5)}</text>
+                <text x={model.x(t)} y={H - 8} fontSize={12 * ui} textAnchor="middle" className="fill-muted-foreground">{clock(t, off).slice(0, 5)}</text>
               </g>
             ))}
-            <text x={W - PADR} y={H - 8} fontSize="12" fontWeight={600} textAnchor="end" className="fill-foreground">now</text>
+            <text x={W - PADR} y={H - 8} fontSize={12 * ui} fontWeight={600} textAnchor="end" className="fill-foreground">now</text>
 
             {/* critical threshold */}
             <line x1={PADL} x2={W - PADR} y1={model.y(meta.crit)} y2={model.y(meta.crit)} stroke="var(--status-danger)" strokeDasharray="5 4" />
-            <text x={PADL + 6} y={model.y(meta.crit) + (meta.dangerBelow ? 15 : -6)} fontSize="12" className="fill-status-danger-foreground">critical threshold {meta.crit}</text>
+            <text x={PADL + 6} y={model.y(meta.crit) + (meta.dangerBelow ? 15 : -6)} fontSize={12 * ui} className="fill-status-danger-foreground">critical threshold {meta.crit}</text>
 
             {/* emergencies */}
             {visibleSpans.map((s) => {
@@ -213,7 +215,7 @@ export const VitalsChart = memo(function VitalsChart() {
             {model.tips.map((t) => (
               <g key={t.id} opacity={focus && focus !== t.id ? 0.25 : 1}>
                 <circle cx={W - PADR + 8} cy={t.y} r={4.5} fill={crewIdentity(t.id).color} />
-                <text x={W - PADR + 18} y={t.y + 5} fontSize="14" fontWeight={600} className="fill-foreground">
+                <text x={W - PADR + 18} y={t.y + 5} fontSize={14 * ui} fontWeight={600} className="fill-foreground">
                   {crewIdentity(t.id).first} {t.v.toFixed(meta.dec)}
                 </text>
               </g>

@@ -26,7 +26,7 @@ function Tile({ metric, tick, moduleId }: { metric: EnvMetric; tick: SimulationT
   return (
     <div className="min-w-0 border-l border-border px-4 first:border-l-0 first:pl-0">
       <div className="lbl flex items-center gap-2 font-medium" title={spec.tech}>{spec.label} <StatusDot status={st} /></div>
-      <div className={cn('num mt-1 text-5xl leading-none', st !== 'ok' && statusText[st])}>
+      <div className={cn('num mt-1 text-4xl leading-none min-[1200px]:text-5xl', st !== 'ok' && statusText[st])}>
         {Number.isFinite(v) ? v.toFixed(spec.decimals) : '—'}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{spec.unit}</span>
       </div>
       <div className="mb-1.5 mt-1 text-xs text-muted-foreground">{spec.nominal}</div>
@@ -59,14 +59,14 @@ function ModulePicker({ tick, value, onChange }: { tick: SimulationTick; value: 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <button type="button" aria-label="Choose where to look" className="inline-flex h-8 items-center gap-2 rounded-control border border-input px-3 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:bg-muted">
+        <button type="button" aria-label="Choose where to look" className="inline-flex h-11 items-center gap-2 rounded-control border border-input px-4 text-base font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:bg-muted">
           <StatusDot status={status} />
           {moduleName(value)}
           <ChevronDown className="size-4 text-muted-foreground" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="start" sideOffset={6} className="z-50 w-[420px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in-0 zoom-in-95">
+        <Popover.Content align="start" sideOffset={6} className="z-50 w-[26.25rem] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in-0 zoom-in-95">
           <div className="grid grid-cols-3 gap-1">
             {ids.map((id) => {
               const st = moduleStatus(tick, id)
@@ -77,7 +77,7 @@ function ModulePicker({ tick, value, onChange }: { tick: SimulationTick; value: 
                   key={id}
                   type="button"
                   onClick={() => { onChange(id); setOpen(false) }}
-                  className={cn('flex min-h-9 items-center rounded-control px-2.5 py-1 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50',
+                  className={cn('flex min-h-11 items-center rounded-control px-3 py-1 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50',
                     selected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
                 >
                   <span className="flex items-center gap-1.5">

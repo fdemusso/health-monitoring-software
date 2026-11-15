@@ -18,7 +18,7 @@ export function Dialog({ open, onClose, title, children, className, width = 640 
           ref={ref}
           aria-describedby={undefined}
           // moved with left/top (not transform): the centering classes already use the translate property
-          style={{ width, left: `calc(50% + ${offset.x}px)`, top: `calc(50% + ${offset.y}px)` }}
+          style={{ width: `${width / 16}rem`, left: `calc(50% + ${offset.x}px)`, top: `calc(50% + ${offset.y}px)` }}
           className={cn(
             'fixed top-1/2 left-1/2 z-50 flex max-h-[88dvh] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-border bg-popover p-5 text-popover-foreground outline-none',
             'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-(--duration-enter) data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-(--duration-exit)',
