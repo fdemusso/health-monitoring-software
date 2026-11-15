@@ -86,6 +86,12 @@ class CrewFeatureExtractor:
     def n_features(self) -> int:
         return len(self.names)
 
+    def register(self, sensor_id: str, npc: str, metric: str) -> None:
+        """Take ``sensor_id`` as the wearable that measures ``metric`` of ``npc`` (a detector learns the sensors from the observations,
+        it has no layout)."""
+        if npc in self.npc_ids and metric in VITALS:
+            self._row[sensor_id] = self.npc_ids.index(npc) * _N + VITALS.index(metric)
+
     def _flush(self, upto: int) -> None:
         """Close the bin being filled and every empty one up to (not including) ``upto``."""
         has = self._k > 0

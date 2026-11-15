@@ -48,6 +48,10 @@ classifier:
     medical:critical:atrial_fibrillation_suspected: emergency
     medical:warning:acute_stress: caution
     medical:warning:space_motion_sickness: advisory
+    medical:critical:svt_suspected: emergency
+    medical:warning:bradycardia: warning
+    medical:warning:respiratory_infection: warning
+    medical:warning:abnormal_exertion: caution
 
 detectors:
   # Loss of cabin air. The ISS grades it by rate [ICES-2025-126, NASA]: rapid depressurization >= 0.87 mmHg/min, fast leak
@@ -426,3 +430,7 @@ diagnosis:
   atrial_fibrillation_suspected: {emergency: medical, severity: critical, confirm_s: 240.0, clear_s: 480.0}
   acute_stress: {emergency: medical, severity: warning, confirm_s: 600.0, clear_s: 1200.0}
   space_motion_sickness: {emergency: medical, severity: warning, confirm_s: 600.0, clear_s: 1200.0}
+  svt_suspected: {emergency: medical, severity: critical, confirm_s: 240.0, clear_s: 480.0}
+  bradycardia: {emergency: medical, severity: warning, confirm_s: 600.0, clear_s: 1200.0}
+  respiratory_infection: {emergency: medical, severity: warning, confirm_s: 600.0, clear_s: 1200.0}
+  abnormal_exertion: {emergency: medical, severity: warning, confirm_s: 600.0, clear_s: 1200.0}

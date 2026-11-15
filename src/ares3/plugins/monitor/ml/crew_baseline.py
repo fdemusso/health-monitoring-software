@@ -1,0 +1,255 @@
+"""Stage A of the crew: "is this person's body doing what it should do, given what they are doing?", learned from NOMINAL days
+only (``tools/ml/train_crew.py``). The rule detectors judge a vital against a fixed band (126 bpm at 7 MET is a fault to a band
+and normal to a physiologist); this one predicts each vital from the CONTEXT ALONE (the MET and the activity of the programme,
+the minutes since exercise or since sleep began, the clock: ``crew.py``) and judges the residual.
+
+Per (crew member, quantity) a regressor gives the expected value; ``z`` = residual / sigma, where sigma is a robust scale per
+activity class. The quantities are the 10 min means of the six vitals plus the noise of the heart rate (``hr|sd10``: the
+irregularity of an atrial fibrillation shows there). Each has a clinical direction (SpO2 only down, core temperature and the heart
+rate irregularity only up). Two statistics per crew member:
+
+* ``D2``: robust Mahalanobis distance of the (directional) z vector, with the precision matrix of that person;
+* ``max z``: the largest directional z.
+
+``stat`` = max(D2 / L_D, max_q z_q / L_z[q]); the limits are a margin times the largest value seen on validation nights. The
+``slow`` detector smooths ``stat`` (exponential mean, 5 min) and signals at >= 1; the ``fast`` one looks at the heart rate alone,
+unsmoothed, at ``fast_factor`` times its limit (an acute arrhythmia: the debounce of the YAML does the rest).
+
+SECURITY: ``joblib`` runs code when it loads a file. Load only the models this project produced (``models/``).
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Literal
+
+import numpy as np
+from pydantic import BaseModel, ConfigDict, Field
+
+from ares3.sdk import BaseDetector, Observation, Signal, StepContext
+
+from .crew import ACT_NAMES, CLASSES, VITALS, CrewFeatureExtractor
+
+_ROOT = Path(__file__).resolve().parents[5]  # the repository, when the model path is relative and not found from the cwd
+
+Z_CLIP = 10.0  # sigmas: what one quantity can add, at most (as in ``anomaly.py``)
+TAU_S = 300.0  # time constant of the slow statistic
+QUANTITIES = tuple(f"{v}|lv10" for v in VITALS) + ("hr|sd10",)
+# clinical direction: +1 only above the expected value counts, -1 only below, 0 both ways
+DIRECTION = {"hr|lv10": 0, "resp_rate|lv10": 0, "spo2|lv10": -1, "core_temp_c|lv10": +1, "skin_temp_c|lv10": 0,
+             "hrv_rmssd|lv10": 0, "hr|sd10": +1}
+FAST_QUANTITIES = ("hr|lv10", "hr|sd10")
+CTX_COLUMNS = ("ctx|met10", "ctx|met_max30", "ctx|min_since_ex", *(f"ctx|{a}" for a in ACT_NAMES), "ctx|min_since_sleep",
+               "clock|sin", "clock|cos")
+_NOMINAL = CLASSES.index("nominal")
+# (label, unit) of each quantity in the words for the crew
+_WORDS = {"hr|lv10": ("FC", "bpm"), "resp_rate|lv10": ("FR", "atti/min"), "spo2|lv10": ("SpO2", "%"),
+          "core_temp_c|lv10": ("temperatura centrale", "°C"), "skin_temp_c|lv10": ("temperatura cutanea", "°C"),
+          "hrv_rmssd|lv10": ("HRV", "ms"), "hr|sd10": ("irregolarità della FC", "bpm")}
+_DECIMALS = {"hr|lv10": 0, "resp_rate|lv10": 0, "spo2|lv10": 1, "core_temp_c|lv10": 1, "skin_temp_c|lv10": 1, "hrv_rmssd|lv10": 0,
+             "hr|sd10": 1}
+
+
+def _it(x: float, decimals: int) -> str:
+    return f"{x:.{decimals}f}".replace(".", ",")
+
+
+class TableRegressor:
+    """Plan B of the expected value: the median of the quantity per (activity class, MET band of width 1). Same interface as an
+    sklearn regressor over ``CTX_COLUMNS`` (``predict``), so the model and the detector do not care which one they hold."""
+
+    def __init__(self, medians: dict[tuple[int, int], float], by_class: dict[int, float], overall: float) -> None:
+        self.medians, self.by_class, self.overall = medians, by_class, overall
+
+    @staticmethod
+    def keys(ctx: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        act = ctx[:, CTX_COLUMNS.index("ctx|act_sleep"):CTX_COLUMNS.index("ctx|act_sleep") + len(CLASSES)]
+        cls = np.where(act.sum(axis=1) > 0, act.argmax(axis=1), _NOMINAL)
+        met = np.nan_to_num(ctx[:, 0], nan=1.0)
+        return cls, np.clip(np.floor(met), 0, 20).astype(int)
+
+    @classmethod
+    def fit(cls, ctx: np.ndarray, y: np.ndarray) -> TableRegressor:
+        k, b = cls.keys(ctx)
+        ok = np.isfinite(y)
+        medians = {}
+        for ci in np.unique(k[ok]):
+            for bi in np.unique(b[ok & (k == ci)]):
+                sel = ok & (k == ci) & (b == bi)
+                if sel.sum() >= 20:
+                    medians[(int(ci), int(bi))] = float(np.median(y[sel]))
+        by_class = {int(ci): float(np.median(y[ok & (k == ci)])) for ci in np.unique(k[ok])}
+        return cls(medians, by_class, float(np.median(y[ok])))
+
+    def predict(self, ctx: np.ndarray) -> np.ndarray:
+        k, b = self.keys(np.atleast_2d(ctx))
+        return np.asarray([self.medians.get((int(ci), int(bi)), self.by_class.get(int(ci), self.overall))
+                           for ci, bi in zip(k, b, strict=True)])
+
+
+@dataclass
+class CrewBaselineModel:
+    """A fitted model (plain numpy and sklearn objects, picklable)."""
+
+    npc_ids: list[str]
+    columns: list[str]  # the crew feature names it expects, in order (``CrewFeatureExtractor.names``)
+    regressors: dict[str, dict[str, Any]]  # npc -> quantity -> object with ``predict(context matrix)``
+    sigma: dict[str, np.ndarray]  # npc -> (quantities, classes): robust scale of the residual
+    precision: dict[str, np.ndarray]  # npc -> (quantities, quantities)
+    limit_d: float = 1.0
+    limit_z: np.ndarray = field(default_factory=lambda: np.ones(len(QUANTITIES)))
+    fast_factor: float = 2.0
+    tau_s: float = TAU_S
+    kind: Literal["regressor", "table"] = "regressor"
+    info: dict = field(default_factory=dict)  # how it was trained (split, margins, metrics, versions): the model card
+
+    def _idx(self) -> tuple[list[int], list[int], list[int]]:
+        pos = {c: i for i, c in enumerate(self.columns)}
+        return [pos[c] for c in CTX_COLUMNS], [pos[q] for q in QUANTITIES], [pos[f"ctx|{a}"] for a in ACT_NAMES]
+
+    @staticmethod
+    def _mask(z: np.ndarray) -> np.ndarray:
+        """The part of each z that counts in its clinical direction (>= 0)."""
+        d = np.asarray([DIRECTION[q] for q in QUANTITIES], dtype=float)
+        return np.where(d == 0, np.abs(z), np.maximum(d * z, 0.0))
+
+    def z_batch(self, npc: str, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """(z, expected), both (rows, quantities): ``X`` has one row of crew features per row, in ``columns`` order. A feature that
+        could not be computed (no samples) is taken as normal (z = 0)."""
+        X = np.atleast_2d(np.asarray(X, dtype=float))
+        ctx_i, q_i, act_i = self._idx()
+        ctx = X[:, ctx_i]
+        act = X[:, act_i]
+        cls = np.where(act.sum(axis=1) > 0, act.argmax(axis=1), _NOMINAL)
+        expected = np.column_stack([self.regressors[npc][q].predict(ctx) for q in QUANTITIES])
+        sig = self.sigma[npc][np.arange(len(QUANTITIES))[None, :], cls[:, None]]
+        z = (X[:, q_i] - expected) / sig
+        return np.clip(np.where(np.isfinite(z), z, 0.0), -Z_CLIP, Z_CLIP), expected
+
+    def stats(self, npc: str, z: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """(stat, D2, directional z) for the z of ``z_batch``; ``stat`` is the instantaneous slow statistic (not smoothed)."""
+        zm = self._mask(z)
+        d2 = np.einsum("ij,jk,ik->i", zm, self.precision[npc], zm)
+        stat = np.maximum(d2 / self.limit_d, (zm / self.limit_z).max(axis=1))
+        return stat, d2, zm
+
+    def fast_stat(self, zm: np.ndarray) -> np.ndarray:
+        """The fast statistic: the largest directional z of the heart rate quantities over ``fast_factor`` times its limit."""
+        ix = [QUANTITIES.index(q) for q in FAST_QUANTITIES]
+        return (zm[:, ix] / (self.fast_factor * self.limit_z[ix])).max(axis=1)
+
+    def score(self, npc: str, row: np.ndarray) -> tuple[float, np.ndarray, str]:
+        """(stat, z, explanation) of one row of crew features."""
+        z, expected = self.z_batch(npc, row)
+        stat, _, _ = self.stats(npc, z)
+        return float(stat[0]), z[0], self.explain(npc, np.asarray(row, dtype=float), z[0], expected[0])[0]
+
+    def explain(self, npc: str, row: np.ndarray, z: np.ndarray, expected: np.ndarray,
+                top: int = 3) -> tuple[str, tuple[str, ...]]:
+        """(the evidence in one sentence, the ``top`` phrases): "FC 105 bpm, attesi 68 a riposo (z 6,1)"."""
+        ctx_i, q_i, _ = self._idx()
+        met = float(row[ctx_i[0]]) if math.isfinite(row[ctx_i[0]]) else 0.0
+        where = "a riposo" if met < 2.0 else f"a {_it(met, 1)} MET"
+        zm = self._mask(z[None, :])[0]
+        order = [i for i in np.argsort(zm)[::-1][:top] if zm[i] > 0]
+        phrases = []
+        for i in order:
+            q = QUANTITIES[i]
+            label, unit = _WORDS[q]
+            dec = _DECIMALS[q]
+            phrases.append(f"{label} {_it(float(row[q_i[i]]), dec)} {unit}, attesi {_it(float(expected[i]), dec)} {where} "
+                           f"(z {_it(float(z[i]), 1)})")
+        return "; ".join(phrases), tuple(phrases)
+
+
+def ema(series: np.ndarray, every_s: float, tau_s: float = TAU_S) -> np.ndarray:
+    """Exponential mean of a series sampled every ``every_s`` seconds, starting at its first value: the SAME recursion the detector
+    runs online, so the offline evaluation reproduces it."""
+    a = 1.0 - math.exp(-every_s / tau_s)
+    out = np.empty(len(series))
+    acc = 0.0
+    for i, x in enumerate(series):
+        acc = float(x) if i == 0 else acc + a * (float(x) - acc)
+        out[i] = acc
+    return out
+
+
+def load_model(path: str | Path) -> CrewBaselineModel:
+    import joblib
+
+    p = Path(path)
+    if not p.is_absolute() and not p.exists():
+        p = _ROOT / p
+    return joblib.load(p)
+
+
+class _CrewBaselineParams(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str  # path of a ``CrewBaselineModel`` joblib file (``tools/ml/train_crew.py``)
+    mode: Literal["slow", "fast"] = "slow"
+    eval_every_s: float = Field(default=60.0, gt=0)
+
+
+class CrewBaselineDetector(BaseDetector):
+    """Stage A of the crew. Reads the SENSED wearable observations and, from the tick, only ``NPCState.met`` / ``activity`` (the
+    programme of the day, as ``EarlyWarningScore`` does), never ``vitals``. One ``Signal(emergency="medical", cause="crew_baseline")``
+    per flagged crew member, with the member as ``subject``; the classifier debounces it (``confirm_s`` 600 for ``slow``, 120 for
+    ``fast``). ``metric`` and ``targets`` of the spec are not used: the model knows its crew."""
+
+    Params = _CrewBaselineParams
+
+    def reset(self) -> None:
+        self.model = load_model(self.params.model)
+        self._fx: CrewFeatureExtractor | None = None
+        self._bucket = -1
+        self._ema: dict[str, float] = {}
+        self._latched: dict[str, Signal] = {}
+        self.last_score = 0.0
+
+    def forget(self, entity_id: str) -> None:
+        self._ema.pop(entity_id, None)
+        self._latched.pop(entity_id, None)
+
+    def detect(self, ctx: StepContext, observations: list[Observation]) -> list[Signal]:
+        tick = ctx.tick
+        if self._fx is None:
+            self._fx = CrewFeatureExtractor(list(tick.npcs), {})
+            assert self._fx.names == self.model.columns, "the model and the extractor disagree"
+        for o in observations:  # the wearables are the sensors whose entity is a crew member
+            if o.metric in VITALS and o.entity_id in tick.npcs:
+                self._fx.register(o.sensor_id, o.entity_id, o.metric)
+        self._fx.push(tick, observations)
+        t = tick.t_sim_s
+        bucket = int(t // self.params.eval_every_s)
+        if bucket != self._bucket and self._fx.ready(t):
+            self._bucket = bucket
+            self._evaluate(ctx, self._fx.compute(t))
+        return list(self._latched.values())
+
+    def _evaluate(self, ctx: StepContext, rows: dict[str, np.ndarray]) -> None:
+        m, fast = self.model, self.params.mode == "fast"
+        a = 1.0 - math.exp(-self.params.eval_every_s / m.tau_s)
+        self._latched = {}
+        best = 0.0
+        for npc, row in rows.items():
+            if npc not in m.regressors or npc not in ctx.tick.npcs:
+                continue
+            z, expected = m.z_batch(npc, row)
+            stat, _, zm = m.stats(npc, z)
+            if fast:
+                score = float(m.fast_stat(zm)[0])
+            else:
+                prev = self._ema.get(npc)
+                score = float(stat[0]) if prev is None else prev + a * (float(stat[0]) - prev)
+                self._ema[npc] = score
+            best = max(best, score)
+            if score >= 1.0:
+                text, phrases = m.explain(npc, row, z[0], expected[0])
+                self._latched[npc] = Signal(
+                    detector_id=self.id, emergency="medical", module_id=ctx.tick.npcs[npc].module_id, severity="warning",
+                    subject=npc, value=score, cause="crew_baseline", evidence=phrases,
+                    detail=f"{npc}: {text} (score {score:.1f})")
+        self.last_score = best
