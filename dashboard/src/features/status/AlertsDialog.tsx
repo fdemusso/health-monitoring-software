@@ -16,8 +16,8 @@ export function AlertsDialog() {
     else ui.setSheetEmergency(id)
   }
   return (
-    <Dialog open={ui.alertsOpen} onClose={() => ui.setAlertsOpen(false)} title="Allarmi" width={720}>
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">Nessun avviso attivo.</p> : (
+    <Dialog open={ui.alertsOpen} onClose={() => ui.setAlertsOpen(false)} title="Alarms" width={720}>
+      {rows.length === 0 ? <p className="text-sm text-muted-foreground">No active alerts.</p> : (
         <ul className="space-y-2">
           {rows.map((r) => (
             <li key={r.key} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
@@ -26,7 +26,7 @@ export function AlertsDialog() {
                 <div className="flex items-center gap-2">{r.chip}<span className="truncate text-sm font-medium">{r.text}</span></div>
                 <div className="mt-0.5 text-xs text-muted-foreground">{r.sub}</div>
               </div>
-              {r.emergency && <Button variant="outline" onClick={() => open(r.emergency?.subject, (r.emergency as { id: string }).id)}>Apri risposta</Button>}
+              {r.emergency && <Button variant="outline" onClick={() => open(r.emergency?.subject, (r.emergency as { id: string }).id)}>Open response</Button>}
             </li>
           ))}
         </ul>

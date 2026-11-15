@@ -21,13 +21,13 @@ export interface MetricSpec {
 }
 
 export const ENV_METRICS: Record<EnvMetric, MetricSpec> = {
-  temp: { key: 'temp', label: 'Temperatura', unit: '°C', min: 18, max: 27, nominal: 'nominale 18–27', decimals: 1, read: (m) => m.temperature_c }, // [S6]
-  rh: { key: 'rh', label: 'Umidità', unit: '%', min: 25, max: 75, nominal: 'nominale 25–75', decimals: 0, read: rhPercent }, // [S6]
-  pio2: { key: 'pio2', label: 'PIO₂', unit: 'mmHg', min: 127, max: null, nominal: 'minimo 127', decimals: 0, read: pio2Mmhg }, // [S20]
-  ppco2: { key: 'ppco2', label: 'ppCO₂', unit: 'mmHg', min: null, max: 3, nominal: 'massimo 3', decimals: 1, read: ppco2Mmhg }, // [S6]
-  pressure: { key: 'pressure', label: 'Pressione', unit: 'kPa', min: 34.5, max: 103, nominal: 'nominale 34.5–103', decimals: 1, read: (m) => m.pressure_kpa }, // [S6]
+  temp: { key: 'temp', label: 'Temperature', unit: '°C', min: 18, max: 27, nominal: 'nominal 18–27', decimals: 1, read: (m) => m.temperature_c }, // [S6]
+  rh: { key: 'rh', label: 'Humidity', unit: '%', min: 25, max: 75, nominal: 'nominal 25–75', decimals: 0, read: rhPercent }, // [S6]
+  pio2: { key: 'pio2', label: 'PIO₂', unit: 'mmHg', min: 127, max: null, nominal: 'minimum 127', decimals: 0, read: pio2Mmhg }, // [S20]
+  ppco2: { key: 'ppco2', label: 'ppCO₂', unit: 'mmHg', min: null, max: 3, nominal: 'maximum 3', decimals: 1, read: ppco2Mmhg }, // [S6]
+  pressure: { key: 'pressure', label: 'Pressure', unit: 'kPa', min: 34.5, max: 103, nominal: 'nominal 34.5–103', decimals: 1, read: (m) => m.pressure_kpa }, // [S6]
   // ESTIMATE: no CO limit in the profile; 35 ppm is the usual 8 h occupational limit (see toxicology-sources.md).
-  co: { key: 'co', label: 'CO', unit: 'ppm', min: null, max: 35, nominal: 'massimo 35', decimals: 0, read: (m) => m.co_ppm },
+  co: { key: 'co', label: 'CO', unit: 'ppm', min: null, max: 35, nominal: 'maximum 35', decimals: 0, read: (m) => m.co_ppm },
 }
 
 /** Matches the engine's alarm `metric` strings to our keys (best effort, case-insensitive). */

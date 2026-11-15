@@ -42,8 +42,8 @@ function ModuleCard({ tick, m, onPick }: { tick: SimulationTick; m: ModuleState;
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-2">{SHOWN.map((k) => <Value key={k} m={m} k={k} />)}</div>
       <div className="flex min-h-6 flex-wrap items-center gap-1.5">
-        {m.occupants.length ? m.occupants.map((o) => <CrewChip key={o} id={o} />) : <span className="text-xs text-muted-foreground">Nessun occupante</span>}
-        {!m.fans_on && <StatusBadge status="warn">ventilazione spenta</StatusBadge>}
+        {m.occupants.length ? m.occupants.map((o) => <CrewChip key={o} id={o} />) : <span className="text-xs text-muted-foreground">No occupants</span>}
+        {!m.fans_on && <StatusBadge status="warn">ventilation off</StatusBadge>}
       </div>
     </button>
   )
@@ -55,7 +55,7 @@ export function ModulesDialog() {
   const tick = useTick()
   const mods = tick ? Object.values(tick.modules).sort((a, b) => RANKED(moduleStatus(tick, b)) - RANKED(moduleStatus(tick, a)) || b.occupants.length - a.occupants.length || a.id.localeCompare(b.id)) : []
   return (
-    <Dialog open={ui.modulesOpen} onClose={() => ui.setModulesOpen(false)} title="Moduli" width={1040}>
+    <Dialog open={ui.modulesOpen} onClose={() => ui.setModulesOpen(false)} title="Modules" width={1040}>
       {tick && (
         <div className="grid grid-cols-4 gap-3">
           {mods.map((m) => <ModuleCard key={m.id} tick={tick} m={m} onPick={() => { ui.setModulesOpen(false); ui.setPage(0) }} />)}

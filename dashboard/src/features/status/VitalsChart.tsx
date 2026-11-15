@@ -7,14 +7,14 @@ import { useAllCrewHistory } from '@/telemetry/useTelemetry'
 
 type Key = 'hr' | 'spo2' | 'core'
 const METRICS: Record<Key, { label: string; unit: string; crit: number; dec: number }> = {
-  hr: { label: 'Frequenza cardiaca', unit: 'bpm', crit: 130, dec: 0 }, // ESTIMATE thresholds (status.ts)
+  hr: { label: 'Heart rate', unit: 'bpm', crit: 130, dec: 0 }, // ESTIMATE thresholds (status.ts)
   spo2: { label: 'SpO₂', unit: '%', crit: 90, dec: 0 },
-  core: { label: 'Temperatura core', unit: '°C', crit: 38.5, dec: 1 },
+  core: { label: 'Core temperature', unit: '°C', crit: 38.5, dec: 1 },
 }
 const W = 640, H = 220, PADL = 34, PADR = 86, PADT = 10, PADB = 22
 
 function xLabel(sec: number) {
-  if (sec < 90) return 'ora'
+  if (sec < 90) return 'now'
   return sec < 5400 ? `-${Math.round(sec / 60)} min` : `-${(sec / 3600).toFixed(1)} h`
 }
 
@@ -50,13 +50,13 @@ export const VitalsChart = memo(function VitalsChart() {
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-heading text-xl font-bold">{meta.label} <span className="font-sans text-sm font-normal text-muted-foreground">· una linea per astronauta · {meta.unit}</span></h2>
-        <ToggleGroup value={key} onChange={setKey} options={[{ value: 'hr', label: 'FC' }, { value: 'spo2', label: 'SpO₂' }, { value: 'core', label: 'Temp.' }]} />
+        <h2 className="font-heading text-xl font-bold">{meta.label} <span className="font-sans text-sm font-normal text-muted-foreground">· one line per astronaut · {meta.unit}</span></h2>
+        <ToggleGroup value={key} onChange={setKey} options={[{ value: 'hr', label: 'HR' }, { value: 'spo2', label: 'SpO₂' }, { value: 'core', label: 'Temp.' }]} />
       </div>
       {!model ? (
-        <div className="grid h-[220px] place-items-center rounded-lg bg-muted text-sm text-muted-foreground">In attesa dei dati…</div>
+        <div className="grid h-[220px] place-items-center rounded-lg bg-muted text-sm text-muted-foreground">Waiting for data…</div>
       ) : (
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxHeight: 210 }} role="img" aria-label={`${meta.label} dell'equipaggio`}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxHeight: 210 }} role="img" aria-label={`Crew ${meta.label.toLowerCase()}`}>
           {(() => {
             const yc = model.y(meta.crit)
             const danger = key === 'spo2' ? [yc, H - PADB] : [PADT, yc]
@@ -79,7 +79,7 @@ export const VitalsChart = memo(function VitalsChart() {
             </g>
           ))}
           <text x={PADL} y={H - 4} fontSize="11" className="fill-muted-foreground">{xLabel(model.span)}</text>
-          <text x={W - PADR} y={H - 4} fontSize="11" textAnchor="end" className="fill-muted-foreground">ora</text>
+          <text x={W - PADR} y={H - 4} fontSize="11" textAnchor="end" className="fill-muted-foreground">now</text>
         </svg>
       )}
       <div className="mt-2 flex gap-2">

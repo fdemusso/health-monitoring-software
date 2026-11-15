@@ -15,8 +15,8 @@ export function CrewPage() {
       {npc ? <CrewDetail npc={npc} tick={tick} onBack={ui.closeCrew} /> : (
         <>
           <div className="col-span-full">
-            <div className="lbl">Equipaggio</div>
-            <h1 className="mt-1 font-heading text-4xl font-bold">Tocca un astronauta per il dettaglio completo</h1>
+            <div className="lbl">Crew</div>
+            <h1 className="mt-1 font-heading text-4xl font-bold">Tap an astronaut for full details</h1>
           </div>
           <div className="grid grid-cols-4 gap-3 animate-in fade-in-0 duration-(--duration-enter)" style={{ minHeight: 420 }}>
             {crew.map((n) => <CrewColumn key={n.id} npc={n} tick={tick} onOpen={() => ui.openCrew(n.id)} />)}

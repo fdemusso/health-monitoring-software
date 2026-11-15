@@ -8,10 +8,10 @@ export interface CrewIdentity {
 }
 
 export const CREW: Record<string, CrewIdentity> = {
-  cmd: { label: 'CMD', alias: 'ASTRO_01', name: 'Comandante', color: 'var(--crew-cmd)' },
-  eng: { label: 'ENG', alias: 'ASTRO_03', name: 'Ingegnere', color: 'var(--crew-eng)' },
-  med: { label: 'MED', alias: 'ASTRO_04', name: 'Medico', color: 'var(--crew-med)' },
-  bot: { label: 'BOT', alias: 'ASTRO_02', name: 'Botanico', color: 'var(--crew-bot)' },
+  cmd: { label: 'CMD', alias: 'ASTRO_01', name: 'Commander', color: 'var(--crew-cmd)' },
+  eng: { label: 'ENG', alias: 'ASTRO_03', name: 'Engineer', color: 'var(--crew-eng)' },
+  med: { label: 'MED', alias: 'ASTRO_04', name: 'Medic', color: 'var(--crew-med)' },
+  bot: { label: 'BOT', alias: 'ASTRO_02', name: 'Botanist', color: 'var(--crew-bot)' },
 }
 
 const FALLBACK_COLOR = 'var(--muted-foreground)'

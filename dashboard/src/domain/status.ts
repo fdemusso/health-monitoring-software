@@ -63,7 +63,7 @@ export function globalStatus(npcs: NPCState[], emergencies: Emergency[]): Status
   return maxStatus(fromEmergency, ...npcs.map((n) => crewStatus(n, emergencies)))
 }
 
-export const statusLabel: Record<Status, string> = { ok: 'Stabile', warn: 'Attenzione', crit: 'Critico' }
+export const statusLabel: Record<Status, string> = { ok: 'Stable', warn: 'Warning', crit: 'Critical' }
 export const statusText: Record<Status, string> = { ok: 'text-status-live-foreground', warn: 'text-status-warning-foreground', crit: 'text-status-danger-foreground' }
 /** Solid status colours, for dots, bars and chart marks (never behind text). */
 export const statusColor: Record<Status, string> = { ok: 'var(--status-live)', warn: 'var(--status-warning)', crit: 'var(--status-danger)' }

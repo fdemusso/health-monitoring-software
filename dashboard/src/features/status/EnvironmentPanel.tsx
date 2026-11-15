@@ -51,11 +51,11 @@ export function EnvironmentHead({ tick, chosen, onChoose }: { tick: SimulationTi
   const sorted = Object.keys(tick.modules).sort((a, b) => Number(hot.has(b) || tick.modules[b].occupants.length > 0) - Number(hot.has(a) || tick.modules[a].occupants.length > 0))
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <span className="text-sm font-medium">Ambiente di</span>
+      <span className="text-sm font-medium">Environment of</span>
       <div className="no-scrollbar max-w-full overflow-x-auto"><ToggleGroup joined className="flex-nowrap [&>button]:shrink-0" value={moduleId} onChange={onChoose} options={sorted.map((id) => ({ value: id, label: id.toUpperCase() }))} /></div>
-      <span className="ml-2 text-sm font-medium">Occupanti</span>
-      {m.occupants.length ? m.occupants.map((o) => <CrewChip key={o} id={o} />) : <span className="text-xs text-muted-foreground">nessuno</span>}
-      {!m.fans_on && <StatusBadge status="warn">ventilazione spenta</StatusBadge>}
+      <span className="ml-2 text-sm font-medium">Occupants</span>
+      {m.occupants.length ? m.occupants.map((o) => <CrewChip key={o} id={o} />) : <span className="text-xs text-muted-foreground">none</span>}
+      {!m.fans_on && <StatusBadge status="warn">ventilation off</StatusBadge>}
     </div>
   )
 }

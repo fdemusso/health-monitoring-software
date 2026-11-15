@@ -10,8 +10,8 @@ export function ConnectionBanner() {
   return (
     <div role="status" className="z-[3] border-b border-border bg-status-warning-soft px-7 py-1.5 text-center text-xs text-status-warning-foreground">
       {!connected
-        ? <>Backend non raggiungibile (<code className="rounded-control bg-muted px-1.5 font-mono text-xs">{url}</code>) — avvia <code className="rounded-control bg-muted px-1.5 font-mono text-xs">uv run ares3 serve scenarios/events/debug_station.yaml</code></>
-        : <>Dati non aggiornati da {Math.round((now - lastTickAt) / 1000)} s</>}
+        ? <>Backend unreachable (<code className="rounded-control bg-muted px-1.5 font-mono text-xs">{url}</code>) — start <code className="rounded-control bg-muted px-1.5 font-mono text-xs">uv run ares3 serve scenarios/events/debug_station.yaml</code></>
+        : <>Data not updated for {Math.round((now - lastTickAt) / 1000)} s</>}
     </div>
   )
 }

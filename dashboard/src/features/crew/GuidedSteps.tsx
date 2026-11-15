@@ -13,10 +13,10 @@ export function GuidedSteps({ protocol }: { protocol: Protocol }) {
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="font-heading text-xl font-bold">{protocol.title}</h3>
-        <StatusBadge status="warn">Contenuto dimostrativo</StatusBadge>
+        <StatusBadge status="warn">Demo content</StatusBadge>
       </div>
       <Progress value={(done / total) * 100} />
-      <p className="mb-2 mt-1 text-xs text-muted-foreground">{done >= total ? 'Completato' : `Passo ${done + 1} di ${total}`}</p>
+      <p className="mb-2 mt-1 text-xs text-muted-foreground">{done >= total ? 'Completed' : `Step ${done + 1} of ${total}`}</p>
       <ol className="space-y-2">
         {protocol.steps.map((s, i) => (
           <li
@@ -33,7 +33,7 @@ export function GuidedSteps({ protocol }: { protocol: Protocol }) {
           </li>
         ))}
       </ol>
-      {done < total && <Button variant="secondary" className="mt-3 w-full" onClick={() => setDone(done + 1)}>Passo completato</Button>}
+      {done < total && <Button variant="secondary" className="mt-3 w-full" onClick={() => setDone(done + 1)}>Step completed</Button>}
     </div>
   )
 }

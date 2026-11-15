@@ -5,28 +5,28 @@ import { fmt0, fmt1, ppco2Mmhg, pio2Mmhg } from './units'
 // PLACEHOLDER texts: awaiting review by the team.
 const moduleName = (id: string) => id.toUpperCase()
 
-const CAUSE: Record<string, string> = { co_poisoning: 'Intossicazione da CO', hypoxia: 'Ipossia' }
+const CAUSE: Record<string, string> = { co_poisoning: 'CO poisoning', hypoxia: 'Hypoxia' }
 
 export function emergencyTitle(e: Emergency): string {
   const m = moduleName(e.module_id)
   switch (e.kind) {
-    case 'depressurization': return `Depressurizzazione in ${m}`
-    case 'fire': return `Incendio in ${m}`
-    case 'toxic': return `Contaminazione tossica in ${m}`
-    case 'equipment': return `Guasto apparecchiatura in ${m}`
-    case 'medical': return e.cause ? (CAUSE[e.cause] ?? e.cause) : 'Emergenza medica'
-    default: return `Anomalia in ${m}`
+    case 'depressurization': return `Depressurization in ${m}`
+    case 'fire': return `Fire in ${m}`
+    case 'toxic': return `Toxic contamination in ${m}`
+    case 'equipment': return `Equipment failure in ${m}`
+    case 'medical': return e.cause ? (CAUSE[e.cause] ?? e.cause) : 'Medical emergency'
+    default: return `Anomaly in ${m}`
   }
 }
 
 export const emergencyKindLabel = (e: Emergency) => emergencyTitle(e)
 
 export const RESPONSE_PHASE: Record<string, string> = {
-  warn: 'Allertato', gather: 'In raduno', work: 'Al lavoro', assist: 'Assiste un compagno',
-  evacuate: 'In evacuazione', repair: 'In riparazione', incapacitated: 'Incapacitato',
+  warn: 'Alerted', gather: 'Gathering', work: 'Working', assist: 'Assisting a crewmate',
+  evacuate: 'Evacuating', repair: 'Repairing', incapacitated: 'Incapacitated',
 }
 export const ROLE_LABEL: Record<string, string> = {
-  incident_commander: 'Comandante emergenza', systems: 'Sistemi', medical: 'Medico', sensing: 'Rilevamento',
+  incident_commander: 'Incident commander', systems: 'Systems', medical: 'Medic', sensing: 'Sensing',
 }
 export const phaseLabel = (p: string | null | undefined) => (p ? (RESPONSE_PHASE[p] ?? p) : null)
 
@@ -39,22 +39,22 @@ export function keyNumbers(e: Emergency, tick: SimulationTick): KeyNumber[] {
   const m = moduleName(e.module_id)
   const out: KeyNumber[] = []
   if (e.kind === 'depressurization') {
-    out.push({ label: `Pressione ${m}`, value: fmt1(mod?.pressure_kpa), unit: 'kPa' })
+    out.push({ label: `Pressure ${m}`, value: fmt1(mod?.pressure_kpa), unit: 'kPa' })
     out.push({ label: 'TRes', value: e.tres_s == null ? '—' : fmt1(e.tres_s / 60), unit: 'min' })
     out.push({ label: `PIO₂ ${m}`, value: mod ? fmt0(pio2Mmhg(mod)) : '—', unit: 'mmHg' })
   } else if (e.kind === 'fire') {
     out.push({ label: `Temp. ${m}`, value: fmt1(mod?.temperature_c), unit: '°C' })
     out.push({ label: `CO ${m}`, value: fmt0(mod?.co_ppm), unit: 'ppm' })
-    out.push({ label: `Fumo ${m}`, value: fmt1(mod?.smoke_mg_m3), unit: 'mg/m³' })
+    out.push({ label: `Smoke ${m}`, value: fmt1(mod?.smoke_mg_m3), unit: 'mg/m³' })
   } else if (e.kind === 'toxic') {
     const cohb = mod ? Math.max(0, ...mod.occupants.map((o) => tick.npcs[o]?.vitals[VITAL.cohb] ?? 0)) : undefined
     out.push({ label: `CO ${m}`, value: fmt0(mod?.co_ppm), unit: 'ppm' })
-    out.push({ label: 'COHb max occupanti', value: fmt1(cohb), unit: '%' })
+    out.push({ label: 'Max occupant COHb', value: fmt1(cohb), unit: '%' })
     out.push({ label: `ppCO₂ ${m}`, value: mod ? fmt1(ppco2Mmhg(mod)) : '—', unit: 'mmHg' })
   } else if (e.kind === 'medical') {
     const who = (e.subject ?? '').toUpperCase()
-    out.push({ label: `SpO₂ di ${who}`, value: fmt0(subject?.vitals[VITAL.spo2]), unit: '%' })
-    out.push({ label: `FC di ${who}`, value: fmt0(subject?.vitals[VITAL.hr]), unit: 'bpm' })
+    out.push({ label: `${who} SpO₂`, value: fmt0(subject?.vitals[VITAL.spo2]), unit: '%' })
+    out.push({ label: `${who} HR`, value: fmt0(subject?.vitals[VITAL.hr]), unit: 'bpm' })
     if (e.cause === 'co_poisoning') out.push({ label: `CO ${m}`, value: fmt0(mod?.co_ppm), unit: 'ppm' })
     else out.push({ label: `ppCO₂ ${m}`, value: mod ? fmt1(ppco2Mmhg(mod)) : '—', unit: 'mmHg' })
   } else {
@@ -64,21 +64,21 @@ export function keyNumbers(e: Emergency, tick: SimulationTick): KeyNumber[] {
 }
 
 const EVENT_LABEL: Record<MonitorEvent['kind'], string> = {
-  emergency_opened: 'Emergenza aperta', emergency_confirmed: 'Emergenza confermata', emergency_cleared: 'Emergenza risolta',
-  action_executed: 'Azione eseguita', action_proposed: 'Azione proposta', action_approved: 'Azione approvata',
-  action_rejected: 'Azione rifiutata', action_expired_executed: 'Azione scaduta (eseguita)',
-  action_expired_discarded: 'Azione scaduta (scartata)', action_blocked: 'Azione bloccata',
-  crew_alerted: 'Equipaggio allertato', crew_gathered: 'Equipaggio radunato', crew_evacuating: 'Evacuazione',
-  crew_assisting: 'Assistenza', crew_command_passed: 'Comando passato', crew_stood_down: 'Fine emergenza',
-  crew_repairing: 'Riparazione', crew_repaired: 'Riparato', crew_sealed: 'Sigillato',
+  emergency_opened: 'Emergency opened', emergency_confirmed: 'Emergency confirmed', emergency_cleared: 'Emergency cleared',
+  action_executed: 'Action executed', action_proposed: 'Action proposed', action_approved: 'Action approved',
+  action_rejected: 'Action rejected', action_expired_executed: 'Action expired (executed)',
+  action_expired_discarded: 'Action expired (discarded)', action_blocked: 'Action blocked',
+  crew_alerted: 'Crew alerted', crew_gathered: 'Crew gathered', crew_evacuating: 'Evacuation',
+  crew_assisting: 'Assisting', crew_command_passed: 'Command handed over', crew_stood_down: 'Stand down',
+  crew_repairing: 'Repairing', crew_repaired: 'Repaired', crew_sealed: 'Sealed',
 }
 export const eventLabel = (k: string) => EVENT_LABEL[k as MonitorEvent['kind']] ?? k
 export const eventFamily = (k: string): 'emergency' | 'action' | 'crew' =>
   k.startsWith('emergency') ? 'emergency' : k.startsWith('action') ? 'action' : 'crew'
 
 const ACTIVITY: Record<string, string> = {
-  sleep: 'Riposo notturno', nominal: 'Attività normale', work: 'Al lavoro', rest: 'A riposo', meal: 'Pasto',
-  recovery: 'Recupero', exercise_aerobic: 'Esercizio aerobico', exercise_resistive: 'Esercizio di forza',
+  sleep: 'Night sleep', nominal: 'Normal activity', work: 'Working', rest: 'Resting', meal: 'Meal',
+  recovery: 'Recovery', exercise_aerobic: 'Aerobic exercise', exercise_resistive: 'Resistance exercise',
 }
-/** Italian label for `NPCState.activity`; unknown values are shown as they are. */
+/** English label for `NPCState.activity`; unknown values are shown as they are. */
 export const activityLabel = (a: string) => ACTIVITY[a] ?? a

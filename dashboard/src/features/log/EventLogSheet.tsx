@@ -10,8 +10,8 @@ export function EventLogSheet() {
   const log = useEventLog()
   const rows = [...log].reverse()
   return (
-    <Sheet open={logOpen} onClose={() => setLogOpen(false)} title="Storico eventi">
-      {rows.length === 0 ? <p className="text-sm text-muted-foreground">Nessun evento del monitor.</p> : (
+    <Sheet open={logOpen} onClose={() => setLogOpen(false)} title="Event history">
+      {rows.length === 0 ? <p className="text-sm text-muted-foreground">No monitor events.</p> : (
         <ul className="space-y-2">
           {rows.map((e, i) => {
             const fam = eventFamily(e.kind)
@@ -22,7 +22,7 @@ export function EventLogSheet() {
                   <span className="tabular-nums text-muted-foreground">{fmtHms(e.t_s)}</span>
                 </div>
                 <p className="mt-1 text-sm">{e.message}</p>
-                {e.by && <p className="mt-0.5 text-xs text-muted-foreground">da {e.by}</p>}
+                {e.by && <p className="mt-0.5 text-xs text-muted-foreground">by {e.by}</p>}
               </li>
             )
           })}

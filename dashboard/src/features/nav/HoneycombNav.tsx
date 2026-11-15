@@ -28,7 +28,7 @@ export function HoneycombNav() {
   const emergencies = useEmergencies()
   const pending = usePendingActions()
   const tick = useTick()
-  // No active alarms: the Allarmi cell is dimmed, like a switched-off light.
+  // No active alarms: the Alarms cell is dimmed, like a switched-off light.
   const noAlerts = !!tick && alertRows(tick).length === 0
   const { primary } = primaryEmergency(emergencies)
   const critical = isCriticalConfirmed(primary)
@@ -54,10 +54,10 @@ export function HoneycombNav() {
     id === 'status' ? ui.page === 0 : id === 'crew' ? ui.page === 1 && !ui.selectedCrew : id === 'protocols' ? ui.page === 1 && !!ui.selectedCrew : false
   const CurrentIcon = ICON[ui.page === 0 ? 'status' : ui.selectedCrew ? 'protocols' : 'crew']
 
-  const label = `Menu${critical ? ', emergenza critica' : ''}${pending.length ? `, ${pending.length} azioni in attesa` : ''}`
+  const label = `Menu${critical ? ', critical emergency' : ''}${pending.length ? `, ${pending.length} pending ${pending.length === 1 ? 'action' : 'actions'}` : ''}`
 
   return (
-    <nav aria-label="Navigazione" className="pointer-events-none fixed inset-0 z-20" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <nav aria-label="Navigation" className="pointer-events-none fixed inset-0 z-20" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {/* scrim: dims the page while the menu is open; tap outside closes */}
       <div
         aria-hidden

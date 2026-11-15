@@ -24,7 +24,7 @@ export function Dialog({ open, onClose, title, children, className, width = 640 
           <div className="mb-4 flex items-center justify-between gap-3">
             <DialogPrimitive.Title className="font-heading text-xl font-bold">{title}</DialogPrimitive.Title>
             <DialogPrimitive.Close asChild>
-              <Button variant="ghost" size="icon-lg" aria-label="Chiudi"><X /></Button>
+              <Button variant="ghost" size="icon-lg" aria-label="Close"><X /></Button>
             </DialogPrimitive.Close>
           </div>
           <div className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</div>

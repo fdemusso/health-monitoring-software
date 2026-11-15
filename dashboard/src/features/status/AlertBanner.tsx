@@ -33,7 +33,7 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
       <div className="relative flex h-[90px] items-center gap-5 rounded-lg border border-border bg-card px-7">
         <CornerBrackets />
         <StatusDot status="ok" className="size-3" />
-        <span className="font-heading text-4xl font-bold">Equipaggio stabile</span>
+        <span className="font-heading text-4xl font-bold">Crew stable</span>
         <div className="ml-auto flex gap-2">{crewList.map((id) => <CrewChip key={id} id={id} />)}</div>
       </div>
     )
@@ -43,17 +43,17 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
   if (!primary) {
     const crit = nonOk.some((id) => crewStatus(tick.npcs[id], tick.emergencies) === 'crit')
     return <Frame level={crit ? 'crit' : 'warn'} pulse={false}>
-      <Label level={crit ? 'crit' : 'warn'} text="Parametri fuori range" />
-      <h1 className="mt-2 font-heading text-4xl font-bold">Parametri fuori range</h1>
+      <Label level={crit ? 'crit' : 'warn'} text="Parameters out of range" />
+      <h1 className="mt-2 font-heading text-4xl font-bold">Parameters out of range</h1>
       <div className="mt-4 flex gap-2">{nonOk.map((id) => <CrewChip key={id} id={id} />)}</div>
-      <Button className="mt-5" size="lg" variant="outline" onClick={() => ui.openCrew(nonOk[0])}>Apri dettaglio →</Button>
+      <Button className="mt-5" size="lg" variant="outline" onClick={() => ui.openCrew(nonOk[0])}>Open details →</Button>
     </Frame>
   }
 
   const critical = isCriticalConfirmed(primary)
   const level: Status = primary.severity === 'critical' && primary.state === 'confirmed' ? 'crit' : 'warn'
   const suspected = primary.state === 'suspected'
-  const title = (suspected ? 'Possibile ' : '') + lowerFirst(emergencyTitle(primary), suspected)
+  const title = (suspected ? 'Possible ' : '') + lowerFirst(emergencyTitle(primary), suspected)
   const nums = keyNumbers(primary, tick)
   const mod = tick.modules[primary.module_id]
   const medical = primary.kind === 'medical' && primary.subject
@@ -64,7 +64,7 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
     <Frame level={level} pulse={critical}>
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">
-          <Label level={level} text={critical ? 'Intervento richiesto · Critico' : suspected ? 'Segnale in verifica' : 'Attenzione'} />
+          <Label level={level} text={critical ? 'Action required · Critical' : suspected ? 'Signal under verification' : 'Warning'} />
           <h1 className={cn('mt-2 font-heading font-bold', critical ? 'text-5xl' : 'text-4xl')} role="alert" aria-live="assertive">{title}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {primary.subject ? <CrewChip id={primary.subject} /> : <ModuleChip id={primary.module_id} />}
@@ -77,14 +77,14 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
                 <div className="num text-5xl">{n.value}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{n.unit}</span></div>
               </div>
             ))}
-            {tres && <div><div className="lbl">Conto alla rovescia</div><div className="num text-5xl text-status-danger-foreground">{fmtClock(primary.tres_s as number)}</div></div>}
+            {tres && <div><div className="lbl">Countdown</div><div className="num text-5xl text-status-danger-foreground">{fmtClock(primary.tres_s as number)}</div></div>}
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button size="lg" onClick={open}>Apri risposta →</Button>
-            <Button size="lg" variant="outline" onClick={() => ui.showToast('Contatto con la Terra non collegato')}>Contatta la Terra</Button>
-            {pending > 0 && <button type="button" onClick={ui.reopenPending} className="h-6 rounded-full bg-status-warning-soft px-3 text-xs font-medium text-status-warning-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{pending} {pending === 1 ? 'azione' : 'azioni'} in attesa di conferma</button>}
+            <Button size="lg" onClick={open}>Open response →</Button>
+            <Button size="lg" variant="outline" onClick={() => ui.showToast('Contact with Earth not connected')}>Contact Earth</Button>
+            {pending > 0 && <button type="button" onClick={ui.reopenPending} className="h-6 rounded-full bg-status-warning-soft px-3 text-xs font-medium text-status-warning-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{pending} {pending === 1 ? 'action' : 'actions'} awaiting confirmation</button>}
           </div>
-          {others.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Anche: {others.map((e: Emergency) => emergencyTitle(e)).join(' · ')}</p>}
+          {others.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Also: {others.map((e: Emergency) => emergencyTitle(e)).join(' · ')}</p>}
         </div>
         {medical && <MiniHolo tick={tick} id={primary.subject as string} />}
       </div>

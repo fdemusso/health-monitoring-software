@@ -1,5 +1,6 @@
-import { ArrowLeft } from 'lucide-react'
-import { useMemo, useRef } from 'react'
+import { ArrowLeft, ClipboardCheck } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Dialog } from '@/components/ui/dialog'
 import { CrewChip } from '@/components/CrewChip'
 import { Sparkline } from '@/components/Sparkline'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -39,6 +40,7 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
   const hist = useCrewHistory(npc.id)
   const mod = tick.modules[npc.module_id]
   const mhist = useModuleHistory(npc.module_id)
+  const [routineOpen, setRoutineOpen] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
   const [, stageW] = useElementWidth(stageRef)
   const W = 280
@@ -53,21 +55,21 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
     <>
       <div>
         <div className="mb-4 flex flex-wrap items-center gap-x-8 gap-y-3">
-          <Button variant="outline" onClick={onBack}><ArrowLeft size={16} /> Equipaggio</Button>
+          <Button variant="outline" onClick={onBack}><ArrowLeft size={16} /> Crew</Button>
           <div>
             <CrewChip id={npc.id} large />
             <div className="mt-1.5 text-center text-xs text-muted-foreground">{id.name}</div>
           </div>
-          <Field label="Modulo" value={npc.module_id.toUpperCase()} />
-          <Field label={phase ? 'Risposta all’emergenza' : 'Attività'} value={phase ?? activityLabel(npc.activity)} />
+          <Field label="Module" value={npc.module_id.toUpperCase()} />
+          <Field label={phase ? 'Emergency response' : 'Activity'} value={phase ?? activityLabel(npc.activity)} />
           <StatusBadge status={st} className="ml-auto">{statusLabel[st]}</StatusBadge>
         </div>
         <div className="grid grid-cols-4 gap-4">
-          <Trend title={`FC di ${id.label}`} value={fmt0(v.hr)} unit="bpm" status={vitalStatus('hr', v.hr, npc.activity)} values={series(hist, 'hr')} />
-          <Trend title={`SpO₂ di ${id.label}`} value={fmt0(v.spo2)} unit="%" status={vitalStatus('spo2', v.spo2)} values={series(hist, 'spo2')} />
-          <Trend title={`Temp. core di ${id.label}`} value={fmt1(v.core_temp_c)} unit="°C" status={vitalStatus('core_temp_c', v.core_temp_c)} values={series(hist, 'core')} />
+          <Trend title={`${id.label} HR`} value={fmt0(v.hr)} unit="bpm" status={vitalStatus('hr', v.hr, npc.activity)} values={series(hist, 'hr')} />
+          <Trend title={`${id.label} SpO₂`} value={fmt0(v.spo2)} unit="%" status={vitalStatus('spo2', v.spo2)} values={series(hist, 'spo2')} />
+          <Trend title={`${id.label} core temp.`} value={fmt1(v.core_temp_c)} unit="°C" status={vitalStatus('core_temp_c', v.core_temp_c)} values={series(hist, 'core')} />
           {co
-            ? <Trend title={`COHb di ${id.label}`} value={fmt1(v.cohb_pct)} unit="%" status={vitalStatus('cohb_pct', v.cohb_pct)} values={ctx} />
+            ? <Trend title={`${id.label} COHb`} value={fmt1(v.cohb_pct)} unit="%" status={vitalStatus('cohb_pct', v.cohb_pct)} values={ctx} />
             : <Trend title={`ppCO₂ in ${npc.module_id.toUpperCase()}`} value={mod ? fmt1(ppco2Mmhg(mod)) : '—'} unit="mmHg" status={mod ? limitStatus(ENV_METRICS.ppco2, ppco2Mmhg(mod)) : 'ok'} values={ctx} />}
         </div>
       </div>
@@ -76,7 +78,18 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
           <HologramFrame npc={npc} tick={tick} width={W} color={id.color} />
           <HologramCallouts npc={npc} anchors={anchors} width={stageW} height={H} />
         </div>
-        <ResponsePanel tick={tick} crewId={npc.id} emergency={emergency} />
+        {emergency ? (
+          <ResponsePanel tick={tick} crewId={npc.id} emergency={emergency} />
+        ) : (
+          <div className="min-w-0">
+            <Button variant="outline" size="lg" className="w-full justify-start gap-2" onClick={() => setRoutineOpen(true)}>
+              <ClipboardCheck size={18} /> Routine check
+            </Button>
+            <Dialog open={routineOpen} onClose={() => setRoutineOpen(false)} title="Routine check" width={400}>
+              <ResponsePanel tick={tick} crewId={npc.id} emergency={null} />
+            </Dialog>
+          </div>
+        )}
       </div>
     </>
   )

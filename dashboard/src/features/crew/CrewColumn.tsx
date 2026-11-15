@@ -33,7 +33,7 @@ export function CrewColumn({ npc, tick, onOpen }: { npc: NPCState; tick: Simulat
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`Apri dettaglio ${id.label}, ${statusLabel[st].toLowerCase()}`}
+      aria-label={`Open details for ${id.label}, ${statusLabel[st].toLowerCase()}`}
       className={cn('relative flex min-w-0 flex-col rounded-lg border border-border bg-card p-4 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50', st === 'warn' && 'border-status-warning', st === 'crit' && 'border-status-danger bg-status-danger-soft')}
     >
       <CornerBrackets />

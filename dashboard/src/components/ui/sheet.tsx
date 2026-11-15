@@ -25,7 +25,7 @@ export function Sheet({ open, onClose, title, children, className, width = 420 }
           <div className="mb-4 flex items-center justify-between gap-3">
             <SheetPrimitive.Title className="font-heading text-xl font-bold">{title}</SheetPrimitive.Title>
             <SheetPrimitive.Close asChild>
-              <Button variant="ghost" size="icon-lg" aria-label="Chiudi"><X /></Button>
+              <Button variant="ghost" size="icon-lg" aria-label="Close"><X /></Button>
             </SheetPrimitive.Close>
           </div>
           <div className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</div>

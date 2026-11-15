@@ -12,11 +12,11 @@ import type { Emergency, PendingAction } from '@/telemetry'
 import { useCommands, usePendingActions, useTick } from '@/telemetry/useTelemetry'
 
 const KIND: Record<string, { label: string; Icon: LucideIcon }> = {
-  extinguish: { label: 'Estintore', Icon: FireExtinguisher },
-  actuator: { label: 'Attuatore', Icon: Cog },
-  hatch: { label: 'Portello', Icon: DoorOpen },
-  announce: { label: 'Annuncio', Icon: Megaphone },
-  ventilation: { label: 'Ventilazione', Icon: Fan },
+  extinguish: { label: 'Extinguisher', Icon: FireExtinguisher },
+  actuator: { label: 'Actuator', Icon: Cog },
+  hatch: { label: 'Hatch', Icon: DoorOpen },
+  announce: { label: 'Announcement', Icon: Megaphone },
+  ventilation: { label: 'Ventilation', Icon: Fan },
 }
 
 /** Centered confirmation for a step the monitor proposes: one action at a time, countdown first. */
@@ -38,23 +38,23 @@ export function PendingPopover() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center p-4">
-      <div role="alertdialog" aria-label="Azione da confermare" className="pointer-events-auto w-[760px] max-w-full overflow-hidden rounded-lg border border-border bg-card animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-(--duration-enter)">
+      <div role="alertdialog" aria-label="Action to confirm" className="pointer-events-auto w-[760px] max-w-full overflow-hidden rounded-lg border border-border bg-card animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-(--duration-enter)">
         <div className="h-1 bg-status-warning" />
         <div className="p-7">
           <div className="mb-6 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-medium text-status-warning-foreground">
               <span className="anim-ping size-2 rounded-full bg-status-warning" aria-hidden />
-              Azione da confermare
+              Action to confirm
             </div>
             <div className="flex items-center gap-1">
               {visible.length > 1 && (
                 <>
-                  <Button variant="ghost" size="icon" aria-label="Azione precedente" disabled={i === 0} onClick={() => setIndex(i - 1)}><ChevronLeft /></Button>
-                  <span className="text-sm tabular-nums text-muted-foreground">{i + 1} di {visible.length}</span>
-                  <Button variant="ghost" size="icon" aria-label="Azione successiva" disabled={i === visible.length - 1} onClick={() => setIndex(i + 1)}><ChevronRight /></Button>
+                  <Button variant="ghost" size="icon" aria-label="Previous action" disabled={i === 0} onClick={() => setIndex(i - 1)}><ChevronLeft /></Button>
+                  <span className="text-sm tabular-nums text-muted-foreground">{i + 1} of {visible.length}</span>
+                  <Button variant="ghost" size="icon" aria-label="Next action" disabled={i === visible.length - 1} onClick={() => setIndex(i + 1)}><ChevronRight /></Button>
                 </>
               )}
-              <Button variant="ghost" size="icon" aria-label="Nascondi" onClick={hide}><X /></Button>
+              <Button variant="ghost" size="icon" aria-label="Hide" onClick={hide}><X /></Button>
             </div>
           </div>
           <ActionView key={visible[i].action.id} pa={visible[i]} tSim={tick.t_sim_s} emergency={emergency} />
@@ -78,7 +78,7 @@ function ActionView({ pa, tSim, emergency }: { pa: PendingAction; tSim: number; 
   const run = async (fn: () => ReturnType<typeof cmd.approve>) => {
     setBusy(true); setError(null)
     const r = await fn()
-    if (!r.ok) { setError(r.error ?? 'rifiutato'); setBusy(false) }
+    if (!r.ok) { setError(r.error ?? 'rejected'); setBusy(false) }
     // On success the view disappears when the next tick no longer lists it.
   }
 
@@ -88,7 +88,7 @@ function ActionView({ pa, tSim, emergency }: { pa: PendingAction; tSim: number; 
         <div className="mb-3 flex items-center gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-control bg-status-warning-soft text-status-warning-foreground"><Icon className="size-6" /></span>
           <div className="min-w-0">
-            <div className="text-sm text-muted-foreground">{emergency ? emergencyTitle(emergency) : 'Emergenza'}</div>
+            <div className="text-sm text-muted-foreground">{emergency ? emergencyTitle(emergency) : 'Emergency'}</div>
             <h2 className="font-heading text-4xl font-bold">{label}</h2>
           </div>
         </div>
@@ -96,25 +96,25 @@ function ActionView({ pa, tSim, emergency }: { pa: PendingAction; tSim: number; 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {emergency?.subject ? <CrewChip id={emergency.subject} /> : emergency ? <ModuleChip id={emergency.module_id} /> : null}
           <Badge variant="outline">{a.command} {a.target}</Badge>
-          {a.reversible && <Badge>Reversibile</Badge>}
+          {a.reversible && <Badge>Reversible</Badge>}
         </div>
       </div>
 
       <div className="min-w-44 text-right">
-        <div className="text-sm text-muted-foreground">Tempo rimasto</div>
+        <div className="text-sm text-muted-foreground">Time left</div>
         <div className={cn('num text-5xl', tone === 'danger' && 'text-status-danger-foreground', tone === 'warning' && 'text-status-warning-foreground')}>{fmtClock(left)}</div>
       </div>
 
       <div className="col-span-2">
         <Progress value={(left / total) * 100} indicatorClassName={tone === 'danger' ? 'bg-status-danger' : tone === 'warning' ? 'bg-status-warning' : 'bg-muted-foreground'} />
         <p className="mt-2 text-sm text-muted-foreground">
-          {execute ? 'Se nessuno risponde, l’azione verrà eseguita.' : 'Se nessuno risponde, l’azione verrà scartata.'}
+          {execute ? 'If no one responds, the action will be executed.' : 'If no one responds, the action will be discarded.'}
         </p>
       </div>
 
       <div className="col-span-2 flex items-center gap-3">
-        <Button variant="outline" className="h-12 flex-1 text-base hover:border-status-live hover:bg-status-live-soft hover:text-status-live-foreground active:border-status-live active:bg-status-live-soft active:text-status-live-foreground" disabled={busy} onClick={() => run(() => cmd.approve(a.id))}>Approva</Button>
-        <Button variant="outline" className="h-12 flex-1 text-base hover:border-status-danger hover:bg-status-danger-soft hover:text-status-danger-foreground active:border-status-danger active:bg-status-danger-soft active:text-status-danger-foreground" disabled={busy} onClick={() => run(() => cmd.reject(a.id))}>Rifiuta</Button>
+        <Button variant="outline" className="h-12 flex-1 text-base hover:border-status-live hover:bg-status-live-soft hover:text-status-live-foreground active:border-status-live active:bg-status-live-soft active:text-status-live-foreground" disabled={busy} onClick={() => run(() => cmd.approve(a.id))}>Approve</Button>
+        <Button variant="outline" className="h-12 flex-1 text-base hover:border-status-danger hover:bg-status-danger-soft hover:text-status-danger-foreground active:border-status-danger active:bg-status-danger-soft active:text-status-danger-foreground" disabled={busy} onClick={() => run(() => cmd.reject(a.id))}>Reject</Button>
       </div>
       {error && <p className="col-span-2 text-sm text-status-danger-foreground">{error}</p>}
     </div>

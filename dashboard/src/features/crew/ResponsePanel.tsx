@@ -21,20 +21,20 @@ export function ResponsePanel({ tick, crewId, emergency }: { tick: SimulationTic
   return (
     <aside className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-card p-4">
       <div>
-        <div className="lbl">{mine.length ? 'Risposta all’emergenza' : 'Routine'}</div>
+        <div className="lbl">{mine.length ? 'Emergency response' : 'Routine'}</div>
         {mine.length > 0 && <h2 className="mt-1 font-heading text-xl font-bold">{emergencyTitle(mine[0])}</h2>}
       </div>
       {pending.length > 0 && (
         <div className="space-y-2">
-          <div className="lbl">In attesa di conferma</div>
+          <div className="lbl">Awaiting confirmation</div>
           {pending.map((p) => <PendingActionCard key={p.action.id} pa={p} tSim={tick.t_sim_s} />)}
         </div>
       )}
       <GuidedSteps key={`${crewId}-${protocol.id}`} protocol={protocol} />
-      <Button variant="outline" onClick={() => setEarth(true)}>Contatta la Terra</Button>
+      <Button variant="outline" onClick={() => setEarth(true)}>Contact Earth</Button>
       {live.length > 0 && (
         <div>
-          <div className="lbl mb-2">Cosa sta facendo l’equipaggio</div>
+          <div className="lbl mb-2">What the crew is doing</div>
           <ul className="space-y-1.5">
             {sortCrewIds(Object.keys(tick.npcs)).map((id) => (
               <li key={id} className="flex items-center justify-between text-xs"><CrewChip id={id} /><span className="text-muted-foreground">{phaseLabel(tick.npcs[id].response_phase) ?? '—'}</span></li>
@@ -42,8 +42,8 @@ export function ResponsePanel({ tick, crewId, emergency }: { tick: SimulationTic
           </ul>
         </div>
       )}
-      <Sheet open={earth} onClose={() => setEarth(false)} title="Teleconsulto" width={360}>
-        <p className="text-sm text-muted-foreground">Teleconsulto non collegato. Il collegamento con la Terra non è disponibile in questa versione.</p>
+      <Sheet open={earth} onClose={() => setEarth(false)} title="Teleconsult" width={360}>
+        <p className="text-sm text-muted-foreground">Teleconsult not connected. The link to Earth is not available in this version.</p>
       </Sheet>
     </aside>
   )

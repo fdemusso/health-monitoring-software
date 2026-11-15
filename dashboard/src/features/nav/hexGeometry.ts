@@ -9,11 +9,11 @@ export const ARC = { R: 335, startDeg: 10, stepDeg: 18 }
 export type CellId = 'status' | 'crew' | 'alerts' | 'protocols' | 'history'
 /** In arc order, from the bottom. */
 export const CELLS: { id: CellId; label: string }[] = [
-  { id: 'status', label: 'Stato' },
+  { id: 'status', label: 'Status' },
   { id: 'crew', label: 'Crew' },
-  { id: 'alerts', label: 'Allarmi' },
-  { id: 'protocols', label: 'Protocolli' },
-  { id: 'history', label: 'Storico' },
+  { id: 'alerts', label: 'Alarms' },
+  { id: 'protocols', label: 'Protocols' },
+  { id: 'history', label: 'History' },
 ]
 
 /** Offset of cell `k` from the trigger centre (x right, y up), px. */

@@ -8,9 +8,9 @@ export function EmergencyDialog() {
   const tick = useTick()
   const e = tick?.emergencies.find((x) => x.id === sheetEmergency) ?? null
   return (
-    <Dialog open={!!sheetEmergency && !!tick} onClose={() => setSheetEmergency(null)} title="Risposta all’emergenza" width={640}>
+    <Dialog open={!!sheetEmergency && !!tick} onClose={() => setSheetEmergency(null)} title="Emergency response" width={640}>
       {tick && e && <ResponsePanel tick={tick} emergency={e} />}
-      {tick && !e && <p className="text-sm text-muted-foreground">L’emergenza non è più attiva.</p>}
+      {tick && !e && <p className="text-sm text-muted-foreground">The emergency is no longer active.</p>}
     </Dialog>
   )
 }

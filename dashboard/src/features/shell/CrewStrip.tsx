@@ -7,12 +7,12 @@ import { LinkStatus } from './LinkStatus'
 export function CrewStrip() {
   const crew = useCrewList()
   const emergencies = useEmergencies()
-  const { openCrew } = useUi()
+  const { openCrew, closeCrew, selectedCrew } = useUi()
   return (
     <header className="relative z-[2] flex items-center gap-2.5 px-7 pt-4">
       {crew.length === 0
         ? Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-[46px] w-44 rounded-full" />)
-        : crew.map((n) => <CrewPill key={n.id} npc={n} emergencies={emergencies} onOpen={() => openCrew(n.id)} />)}
+        : crew.map((n) => <CrewPill key={n.id} npc={n} emergencies={emergencies} selected={selectedCrew === n.id} onOpen={() => (selectedCrew === n.id ? closeCrew() : openCrew(n.id))} />)}
       <div className="flex-1" />
       <LinkStatus />
     </header>

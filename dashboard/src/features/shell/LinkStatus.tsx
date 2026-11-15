@@ -13,8 +13,8 @@ export function LinkStatus() {
   return (
     <div className="flex items-center gap-3 text-sm text-muted-foreground">
       {tick && <span className="tabular-nums">{met(tick.day, tick.time_of_day_h)}</span>}
-      <span className="tabular-nums">{paused ? 'in pausa' : `×${speed}`}</span>
-      <StatusBadge status={connected ? 'ok' : 'crit'}>{connected ? 'Collegato' : 'Scollegato'}</StatusBadge>
+      <span className="tabular-nums">{paused ? 'paused' : `×${speed}`}</span>
+      <StatusBadge status={connected ? 'ok' : 'crit'}>{connected ? 'Connected' : 'Disconnected'}</StatusBadge>
       <ThemeToggle />
     </div>
   )
