@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { StatusDot } from '@/components/StatusDot'
 import { useTick } from '@/telemetry/useTelemetry'
-import { alertRows } from './AlertList'
+import { alertRows } from './alertRows'
 
 /** Alarm centre: every active emergency and alarm, each with a way to its response. */
 export function AlertsDialog() {

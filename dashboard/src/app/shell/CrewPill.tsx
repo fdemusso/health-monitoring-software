@@ -17,7 +17,7 @@ export function CrewPill({ npc, emergencies, selected, onOpen }: { npc: NPCState
       onClick={onOpen}
       aria-pressed={selected}
       style={selected ? { borderColor: color, boxShadow: `0 0 0 2px ${color}, 0 4px 14px -4px color-mix(in oklab, ${color} 55%, transparent)` } : undefined}
-      aria-label={`Open details for ${crewIdentity(npc.id).label}, ${statusLabel[st].toLowerCase()}`}
+      aria-label={`Open details for ${crewIdentity(npc.id).person}, ${statusLabel[st].toLowerCase()}`}
       className={cn(
         'flex min-w-0 items-center gap-3 rounded-full border border-border bg-card py-2 pl-2 pr-4 transition-[background-color,box-shadow,border-color,transform,opacity] duration-(--duration-enter) outline-none hover:bg-muted active:scale-[.97] focus-visible:ring-3 focus-visible:ring-ring/50',
         selected && 'bg-muted-strong',

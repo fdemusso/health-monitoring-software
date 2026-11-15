@@ -1,19 +1,19 @@
 import { ArrowLeft, ClipboardCheck } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { Dialog } from '@/components/ui/dialog'
-import { CrewChip } from '@/components/CrewChip'
 import { Sparkline } from '@/components/Sparkline'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
+import { moduleName } from '@/domain/names'
 import { crewIdentity } from '@/domain/crewConfig'
 import { activityLabel, phaseLabel } from '@/domain/emergencyText'
 import { crewStatus, statusLabel, statusText, vitalStatus, type Status } from '@/domain/status'
 import { fmt0, fmt1, ppco2Mmhg } from '@/domain/units'
 import type { NPCState, SimulationTick } from '@/telemetry'
 import type { CrewSample } from '@/telemetry/store'
+import { useElementWidth } from '@/lib/useElementWidth'
 import { useCrewHistory, useModuleHistory } from '@/telemetry/useTelemetry'
 import { HologramCallouts } from './HologramCallouts'
-import { useElementWidth } from './CrewColumn'
 import { HologramFrame, useOrganAnchors } from './HologramFrame'
 import { ResponsePanel } from './ResponsePanel'
 import { limitStatus, ENV_METRICS } from '@/domain/limits'
@@ -57,33 +57,32 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
         <div data-void className="mb-4 flex flex-wrap items-center gap-x-8 gap-y-3">
           <Button variant="outline" onClick={onBack}><ArrowLeft size={16} /> Crew</Button>
           <div>
-            <CrewChip id={npc.id} large />
-            <div className="mt-1.5 text-center text-xs text-muted-foreground">{id.name}</div>
+            <h2 className="flex items-center gap-2 font-heading text-2xl font-bold"><span aria-hidden className="size-3 rounded-full" style={{ background: id.color }} />{id.person}</h2>
+            <div className="mt-0.5 text-xs text-muted-foreground">{id.name}</div>
           </div>
-          <Field label="Module" value={npc.module_id.toUpperCase()} />
+          <Field label="Location" value={moduleName(npc.module_id)} />
           <Field label={phase ? 'Emergency response' : 'Activity'} value={phase ?? activityLabel(npc.activity)} />
           <StatusBadge status={st} className="ml-auto">{statusLabel[st]}</StatusBadge>
         </div>
         <div data-void className="grid grid-cols-4 gap-4">
-          <Trend title={`${id.label} HR`} value={fmt0(v.hr)} unit="bpm" status={vitalStatus('hr', v.hr, npc.activity)} values={series(hist, 'hr')} />
-          <Trend title={`${id.label} SpO₂`} value={fmt0(v.spo2)} unit="%" status={vitalStatus('spo2', v.spo2)} values={series(hist, 'spo2')} />
-          <Trend title={`${id.label} core temp.`} value={fmt1(v.core_temp_c)} unit="°C" status={vitalStatus('core_temp_c', v.core_temp_c)} values={series(hist, 'core')} />
+          <Trend title={`${id.first}: heart rate`} value={fmt0(v.hr)} unit="bpm" status={vitalStatus('hr', v.hr, npc.activity)} values={series(hist, 'hr')} />
+          <Trend title={`${id.first}: blood oxygen`} value={fmt0(v.spo2)} unit="%" status={vitalStatus('spo2', v.spo2)} values={series(hist, 'spo2')} />
+          <Trend title={`${id.first}: body temperature`} value={fmt1(v.core_temp_c)} unit="°C" status={vitalStatus('core_temp_c', v.core_temp_c)} values={series(hist, 'core')} />
           {co
-            ? <Trend title={`${id.label} COHb`} value={fmt1(v.cohb_pct)} unit="%" status={vitalStatus('cohb_pct', v.cohb_pct)} values={ctx} />
-            : <Trend title={`ppCO₂ in ${npc.module_id.toUpperCase()}`} value={mod ? fmt1(ppco2Mmhg(mod)) : '—'} unit="mmHg" status={mod ? limitStatus(ENV_METRICS.ppco2, ppco2Mmhg(mod)) : 'ok'} values={ctx} />}
+            ? <Trend title={`${id.first}: carbon monoxide in blood`} value={fmt1(v.cohb_pct)} unit="%" status={vitalStatus('cohb_pct', v.cohb_pct)} values={ctx} />
+            : <Trend title={`Carbon dioxide in ${moduleName(npc.module_id)}`} value={mod ? fmt1(ppco2Mmhg(mod)) : '—'} unit="mmHg" status={mod ? limitStatus(ENV_METRICS.ppco2, ppco2Mmhg(mod)) : 'ok'} values={ctx} />}
         </div>
       </div>
       <div data-void className="grid grid-cols-[290px_1fr_290px] gap-[18px] animate-in fade-in-0 duration-(--duration-enter)">
-        {/* Empty column mirrors the side panel so the figure sits at the centre of the page. */}
-        <div data-void aria-hidden />
-        <div ref={stageRef} data-void className="relative min-w-0" style={{ height: H }}>
+        {/* Columns 1 and 3 are the same width, so the figure (column 2) sits at the centre of the page. */}
+        <div ref={stageRef} data-void className="relative col-start-2 min-w-0" style={{ height: H }}>
           <HologramFrame npc={npc} tick={tick} width={W} color={id.color} />
           <HologramCallouts npc={npc} anchors={anchors} width={stageW} height={H} />
         </div>
         {emergency ? (
-          <ResponsePanel tick={tick} crewId={npc.id} emergency={emergency} />
+          <ResponsePanel className="col-start-3" tick={tick} crewId={npc.id} emergency={emergency} />
         ) : (
-          <div className="min-w-0">
+          <div className="col-start-3 min-w-0">
             <Button variant="outline" size="lg" className="w-full justify-start gap-2" onClick={() => setRoutineOpen(true)}>
               <ClipboardCheck size={18} /> Routine check
             </Button>

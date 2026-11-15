@@ -23,7 +23,7 @@ export function vitalStatus(key: string, value: number | undefined, activity = '
 }
 
 /** ESTIMATE: 0 ok, 1 warn, >=2 crit (to confirm with Luca). */
-export const healthStateStatus = (v: number | undefined): Status => (v == null ? 'ok' : v >= 2 ? 'crit' : v >= 1 ? 'warn' : 'ok')
+const healthStateStatus = (v: number | undefined): Status => (v == null ? 'ok' : v >= 2 ? 'crit' : v >= 1 ? 'warn' : 'ok')
 
 const sevStatus = (s: number): Status => (s >= 0.75 ? 'crit' : s >= 0.4 ? 'warn' : 'ok')
 

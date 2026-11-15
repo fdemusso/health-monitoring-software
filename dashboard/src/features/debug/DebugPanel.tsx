@@ -14,7 +14,7 @@ const KINDS: EmergencyKind[] = ['depressurization', 'fire', 'toxic', 'equipment'
 const toSpeed = (x: number) => Math.round(10 ** (x * 5))
 const fromSpeed = (s: number) => Math.log10(Math.max(1, s)) / 5
 
-export const debugEnabled = () => import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')
+const debugEnabled = () => import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <section className="mb-5"><h3 className="mb-2 text-sm text-status-warning-foreground">{title}</h3>{children}</section>
@@ -47,7 +47,7 @@ export function DebugPanel() {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="fixed bottom-3.5 right-3.5 z-30 rounded-control border border-dashed border-status-warning px-2.5 py-1.5 text-xs font-medium text-status-warning-foreground opacity-60 hover:opacity-100" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+      <button type="button" onClick={() => setOpen(true)} className="fixed bottom-3.5 right-3.5 z-30 rounded-control border border-dashed border-status-warning px-2.5 py-1.5 text-xs font-medium text-status-warning-foreground opacity-60 outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
         ⌥ Debug
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title="Debug" width={360} className="text-sm">
@@ -105,7 +105,7 @@ export function DebugPanel() {
           </div>
         </Section>
 
-        {st.commandError && <p className="rounded-lg bg-status-danger-soft p-2 text-status-danger-foreground">Errore: {st.commandError}</p>}
+        {st.commandError && <p className="rounded-lg bg-status-danger-soft p-2 text-status-danger-foreground">Error: {st.commandError}</p>}
       </Sheet>
     </>
   )

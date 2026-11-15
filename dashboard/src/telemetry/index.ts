@@ -16,7 +16,6 @@ export type {
   SimulationTick,
   VitalName,
 } from './types';
-export { WebSocketBackend } from './websocket';
 export type {
   BackendHello,
   BackendStatus,

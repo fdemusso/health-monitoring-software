@@ -19,6 +19,10 @@ export const useEventLog = () => useStore((s) => s.eventLog)
 export const useCrewHistory = (id: string) => useStore((s) => s.crewHistory[id])
 export const useAllCrewHistory = () => useStore((s) => s.crewHistory)
 export const useModuleHistory = (id: string) => useStore((s) => s.moduleHistory[id])
+/** Non-null while the server warms up (and during the short fade-out after it). */
+export const useWarmup = () => useStore((s) => s.warming)
+/** True until the first thing arrives from the backend (a tick or a warm-up report): the port may not even be open yet. */
+export const useWaiting = () => useStore((s) => s.tick === null && s.warming === null)
 export const useBackendStatus = () => ({
   connected: useStore((s) => s.connected),
   paused: useStore((s) => s.paused),
@@ -33,12 +37,10 @@ export function useCrewList(): NPCState[] {
   const npcs = useStore((s) => s.tick?.npcs)
   return useMemo(() => (npcs ? sortCrewIds(Object.keys(npcs)).map((id) => npcs[id]) : []), [npcs])
 }
-export const useCrewView = (id: string | null): NPCState | undefined => useStore((s) => (id ? s.tick?.npcs[id] : undefined))
 export function useModuleList(): ModuleState[] {
   const mods = useStore((s) => s.tick?.modules)
   return useMemo(() => (mods ? Object.values(mods) : []), [mods])
 }
-export const useModule = (id: string | null): ModuleState | undefined => useStore((s) => (id ? s.tick?.modules[id] : undefined))
 
 /** Typed wrappers over backend.send. `by` is only a log label. */
 export function useCommands() {

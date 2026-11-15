@@ -4,12 +4,12 @@ import type { Emergency, NPCState } from '@/telemetry'
 export interface Protocol { id: string; title: string; steps: { title: string; hint: string }[] }
 
 const HYPOXIA: Protocol = {
-  id: 'hypoxia', title: 'Hypoxia / CO poisoning',
+  id: 'hypoxia', title: 'Low oxygen or carbon monoxide',
   steps: [
     { title: 'Check the sensor', hint: 'Make sure the pulse oximeter is positioned correctly.' },
     { title: 'Move to a healthy module', hint: 'Take the astronaut to a volume with a nominal atmosphere.' },
     { title: 'Supplemental oxygen', hint: 'Administer O₂ following the onboard procedure.' },
-    { title: 'Recheck after 5 minutes', hint: 'Compare SpO₂ and HR with the initial values.' },
+    { title: 'Recheck after 5 minutes', hint: 'Compare blood oxygen and heart rate with the first reading.' },
     { title: 'Teleconsult', hint: 'If there is no improvement, contact Earth when possible.' },
   ],
 }
@@ -24,7 +24,7 @@ const HEAT: Protocol = {
 const ROUTINE: Protocol = {
   id: 'routine', title: 'Routine check',
   steps: [
-    { title: 'Check vitals', hint: 'HR, SpO₂, core temperature within range.' },
+    { title: 'Check vitals', hint: 'Heart rate, blood oxygen and body temperature within range.' },
     { title: 'Check the environment', hint: 'The astronaut’s module is within nominal limits.' },
   ],
 }

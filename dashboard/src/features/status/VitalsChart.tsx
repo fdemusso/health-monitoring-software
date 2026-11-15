@@ -23,8 +23,8 @@ interface Metric {
 }
 const METRICS: Record<Key, Metric> = {
   hr: { label: 'Heart rate', unit: 'bpm', dec: 0, crit: 130, normal: [50, 100], range: [40, 150], step: 20 },
-  spo2: { label: 'SpO₂', unit: '%', dec: 0, crit: 90, normal: [95, 100], range: [85, 100], step: 5, dangerBelow: true },
-  core: { label: 'Core temperature', unit: '°C', dec: 1, crit: 38.5, normal: [36.1, 37.8], range: [35.5, 39], step: 0.5 },
+  spo2: { label: 'Blood oxygen', unit: '%', dec: 0, crit: 90, normal: [95, 100], range: [85, 100], step: 5, dangerBelow: true },
+  core: { label: 'Body temperature', unit: '°C', dec: 1, crit: 38.5, normal: [36.1, 37.8], range: [35.5, 39], step: 0.5 },
 }
 
 const WINDOWS = { '15m': 900, '1h': 3600, '6h': 21600 } as const
@@ -143,7 +143,7 @@ export const VitalsChart = memo(function VitalsChart() {
         <h2 className="font-heading text-xl font-bold">{meta.label} <span className="font-sans text-sm font-normal text-muted-foreground">· one line per astronaut · {meta.unit}</span></h2>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           {/* what is plotted: bordered button group, filled when selected */}
-          <ToggleGroup size="lg" joined value={key} onChange={setKey} options={[{ value: 'hr', label: 'HR' }, { value: 'spo2', label: 'SpO₂' }, { value: 'core', label: 'Temp.' }]} />
+          <ToggleGroup size="lg" joined value={key} onChange={setKey} options={[{ value: 'hr', label: 'Heart rate' }, { value: 'spo2', label: 'Blood oxygen' }, { value: 'core', label: 'Body temp.' }]} />
           {/* how far back: light segmented control with a clock */}
           <div className="flex items-center gap-2 text-muted-foreground" role="group" aria-label="Time window">
             <Clock className="size-5" aria-hidden />
@@ -211,7 +211,7 @@ export const VitalsChart = memo(function VitalsChart() {
               <g key={t.id} opacity={focus && focus !== t.id ? 0.25 : 1}>
                 <circle cx={W - PADR + 8} cy={t.y} r={4.5} fill={crewIdentity(t.id).color} />
                 <text x={W - PADR + 18} y={t.y + 5} fontSize="14" fontWeight={600} className="fill-foreground">
-                  {crewIdentity(t.id).label} {t.v.toFixed(meta.dec)}
+                  {crewIdentity(t.id).first} {t.v.toFixed(meta.dec)}
                 </text>
               </g>
             ))}
@@ -231,7 +231,7 @@ export const VitalsChart = memo(function VitalsChart() {
               <div className="mb-1 font-semibold tabular-nums">{fmtHms(hover.t)}</div>
               {hover.rows.map((r) => (
                 <div key={r.id} className="flex items-center justify-between gap-4">
-                  <span className="flex items-center gap-2"><span className="size-2.5 rounded-full" style={{ background: crewIdentity(r.id).color }} />{crewIdentity(r.id).label}</span>
+                  <span className="flex items-center gap-2"><span className="size-2.5 rounded-full" style={{ background: crewIdentity(r.id).color }} />{crewIdentity(r.id).first}</span>
                   <span className="font-medium tabular-nums">{r.v.toFixed(meta.dec)} {meta.unit}</span>
                 </div>
               ))}
@@ -251,9 +251,9 @@ export const VitalsChart = memo(function VitalsChart() {
           const v = latest(id)
           return (
             <button key={id} type="button" aria-pressed={focus === id} onClick={() => setFocus(focus === id ? null : id)}
-              className={cn('flex h-11 min-w-24 items-center justify-center gap-2 rounded-full border-2 px-5 text-base font-bold text-foreground outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-muted-strong', focus === id && 'bg-muted-strong')}
+              className={cn('flex h-11 items-center justify-center gap-2 rounded-full border-2 px-5 text-base font-bold text-foreground outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-muted-strong', focus === id && 'bg-muted-strong')}
               style={{ borderColor: crewIdentity(id).color }}>
-              {crewIdentity(id).label}
+              {crewIdentity(id).first}
               {v != null && <span className="font-medium tabular-nums text-muted-foreground">{v.toFixed(meta.dec)}</span>}
             </button>
           )

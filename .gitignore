@@ -226,3 +226,7 @@ output/*
 .venv/
 .pytest_cache/
 .ruff_cache/
+
+# Turborepo
+.turbo
+node_modules/

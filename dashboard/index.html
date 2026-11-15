@@ -11,10 +11,13 @@
         if (t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark')
       } catch (e) {}
     </script>
+    <meta name="description" content="ARES 3 habitat health monitoring dashboard" />
+    <meta name="color-scheme" content="light dark" />
     <title>ARES 3</title>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>ARES 3 needs JavaScript to run.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

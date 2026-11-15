@@ -9,36 +9,32 @@ interface Callout { label: string; value: string; unit: string; organ: string; s
 export function HologramCallouts({ npc, anchors, width, height }: { npc: NPCState; anchors: Anchors; width: number; height: number }) {
   const v = npc.vitals
   const items: Callout[] = [
-    { label: 'Core temp.', value: fmt1(v.core_temp_c), unit: '°C', organ: 'brain', side: 'l', dy: 0, cls: statusText[vitalStatus('core_temp_c', v.core_temp_c)] },
+    { label: 'Body temperature', value: fmt1(v.core_temp_c), unit: '°C', organ: 'brain', side: 'l', dy: 0, cls: statusText[vitalStatus('core_temp_c', v.core_temp_c)] },
     { label: 'Heart rate', value: fmt0(v.hr), unit: 'bpm', organ: 'heart', side: 'r', dy: 0, cls: statusText[vitalStatus('hr', v.hr, npc.activity)] },
-    { label: 'SpO₂', value: fmt0(v.spo2), unit: '%', organ: 'lungs', side: 'l', dy: 0, cls: statusText[vitalStatus('spo2', v.spo2)] },
-    { label: 'Resp. rate', value: fmt0(v.resp_rate), unit: '/min', organ: 'lungs', side: 'r', dy: 40, cls: statusText[vitalStatus('resp_rate', v.resp_rate)] },
+    { label: 'Blood oxygen', value: fmt0(v.spo2), unit: '%', organ: 'lungs', side: 'l', dy: 0, cls: statusText[vitalStatus('spo2', v.spo2)] },
+    { label: 'Breathing rate', value: fmt0(v.resp_rate), unit: '/min', organ: 'lungs', side: 'r', dy: 40, cls: statusText[vitalStatus('resp_rate', v.resp_rate)] },
   ]
-  const slotY: Record<string, number> = { 'l0': 0.12, 'l1': 0.38, 'r0': 0.12, 'r1': 0.38 }
-  let li = 0, ri = 0
+  // Row of each callout on its side (0 = upper, 1 = lower), as a fraction of the height.
+  const SLOT_Y = [0.12, 0.38]
+  const next = { l: 0, r: 0 }
+  const placed = items.map((c) => ({ ...c, y: SLOT_Y[next[c.side]++] * height }))
   return (
     <>
       <svg aria-hidden className="pointer-events-none absolute inset-0" width={width} height={height}>
-        {items.map((c, i) => {
+        {placed.map((c) => {
           const a = anchors[c.organ]
           if (!a) return null
-          const slot = c.side === 'l' ? li++ : ri++
-          const y = slotY[`${c.side}${slot}`] * height + 24
+          const y = c.y + 24
           const x = c.side === 'l' ? 0 : width
-          return <polyline key={i} points={`${x},${y} ${(x + a.x) / 2},${y} ${a.x},${a.y + c.dy}`} fill="none" stroke="color-mix(in oklab, var(--chart-1) 60%, transparent)" strokeWidth={1} />
+          return <polyline key={c.label} points={`${x},${y} ${(x + a.x) / 2},${y} ${a.x},${a.y + c.dy}`} fill="none" stroke="color-mix(in oklab, var(--chart-1) 60%, transparent)" strokeWidth={1} />
         })}
       </svg>
-      {(() => { li = 0; ri = 0; return null })()}
-      {items.map((c, i) => {
-        const slot = c.side === 'l' ? li++ : ri++
-        const y = slotY[`${c.side}${slot}`] * height
-        return (
-          <div key={i} className="absolute" style={{ top: y, [c.side === 'l' ? 'left' : 'right']: 0, textAlign: c.side === 'l' ? 'left' : 'right' }}>
-            <div className="text-xs font-medium text-muted-foreground">{c.label}</div>
-            <div className={`num text-5xl leading-none tabular-nums ${c.cls}`}>{c.value}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{c.unit}</span></div>
-          </div>
-        )
-      })}
+      {placed.map((c) => (
+        <dl key={c.label} className="absolute m-0" style={{ top: c.y, [c.side === 'l' ? 'left' : 'right']: 0, textAlign: c.side === 'l' ? 'left' : 'right' }}>
+          <dt className="text-xs font-medium text-muted-foreground">{c.label}</dt>
+          <dd className={`num m-0 text-5xl leading-none tabular-nums ${c.cls}`}>{c.value}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{c.unit}</span></dd>
+        </dl>
+      ))}
     </>
   )
 }

@@ -4,10 +4,10 @@ import type { ModuleState } from '@/telemetry'
  * Derived environment quantities. Mirror of `src/ares3/sdk/types.py::ModuleState` properties and
  * `src/ares3/core/constants.py` (psat_kpa, inspired_po2_mmhg, MMHG_PER_KPA): keep in sync.
  */
-export const MMHG_PER_KPA = 7.50062
+const MMHG_PER_KPA = 7.50062
 
 /** Saturation vapour pressure, kPa (Magnus above 0 degC, over-ice form below). */
-export function psatKpa(tC: number): number {
+function psatKpa(tC: number): number {
   return tC >= 0
     ? 0.61094 * Math.exp((17.625 * tC) / (tC + 243.04))
     : 0.6112 * Math.exp((22.46 * tC) / (tC + 272.62))

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreIssues": {
+    "src/telemetry/types.ts": ["types"],
+    "src/telemetry/index.ts": ["types"],
+    "src/telemetry/websocket.ts": ["types"]
+  }
+}

@@ -239,8 +239,18 @@ button { font-family: inherit; cursor: pointer; }
 .anim-glow { animation: alert-glow 2.4s ease-in-out infinite; }
 .anim-scan { animation: scan 6s ease-in-out infinite; }
 .anim-rotate-hint { animation: rotate-hint 2.4s ease-in-out infinite alternate; }
+/* Warm-up screen: inner hexagons turn slowly in opposite directions; a bright segment travels along the ECG trace. */
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@keyframes ecg-run {
+  from { stroke-dashoffset: 0.3; }
+  to { stroke-dashoffset: -1; }
+}
+.anim-spin-slow, .anim-spin-slow-rev { transform-box: fill-box; transform-origin: center; animation: spin-slow 24s linear infinite; }
+.anim-spin-slow-rev { animation-duration: 36s; animation-direction: reverse; }
+.anim-ecg { stroke-dasharray: 0.3 0.7; animation: ecg-run 2.2s linear infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .anim-breathe, .anim-ping, .anim-glow, .anim-scan, .anim-rotate-hint { animation: none; }
+  .anim-breathe, .anim-ping, .anim-glow, .anim-scan, .anim-rotate-hint, .anim-spin-slow, .anim-spin-slow-rev, .anim-ecg { animation: none; }
+  .anim-ecg { stroke-dasharray: none; }
 }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

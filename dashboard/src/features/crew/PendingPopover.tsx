@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Cog, DoorOpen, Fan, FireExtinguisher, Megaphone, X, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Cog, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useUi } from '@/app/ui-context'
 import { CrewChip, ModuleChip } from '@/components/CrewChip'
@@ -10,15 +10,8 @@ import { fmtClock } from '@/domain/units'
 import { cn } from '@/lib/utils'
 import { DragHandles, useDraggable } from '@/lib/useDraggable'
 import type { Emergency, PendingAction } from '@/telemetry'
+import { PENDING_KIND } from './pendingKinds'
 import { useCommands, usePendingActions, useTick } from '@/telemetry/useTelemetry'
-
-const KIND: Record<string, { label: string; Icon: LucideIcon }> = {
-  extinguish: { label: 'Extinguisher', Icon: FireExtinguisher },
-  actuator: { label: 'Actuator', Icon: Cog },
-  hatch: { label: 'Hatch', Icon: DoorOpen },
-  announce: { label: 'Announcement', Icon: Megaphone },
-  ventilation: { label: 'Ventilation', Icon: Fan },
-}
 
 /** Centered confirmation for a step the monitor proposes: one action at a time, countdown first. */
 export function PendingPopover() {
@@ -43,28 +36,28 @@ export function PendingPopover() {
       {/* the wrapper is moved (relative offset) and carries the handles; the card inside keeps its rounded, clipped look */}
       <div ref={ref} className="pointer-events-auto relative w-[760px] max-w-full" style={{ left: offset.x, top: offset.y }}>
       <DragHandles handleProps={handleProps} dragging={dragging} />
-      <div role="alertdialog" aria-label="Action to confirm" className="overflow-hidden rounded-lg border border-border bg-card animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-(--duration-enter)">
-        <div className="h-1 bg-status-warning" />
-        <div className="p-7">
-          <div className="mb-6 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-status-warning-foreground">
-              <span className="anim-ping size-2 rounded-full bg-status-warning" aria-hidden />
-              Action to confirm
+        <div role="alertdialog" aria-label="Action to confirm" className="overflow-hidden rounded-lg border border-border bg-card animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-6 duration-(--duration-enter)">
+          <div className="h-1 bg-status-warning" />
+          <div className="p-7">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-status-warning-foreground">
+                <span className="anim-ping size-2 rounded-full bg-status-warning" aria-hidden />
+                Action to confirm
+              </div>
+              <div className="flex items-center gap-1">
+                {visible.length > 1 && (
+                  <>
+                    <Button variant="ghost" size="icon" aria-label="Previous action" disabled={i === 0} onClick={() => setIndex(i - 1)}><ChevronLeft /></Button>
+                    <span className="text-sm tabular-nums text-muted-foreground">{i + 1} of {visible.length}</span>
+                    <Button variant="ghost" size="icon" aria-label="Next action" disabled={i === visible.length - 1} onClick={() => setIndex(i + 1)}><ChevronRight /></Button>
+                  </>
+                )}
+                <Button variant="ghost" size="icon" aria-label="Hide" onClick={hide}><X /></Button>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              {visible.length > 1 && (
-                <>
-                  <Button variant="ghost" size="icon" aria-label="Previous action" disabled={i === 0} onClick={() => setIndex(i - 1)}><ChevronLeft /></Button>
-                  <span className="text-sm tabular-nums text-muted-foreground">{i + 1} of {visible.length}</span>
-                  <Button variant="ghost" size="icon" aria-label="Next action" disabled={i === visible.length - 1} onClick={() => setIndex(i + 1)}><ChevronRight /></Button>
-                </>
-              )}
-              <Button variant="ghost" size="icon" aria-label="Hide" onClick={hide}><X /></Button>
-            </div>
+            <ActionView key={visible[i].action.id} pa={visible[i]} tSim={tick.t_sim_s} emergency={emergency} />
           </div>
-          <ActionView key={visible[i].action.id} pa={visible[i]} tSim={tick.t_sim_s} emergency={emergency} />
         </div>
-      </div>
       </div>
     </div>
   )
@@ -75,7 +68,7 @@ function ActionView({ pa, tSim, emergency }: { pa: PendingAction; tSim: number; 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const a = pa.action
-  const { label, Icon } = KIND[a.kind] ?? { label: a.kind, Icon: Cog }
+  const { label, Icon } = PENDING_KIND[a.kind] ?? { label: a.kind, Icon: Cog }
   const left = Math.max(0, pa.deadline_s - tSim)
   const total = Math.max(1, pa.deadline_s - pa.t_proposed_s)
   const tone = left <= 10 ? 'danger' : left <= 30 ? 'warning' : 'neutral'

@@ -3,6 +3,7 @@ import { CrewChip } from '@/components/CrewChip'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
 import { sortCrewIds } from '@/domain/crewConfig'
+import { cn } from '@/lib/utils'
 import { emergencyTitle, phaseLabel } from '@/domain/emergencyText'
 import type { Emergency, SimulationTick } from '@/telemetry'
 import { GuidedSteps } from './GuidedSteps'
@@ -10,7 +11,7 @@ import { PendingActionCard } from './PendingActionCard'
 import { pickProtocol } from './protocols'
 
 /** Response column. `crewId` scopes it to one astronaut; `emergencyIds` to module-level emergencies. */
-export function ResponsePanel({ tick, crewId, emergency }: { tick: SimulationTick; crewId?: string; emergency?: Emergency | null }) {
+export function ResponsePanel({ tick, crewId, emergency, className }: { tick: SimulationTick; crewId?: string; emergency?: Emergency | null; className?: string }) {
   const [earth, setEarth] = useState(false)
   const live = tick.emergencies.filter((e) => e.state !== 'cleared')
   const mine = emergency ? [emergency] : live.filter((e) => (crewId ? e.subject === crewId || (!e.subject && tick.npcs[crewId]?.module_id === e.module_id) : false))
@@ -19,7 +20,7 @@ export function ResponsePanel({ tick, crewId, emergency }: { tick: SimulationTic
   const npc = crewId ? tick.npcs[crewId] : undefined
   const protocol = pickProtocol(npc, mine)
   return (
-    <aside className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-card p-4">
+    <aside aria-label="Response" className={cn('flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-card p-4', className)}>
       <div>
         <div className="lbl">{mine.length ? 'Emergency response' : 'Routine'}</div>
         {mine.length > 0 && <h2 className="mt-1 font-heading text-xl font-bold">{emergencyTitle(mine[0])}</h2>}

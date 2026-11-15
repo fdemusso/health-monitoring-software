@@ -2,8 +2,8 @@ import { CrewChip, ModuleChip } from '@/components/CrewChip'
 import { StatusDot } from '@/components/StatusDot'
 import { sortCrewIds } from '@/domain/crewConfig'
 import { activityLabel, phaseLabel, ROLE_LABEL } from '@/domain/emergencyText'
+import { effortLabel } from '@/domain/names'
 import { crewStatus } from '@/domain/status'
-import { fmt1 } from '@/domain/units'
 import type { SimulationTick } from '@/telemetry'
 
 /**
@@ -27,7 +27,7 @@ export function CrewActivity({ tick }: { tick: SimulationTick }) {
                   {phase ?? activityLabel(n.activity)}
                   {phase && n.role && <span className="font-normal text-muted-foreground"> · {ROLE_LABEL[n.role] ?? n.role}</span>}
                 </div>
-                <div className="text-xs text-muted-foreground tabular-nums">{fmt1(n.met)} MET</div>
+                <div className="text-xs text-muted-foreground tabular-nums">{effortLabel(n.met)}</div>
               </div>
               <ModuleChip id={n.module_id} />
               <StatusDot status={crewStatus(n, tick.emergencies)} />

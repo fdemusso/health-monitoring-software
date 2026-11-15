@@ -23,6 +23,16 @@ export interface BackendHello {
   dt_s: number;
   paused: boolean;
   speed: number;
+  /** `warming`: the server is running the simulation ahead (`--warmup-h`); no ticks and no commands until `ready`. */
+  state: 'warming' | 'live';
+}
+
+/** Progress of the server's warm-up, sent about four times a second while `state` is `warming`. */
+export interface WarmupProgress {
+  /** 0..1 */
+  progress: number;
+  sim_s: number;
+  total_s: number;
 }
 
 /** Playback state sent with every tick. */
@@ -43,6 +53,8 @@ type ServerMessage =
   | ({ type: 'hello' } & BackendHello)
   | ({ type: 'tick'; tick: SimulationTick } & BackendStatus)
   | { type: 'history'; samples: HistorySample[] }
+  | ({ type: 'warming' } & WarmupProgress)
+  | { type: 'ready' }
   | ({ type: 'result'; id: number } & CommandResult);
 
 export interface WebSocketBackendOptions {
@@ -54,6 +66,8 @@ export interface WebSocketBackendOptions {
   /** The last hours of the simulation, sent once right after `hello`: fills the charts at once. */
   onHistory?: (samples: HistorySample[]) => void;
   onStatus?: (status: BackendStatus) => void;
+  /** Warm-up progress while the server runs ahead; `null` once it is over (or if the server never warmed up). */
+  onWarming?: (progress: WarmupProgress | null) => void;
   /** `true` while the socket is open. */
   onConnection?: (connected: boolean) => void;
 }
@@ -128,6 +142,11 @@ export class WebSocketBackend implements VitalsSource {
       for (const listener of this.listeners) listener(msg.tick);
     } else if (msg.type === 'hello') {
       this.options.onHello?.(msg);
+      if (msg.state === 'live') this.options.onWarming?.(null);
+    } else if (msg.type === 'warming') {
+      this.options.onWarming?.(msg);
+    } else if (msg.type === 'ready') {
+      this.options.onWarming?.(null);
     } else if (msg.type === 'history') {
       this.options.onHistory?.(msg.samples);
     } else {

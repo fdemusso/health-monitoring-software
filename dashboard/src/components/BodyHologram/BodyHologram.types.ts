@@ -52,7 +52,7 @@ export interface OrganRenderData {
 }
 
 /** Geometry of the soft glow ellipse rendered under the figure's feet. */
-export interface BaseGlowGeometry {
+interface BaseGlowGeometry {
   cx: number;
   cy: number;
   rx: number;

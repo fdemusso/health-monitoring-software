@@ -4,7 +4,7 @@ import { sexToHologram } from '@/domain/crewConfig'
 import { organAdapter } from '@/domain/organAdapter'
 import type { NPCState, SimulationTick } from '@/telemetry'
 
-export interface Anchor { x: number; y: number }
+interface Anchor { x: number; y: number }
 export type Anchors = Partial<Record<string, Anchor>>
 
 /** Reads organ positions (data-organ) relative to the frame; recomputed on resize. */

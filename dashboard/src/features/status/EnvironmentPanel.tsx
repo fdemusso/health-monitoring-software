@@ -1,6 +1,7 @@
 import { ChevronDown, Users } from 'lucide-react'
 import { Popover } from 'radix-ui'
 import { useMemo, useState } from 'react'
+import { moduleName } from '@/domain/names'
 import { CrewChip } from '@/components/CrewChip'
 import { Sparkline } from '@/components/Sparkline'
 import { StatusDot } from '@/components/StatusDot'
@@ -24,7 +25,7 @@ function Tile({ metric, tick, moduleId }: { metric: EnvMetric; tick: SimulationT
     if (a.module_id === moduleId && ALARM_METRIC[a.metric.toLowerCase()] === metric) st = maxStatus(st, a.severity === 'alarm' ? 'crit' : 'warn')
   return (
     <div className="min-w-0 border-l border-border px-4 first:border-l-0 first:pl-0">
-      <div className="lbl flex items-center gap-2 font-medium">{spec.label} <StatusDot status={st} /></div>
+      <div className="lbl flex items-center gap-2 font-medium" title={spec.tech}>{spec.label} <StatusDot status={st} /></div>
       <div className={cn('num mt-1 text-5xl leading-none', st !== 'ok' && statusText[st])}>
         {Number.isFinite(v) ? v.toFixed(spec.decimals) : '—'}<span className="ml-1 font-sans text-sm font-normal text-muted-foreground">{spec.unit}</span>
       </div>
@@ -35,7 +36,7 @@ function Tile({ metric, tick, moduleId }: { metric: EnvMetric; tick: SimulationT
 }
 
 /** Module shown by default: emergency module, else the most occupied one. */
-export function defaultModule(tick: SimulationTick, chosen: string | null): string | undefined {
+function defaultModule(tick: SimulationTick, chosen: string | null): string | undefined {
   const ids = Object.keys(tick.modules)
   if (chosen && tick.modules[chosen]) return chosen
   const { primary } = primaryEmergency(tick.emergencies)
@@ -58,15 +59,15 @@ function ModulePicker({ tick, value, onChange }: { tick: SimulationTick; value: 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <button type="button" aria-label="Choose module" className="inline-flex h-8 items-center gap-2 rounded-control border border-input px-3 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:bg-muted">
+        <button type="button" aria-label="Choose where to look" className="inline-flex h-8 items-center gap-2 rounded-control border border-input px-3 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=open]:bg-muted">
           <StatusDot status={status} />
-          {value.toUpperCase()}
+          {moduleName(value)}
           <ChevronDown className="size-4 text-muted-foreground" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content align="start" sideOffset={6} className="z-50 w-[420px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-2 shadow-lg animate-in fade-in-0 zoom-in-95">
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-3 gap-1">
             {ids.map((id) => {
               const st = moduleStatus(tick, id)
               const n = tick.modules[id].occupants.length
@@ -76,12 +77,12 @@ function ModulePicker({ tick, value, onChange }: { tick: SimulationTick; value: 
                   key={id}
                   type="button"
                   onClick={() => { onChange(id); setOpen(false) }}
-                  className={cn('flex h-9 items-center rounded-control px-2.5 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50',
+                  className={cn('flex min-h-9 items-center rounded-control px-2.5 py-1 text-left text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50',
                     selected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
                 >
                   <span className="flex items-center gap-1.5">
-                    {id.toUpperCase()}
-                    {n > 0 && <Users className={cn('size-3.5', selected ? 'text-primary-foreground/70' : 'text-muted-foreground')} aria-label={`${n} in module`} />}
+                    {moduleName(id)}
+                    {n > 0 && <Users className={cn('size-3.5', selected ? 'text-primary-foreground/70' : 'text-muted-foreground')} aria-label={`${n} inside`} />}
                     {st !== 'ok' && <StatusDot status={st} />}
                   </span>
                 </button>
@@ -100,9 +101,9 @@ export function EnvironmentHead({ tick, chosen, onChoose }: { tick: SimulationTi
   const m = tick.modules[moduleId]
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <span className="text-sm font-medium">Environment of</span>
+      <span className="text-sm font-medium">Air in</span>
       <ModulePicker tick={tick} value={moduleId} onChange={onChoose} />
-      <span className="ml-2 text-sm font-medium">Occupants</span>
+      <span className="ml-2 text-sm font-medium">Who is inside</span>
       {m.occupants.length ? m.occupants.map((o) => <CrewChip key={o} id={o} />) : <span className="text-xs text-muted-foreground">none</span>}
       {!m.fans_on && <StatusBadge status="warn">ventilation off</StatusBadge>}
     </div>

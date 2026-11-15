@@ -13,7 +13,7 @@ uv sync --extra dev                                   # install (Python >= 3.11)
 uv run pytest -q -n auto                             # tests in parallel (pytest-xdist): ~90 s on 16 cores, ~450 s serial; the floor is the longest test (a 14 h simulated day)
 uv run pytest tests/test_engine.py::test_closed_system_conserves_every_species
 uv run ruff check src tests
-uv sync --extra serve && uv run ares3 serve scenarios/station/nominal.yaml --speed 10 --warmup-h 4   # live WebSocket bridge for the dashboard (ws://127.0.0.1:8765; protocol in src/ares3/serve/session.py; --warmup-h runs hours ahead so the ML is ready and the charts start full)
+uv sync --extra serve && uv run ares3 serve scenarios/station/nominal.yaml --speed 10 --warmup-h 4   # live WebSocket bridge for the dashboard (ws://127.0.0.1:8765; protocol in src/ares3/serve/session.py; --warmup-h runs hours ahead so the ML is ready and the charts start full: the port is open meanwhile and clients get a `warming` state with progress, the dashboard shows WarmupScreen)
 uv run python tools/demo_client.py --fault fire --module COL --seconds 60 --approve --ack   # a stand-in for the UI: injects a fault and prints mode / emergencies / requests / procedure steps
 uv run ares3 validate scenarios/station/nominal.yaml  # loads scenario + builds every plugin, no run
 uv run --with openpyxl python tools/build_station.py  # regenerate scenarios/station/* from Mario's workbook (--check: are they stale?)
@@ -24,7 +24,8 @@ uv run python tools/ml/make_dataset.py --nominal --randomize --medical --combos 
 uv run python tools/ml/train_anomaly.py && uv run python tools/ml/train_diagnoser.py   # -> models/station_v1/ (stage A and B), model cards next to them
 uv run python tools/ml/make_dataset.py --plan tools/ml/crew_plan.yaml --wave 1 --list   # the crew dataset: the job list of a plan file (the same on every machine; --shard, --pick REGEX, --hash DIR); each job also writes crew.parquet (crew features + truth| columns); tools/ml/probe_exposure.py sized the exposures
 uv run python tools/ml/check_monitor.py --nominal --seeds 5 --days 1                  # the real monitor on whole runs: false alarms and detection delays
-cd dashboard && pnpm install && pnpm dev              # frontend, fully independent of the Python side
+pnpm install && pnpm dev                             # from the repo root (Turborepo): backend (`ares3 serve`, nominal station, x10, 4 h warm-up) + dashboard together; `pnpm --filter ares3-dashboard dev` for the frontend alone
+pnpm build | lint | knip                              # same, through turbo (the dashboard's own scripts run in dashboard/)
 ```
 
 The small test habitat runs ~1,900x real time; the 16-volume station ~300x (3-4 ms per tick). There is no build step for the engine.

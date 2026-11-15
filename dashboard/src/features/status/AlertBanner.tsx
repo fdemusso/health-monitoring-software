@@ -44,7 +44,7 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
     const crit = nonOk.some((id) => crewStatus(tick.npcs[id], tick.emergencies) === 'crit')
     return <Frame level={crit ? 'crit' : 'warn'} pulse={false}>
       <Label level={crit ? 'crit' : 'warn'} text="Parameters out of range" />
-      <h1 className="mt-2 font-heading text-4xl font-bold">Parameters out of range</h1>
+      <h2 className="mt-2 font-heading text-4xl font-bold">Parameters out of range</h2>
       <div className="mt-4 flex gap-2">{nonOk.map((id) => <CrewChip key={id} id={id} />)}</div>
       <Button className="mt-5" size="lg" variant="outline" onClick={() => ui.openCrew(nonOk[0])}>Open details →</Button>
     </Frame>
@@ -65,7 +65,7 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">
           <Label level={level} text={critical ? 'Action required · Critical' : suspected ? 'Signal under verification' : 'Warning'} />
-          <h1 className={cn('mt-2 font-heading font-bold', critical ? 'text-5xl' : 'text-4xl')} role="alert" aria-live="assertive">{title}</h1>
+          <h2 className={cn('mt-2 font-heading font-bold', critical ? 'text-5xl' : 'text-4xl')} role="alert" aria-live="assertive">{title}</h2>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {primary.subject ? <CrewChip id={primary.subject} /> : <ModuleChip id={primary.module_id} />}
             {!medical && mod?.occupants.map((o) => <CrewChip key={o} id={o} />)}

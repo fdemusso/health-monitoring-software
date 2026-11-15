@@ -21,11 +21,11 @@ export function CrewPage() {
         <>
           <div className="col-span-full">
             <div className="lbl">Crew</div>
-            <h1 className="mt-1 font-heading text-4xl font-bold">Tap an astronaut for full details</h1>
+            <h2 className="mt-1 font-heading text-4xl font-bold">Tap an astronaut for full details</h2>
           </div>
-          <div className="grid grid-cols-4 gap-3 animate-in fade-in-0 duration-(--duration-enter)" style={{ minHeight: 420 }}>
-            {crew.map((n) => <CrewColumn key={n.id} npc={n} tick={tick} onOpen={() => ui.openCrew(n.id)} />)}
-          </div>
+          <ul className="grid min-h-[420px] grid-cols-4 gap-3 animate-in fade-in-0 duration-(--duration-enter)">
+            {crew.map((n) => <li key={n.id} className="contents"><CrewColumn npc={n} tick={tick} onOpen={() => ui.openCrew(n.id)} /></li>)}
+          </ul>
         </>
       )}
     </div>

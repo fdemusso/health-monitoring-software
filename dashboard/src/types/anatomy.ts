@@ -25,7 +25,7 @@ export interface AnatomyPath {
 }
 
 /** An {@link AnatomyPath} belonging to an organ, with its rendered center pre-computed. */
-export interface OrganPath extends AnatomyPath {
+interface OrganPath extends AnatomyPath {
   /**
    * Center of this path's bounding box, in viewBox coordinates, after
    * applying `transform`. Used as the `transform-origin` pivot for the
