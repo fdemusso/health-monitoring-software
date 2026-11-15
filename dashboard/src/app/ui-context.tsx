@@ -4,7 +4,7 @@ interface UiState {
   page: 0 | 1
   setPage: (p: 0 | 1) => void
   selectedCrew: string | null
-  /** Opens the crew page with the astronaut's detail. */
+  /** Opens the astronaut's detail popover over the current page. */
   openCrew: (id: string) => void
   closeCrew: () => void
   logOpen: boolean
@@ -40,7 +40,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
   const value = useMemo<UiState>(() => ({
     page, setPage, selectedCrew, logOpen, setLogOpen, alertsOpen, setAlertsOpen, protocolsOpen, setProtocolsOpen, modulesOpen, setModulesOpen, sheetEmergency, setSheetEmergency, toast, pendingReopen,
     reopenPending: () => setPendingReopen((n) => n + 1),
-    openCrew: (id) => { setSelected(id); setPage(1) },
+    openCrew: (id) => setSelected(id),
     closeCrew: () => setSelected(null),
     showToast: (m) => { setToast(m); setTimeout(() => setToast(null), 1800) },
   }), [page, selectedCrew, logOpen, alertsOpen, protocolsOpen, modulesOpen, sheetEmergency, toast, pendingReopen])

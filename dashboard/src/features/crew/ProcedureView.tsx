@@ -175,18 +175,3 @@ export function EmergencyProtocol({ tick, emergency, compact }: { tick: Simulati
   }
   return <PreviewProcedure spec={spec} emergency={emergency} note={emergency.state === 'suspected' ? 'Proposed: the monitor is still verifying this emergency. The checklist starts by itself when it is confirmed.' : 'Proposed protocol: it starts when the monitor opens the response.'} />
 }
-
-const ROUTINE = ['Check vitals: heart rate, blood oxygen and body temperature within range.', 'Check the environment: the module is within normal limits.']
-
-/** No emergency: a two-step routine check, kept on this screen only (not a backend procedure, nothing is sent). */
-export function RoutineCheck() {
-  const [done, setDone] = useState(0)
-  return (
-    <div className="space-y-3">
-      <Progress value={(done / ROUTINE.length) * 100} aria-label="Routine check progress" />
-      <Steps current={null} steps={ROUTINE.map((text, i) => ({ id: String(i), kind: 'instruction', text, status: i < done ? 'done' : i === done ? 'active' : 'pending' }))}
-        render={() => <Button className="mt-2 w-full" onClick={() => setDone(done + 1)}>Done</Button>} />
-      {done >= ROUTINE.length && <p className="text-xs text-muted-foreground">Routine check completed</p>}
-    </div>
-  )
-}

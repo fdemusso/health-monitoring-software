@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { CrewPage } from '@/features/crew/CrewPage'
+import { CrewDetailDialog } from '@/features/crew/CrewDetailDialog'
 import { EmergencyDialog } from '@/features/crew/EmergencyDialog'
 import { PendingPopover } from '@/features/crew/PendingPopover'
 import { ProtocolsDialog } from '@/features/crew/ProtocolsDialog'
@@ -40,6 +41,7 @@ export function Shell() {
       <Pager labels={PAGES.map((p) => p.label)} />
       <DebugPanel />
       <EventLogSheet />
+      <CrewDetailDialog />
       <EmergencyDialog />
       <AlertsDialog />
       <ProtocolsDialog />

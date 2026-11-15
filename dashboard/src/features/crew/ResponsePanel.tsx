@@ -6,21 +6,19 @@ import { sortCrewIds } from '@/domain/crewConfig'
 import { cn } from '@/lib/utils'
 import { emergencyTitle, phaseLabel } from '@/domain/emergencyText'
 import type { Emergency, SimulationTick } from '@/telemetry'
-import { EmergencyProtocol, RoutineCheck } from './ProcedureView'
+import { EmergencyProtocol } from './ProcedureView'
 import { PendingActionCard } from './PendingActionCard'
 
-/** Response column. `crewId` scopes it to one astronaut; `emergencyIds` to module-level emergencies. */
-export function ResponsePanel({ tick, crewId, emergency, className }: { tick: SimulationTick; crewId?: string; emergency?: Emergency | null; className?: string }) {
+/** The response to one emergency: pending confirmations, the protocol, what the crew is doing. */
+export function ResponsePanel({ tick, emergency, className }: { tick: SimulationTick; emergency: Emergency; className?: string }) {
   const [earth, setEarth] = useState(false)
   const live = tick.emergencies.filter((e) => e.state !== 'cleared')
-  const mine = emergency ? [emergency] : live.filter((e) => (crewId ? e.subject === crewId || (!e.subject && tick.npcs[crewId]?.module_id === e.module_id) : false))
-  const ids = new Set(mine.map((e) => e.id))
-  const pending = tick.pending_actions.filter((p) => ids.has(p.action.emergency_id))
+  const pending = tick.pending_actions.filter((p) => p.action.emergency_id === emergency.id)
   return (
     <aside aria-label="Response" className={cn('flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-card p-4', className)}>
       <div>
-        <div className="lbl">{mine.length ? 'Emergency response' : 'Routine'}</div>
-        {mine.length > 0 && <h2 className="mt-1 font-heading text-xl font-bold">{emergencyTitle(mine[0])}</h2>}
+        <div className="lbl">Emergency response</div>
+        <h2 className="mt-1 font-heading text-xl font-bold">{emergencyTitle(emergency)}</h2>
       </div>
       {pending.length > 0 && (
         <div className="space-y-2">
@@ -28,7 +26,7 @@ export function ResponsePanel({ tick, crewId, emergency, className }: { tick: Si
           {pending.map((p) => <PendingActionCard key={p.action.id} pa={p} tSim={tick.t_sim_s} />)}
         </div>
       )}
-      {mine.length ? <EmergencyProtocol key={mine[0].id} tick={tick} emergency={mine[0]} compact /> : <RoutineCheck key={crewId} />}
+      <EmergencyProtocol key={emergency.id} tick={tick} emergency={emergency} compact />
       <Button variant="outline" onClick={() => setEarth(true)}>Contact Earth</Button>
       {live.length > 0 && (
         <div>

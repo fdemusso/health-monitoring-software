@@ -59,8 +59,8 @@ export function HoneycombNav() {
     }
   }
   const active = (id: CellId) =>
-    id === 'status' ? ui.page === 0 : id === 'crew' ? ui.page === 1 && !ui.selectedCrew : id === 'protocols' ? ui.page === 1 && !!ui.selectedCrew : false
-  const CurrentIcon = ICON[ui.page === 0 ? 'status' : ui.selectedCrew ? 'protocols' : 'crew']
+    id === 'status' ? ui.page === 0 : id === 'crew' ? ui.page === 1 : false
+  const CurrentIcon = ICON[ui.page === 0 ? 'status' : 'crew']
 
   const label = `Menu${critical ? ', critical emergency' : ''}${pending.length ? `, ${pending.length} pending ${pending.length === 1 ? 'action' : 'actions'}` : ''}`
 

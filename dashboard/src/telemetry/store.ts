@@ -13,7 +13,8 @@ const MAX_EVENTS = 200
 /** Length of the warm-up screen's exit animation (keep in sync with `duration-500` in WarmupScreen). */
 const WARMUP_FADE_MS = 500
 
-export interface CrewSample { t: number; hr?: number; spo2?: number; resp?: number; core?: number; cohb?: number }
+/** `hrv`, `skin` are no wearable channels here: they come from the tick (ground truth), so they only exist from the moment the page is open. */
+export interface CrewSample { t: number; hr?: number; spo2?: number; resp?: number; core?: number; cohb?: number; hrv?: number; skin?: number }
 export interface ModuleSample { t: number; temp: number; rh: number; pio2: number; ppco2: number; pressure: number; co: number }
 
 /** The server is running the simulation ahead before going live (`--warmup-h`). */
@@ -76,8 +77,8 @@ const eventKey = (e: MonitorEvent) => `${e.t_s}|${e.kind}|${e.emergency_id}|${e.
 
 type Wearables = Record<string, Record<string, number>>
 
-const crewSample = (t: number, r: Record<string, number | undefined>): CrewSample =>
-  ({ t, hr: r.hr, spo2: r.spo2, resp: r.resp_rate, core: r.core_temp_c, cohb: r.cohb_pct })
+const crewSample = (t: number, r: Record<string, number | undefined>, truth?: Record<string, number | undefined>): CrewSample =>
+  ({ t, hr: r.hr, spo2: r.spo2, resp: r.resp_rate, core: r.core_temp_c, cohb: r.cohb_pct, hrv: truth?.hrv_rmssd, skin: truth?.skin_temp_c })
 
 /** What the wearables read (measured); a server that does not send them falls back to the ground truth of the tick. */
 const crewReadings = (tick: Pick<SimulationTick, 'npcs' | 'wearables'>): Wearables =>
@@ -135,7 +136,7 @@ export function ingestTick(tick: SimulationTick) {
   if (tick.t_sim_s - lastCrewT >= CREW_STEP_S) {
     lastCrewT = tick.t_sim_s
     const ch = { ...crewHistory }
-    for (const [id, r] of Object.entries(crewReadings(tick))) ch[id] = pushCapped(ch[id], crewSample(tick.t_sim_s, r), CREW_MAX)
+    for (const [id, r] of Object.entries(crewReadings(tick))) ch[id] = pushCapped(ch[id], crewSample(tick.t_sim_s, r, tick.npcs[id]?.vitals), CREW_MAX)
     patch.crewHistory = crewHistory = ch
   }
   if (tick.t_sim_s - lastModuleT >= MODULE_STEP_S) {

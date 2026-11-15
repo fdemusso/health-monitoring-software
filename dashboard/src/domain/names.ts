@@ -24,3 +24,9 @@ export function effortLabel(met: number): string {
   if (!Number.isFinite(met)) return '—'
   return met < 1.6 ? 'Resting' : met < 3 ? 'Light effort' : met < 6 ? 'Moderate effort' : 'Hard effort'
 }
+
+
+/** `vitals.sleep_stage`: 0 awake, 1..3 NREM stages, 5 REM. */
+export const sleepLabel = (stage: number | undefined): string =>
+  ({ 1: 'Falling asleep', 2: 'Light sleep', 3: 'Deep sleep', 5: 'REM sleep' } as Record<number, string>)[Math.round(stage ?? 0)] ?? 'Awake'
+
