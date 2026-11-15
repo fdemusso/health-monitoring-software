@@ -66,15 +66,24 @@ def test_the_power_of_the_return_vehicle_and_of_the_suit_volume_is_never_cut(sta
     assert eng._guard(Action(id="x", emergency_id="e", kind="power", target="hab", command="off")) is None
 
 
-def test_the_restoration_of_the_power_is_proposed_when_the_fire_is_out_never_done(station):
+def test_the_restoration_of_the_power_is_proposed_when_the_fire_is_out_and_done_if_nobody_answers(station):
     eng = _engine(station)
     eng.inject(_fire(fuel_kj=1.0e4))  # burns out quickly
     res, _ = _log(eng, 1500, until=lambda r: any(e.kind == "emergency_cleared" for e in r.tick.monitor_events))
     proposals = [p for p in res.tick.pending_actions if p.action.kind == "power"]
-    assert proposals and proposals[0].action.command == "on" and proposals[0].on_timeout == "discard"
-    assert res.tick.powered_off == ("hab",)  # still dark: the crew has to say yes
+    assert proposals and proposals[0].action.command == "on" and proposals[0].on_timeout == "execute"
+    assert res.tick.powered_off == ("hab",)  # still dark while the crew decides
     eng.approve_action(proposals[0].action.id, by="eng")
     last, _ = _log(eng, 5)
+    assert last.tick.powered_off == ()
+
+
+def test_a_module_left_dark_gets_its_power_back_when_nobody_answers(station):
+    eng = _engine(station)
+    eng.inject(_fire(fuel_kj=1.0e4))
+    res, _ = _log(eng, 1500, until=lambda r: any(e.kind == "emergency_cleared" for e in r.tick.monitor_events))
+    assert res.tick.powered_off == ("hab",)
+    last, _ = _log(eng, 700)  # the proposal lasts 600 s
     assert last.tick.powered_off == ()
 
 
