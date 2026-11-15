@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import { Dialog as DialogPrimitive } from 'radix-ui'
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useDraggable } from '@/lib/useDraggable'
 
@@ -33,7 +34,7 @@ export function Dialog({ open, onClose, title, children, className, width = 640 
               <Button variant="ghost" size="icon-lg" aria-label="Close"><X /></Button>
             </DialogPrimitive.Close>
           </div>
-          <div className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">{children}</div>
+          <ScrollArea className="min-h-0 flex-1">{children}</ScrollArea>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

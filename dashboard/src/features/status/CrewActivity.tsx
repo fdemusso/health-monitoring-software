@@ -1,5 +1,6 @@
 import { CrewChip, ModuleChip } from '@/components/CrewChip'
 import { StatusDot } from '@/components/StatusDot'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { sortCrewIds } from '@/domain/crewConfig'
 import { activityLabel, phaseLabel, ROLE_LABEL } from '@/domain/emergencyText'
 import { effortLabel } from '@/domain/names'
@@ -13,9 +14,10 @@ import type { SimulationTick } from '@/telemetry'
 export function CrewActivity({ tick }: { tick: SimulationTick }) {
   const ids = sortCrewIds(Object.keys(tick.npcs))
   return (
-    <div>
-      <h2 className="mb-2 font-heading text-xl font-bold">Crew activity</h2>
-      <ul className="space-y-2">
+    <section aria-label="Crew activity" className="flex min-h-[11rem] flex-[0_1_auto] flex-col">
+      <h2 className="mb-2 shrink-0 font-heading text-xl font-bold">Crew activity</h2>
+      <ScrollArea className="min-h-0">
+      <ul className="space-y-2 pr-3">
         {ids.map((id) => {
           const n = tick.npcs[id]
           const phase = n.response_phase ? phaseLabel(n.response_phase) : null
@@ -35,6 +37,7 @@ export function CrewActivity({ tick }: { tick: SimulationTick }) {
           )
         })}
       </ul>
-    </div>
+      </ScrollArea>
+    </section>
   )
 }

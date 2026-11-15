@@ -4,8 +4,9 @@ import { CrewChip, ModuleChip } from '@/components/CrewChip'
 import { StatusDot } from '@/components/StatusDot'
 import { Button } from '@/components/ui/button'
 import { useUi } from '@/app/ui-context'
+import { ContactEarthButton } from '@/features/crew/ContactEarthButton'
 import { sexToHologram, sortCrewIds } from '@/domain/crewConfig'
-import { emergencyTitle, keyNumbers } from '@/domain/emergencyText'
+import { emergencyTitle, keyNumbers, seenLines } from '@/domain/emergencyText'
 import { organAdapter } from '@/domain/organAdapter'
 import { crewStatus, isCriticalConfirmed, primaryEmergency, statusColor, statusText, type Status } from '@/domain/status'
 import { fmtClock } from '@/domain/units'
@@ -53,7 +54,8 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
   const critical = isCriticalConfirmed(primary)
   const level: Status = primary.severity === 'critical' && primary.state === 'confirmed' ? 'crit' : 'warn'
   const suspected = primary.state === 'suspected'
-  const title = (suspected ? 'Possible ' : '') + lowerFirst(emergencyTitle(primary), suspected)
+  const hedge = suspected && ['fire', 'depressurization', 'toxic'].includes(primary.kind)
+  const title = (hedge ? 'Possible ' : '') + lowerFirst(emergencyTitle(primary), hedge)
   const nums = keyNumbers(primary, tick)
   const mod = tick.modules[primary.module_id]
   const medical = primary.kind === 'medical' && primary.subject
@@ -70,6 +72,9 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
             {primary.subject ? <CrewChip id={primary.subject} /> : <ModuleChip id={primary.module_id} />}
             {!medical && mod?.occupants.map((o) => <CrewChip key={o} id={o} />)}
           </div>
+          {nums.length === 0 && seenLines(primary, 2).length > 0 && (
+            <ul className="mt-3 list-disc space-y-0.5 pl-5 text-sm text-muted-foreground">{seenLines(primary, 2).map((l) => <li key={l}>{l}</li>)}</ul>
+          )}
           <div className="mt-3 flex gap-10">
             {nums.map((n) => (
               <div key={n.label}>
@@ -81,7 +86,7 @@ export function AlertBanner({ tick }: { tick: SimulationTick }) {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button size="lg" onClick={open}>Open response →</Button>
-            <Button size="lg" variant="outline" onClick={() => ui.showToast('Contact with Earth not connected')}>Contact Earth</Button>
+            <ContactEarthButton key={`earth-${primary.id}`} size="lg" />
             {pending > 0 && <button type="button" onClick={ui.reopenPending} className="h-6 rounded-full bg-status-warning-soft px-3 text-xs font-medium text-status-warning-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{pending} {pending === 1 ? 'action' : 'actions'} awaiting confirmation</button>}
           </div>
           {others.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Also: {others.map((e: Emergency) => emergencyTitle(e)).join(' · ')}</p>}

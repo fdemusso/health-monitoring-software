@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PENDING_KIND } from './pendingKinds'
+import { moduleName } from '@/domain/names'
 import { fmtClock } from '@/domain/units'
 import type { PendingAction } from '@/telemetry'
 import { useCommands } from '@/telemetry/useTelemetry'
@@ -20,7 +21,7 @@ export function PendingActionCard({ pa, tSim }: { pa: PendingAction; tSim: numbe
   return (
     <div className="rounded-lg border border-border bg-muted p-4">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="lbl">{PENDING_KIND[a.kind]?.label ?? a.kind}</span>
+        <span className="lbl">{PENDING_KIND[a.kind]?.label ?? a.kind}{(a.kind === 'power' || a.kind === 'extinguish') && ` · ${a.command === 'on' ? 'restore' : a.command === 'off' ? 'cut' : 'discharge'} in ${moduleName(a.target)}`}</span>
         <span className="text-sm font-medium tabular-nums">{fmtClock(pa.deadline_s - tSim)}</span>
       </div>
       <p className="text-base">{a.reason || `${a.command} ${a.target}`}</p>

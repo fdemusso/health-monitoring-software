@@ -1,7 +1,5 @@
-import { useState } from 'react'
 import { CrewChip } from '@/components/CrewChip'
-import { Button } from '@/components/ui/button'
-import { Sheet } from '@/components/ui/sheet'
+import { ContactEarthButton } from './ContactEarthButton'
 import { sortCrewIds } from '@/domain/crewConfig'
 import { cn } from '@/lib/utils'
 import { emergencyTitle, phaseLabel } from '@/domain/emergencyText'
@@ -11,7 +9,6 @@ import { PendingActionCard } from './PendingActionCard'
 
 /** The response to one emergency: pending confirmations, the protocol, what the crew is doing. */
 export function ResponsePanel({ tick, emergency, className }: { tick: SimulationTick; emergency: Emergency; className?: string }) {
-  const [earth, setEarth] = useState(false)
   const live = tick.emergencies.filter((e) => e.state !== 'cleared')
   const pending = tick.pending_actions.filter((p) => p.action.emergency_id === emergency.id)
   return (
@@ -27,7 +24,7 @@ export function ResponsePanel({ tick, emergency, className }: { tick: Simulation
         </div>
       )}
       <EmergencyProtocol key={emergency.id} tick={tick} emergency={emergency} compact />
-      <Button variant="outline" onClick={() => setEarth(true)}>Contact Earth</Button>
+      <ContactEarthButton key={`earth-${emergency.id}`} />
       {live.length > 0 && (
         <div>
           <div className="lbl mb-2">What the crew is doing</div>
@@ -38,9 +35,6 @@ export function ResponsePanel({ tick, emergency, className }: { tick: Simulation
           </ul>
         </div>
       )}
-      <Sheet open={earth} onClose={() => setEarth(false)} title="Teleconsult" width={360}>
-        <p className="text-sm text-muted-foreground">Teleconsult not connected. The link to Earth is not available in this version.</p>
-      </Sheet>
     </aside>
   )
 }

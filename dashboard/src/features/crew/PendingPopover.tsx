@@ -67,7 +67,8 @@ function ActionView({ pa, tSim, emergency }: { pa: PendingAction; tSim: number; 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const a = pa.action
-  const { label, Icon } = PENDING_KIND[a.kind] ?? { label: a.kind, Icon: Cog }
+  const { label: kindLabel, Icon } = PENDING_KIND[a.kind] ?? { label: a.kind, Icon: Cog }
+  const label = a.kind === 'power' ? (a.command === 'on' ? 'Restore power' : 'Cut power') : a.kind === 'extinguish' ? 'Discharge the extinguisher' : kindLabel
   const left = Math.max(0, pa.deadline_s - tSim)
   const total = Math.max(1, pa.deadline_s - pa.t_proposed_s)
   const tone = left <= 10 ? 'danger' : left <= 30 ? 'warning' : 'neutral'

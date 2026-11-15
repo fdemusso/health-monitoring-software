@@ -116,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--pause-when-idle", action="store_true",
                    help="stand still while no client is connected (a server left running costs no CPU; time resumes on the first connection)")
     s.add_argument("--max-clients", type=int, default=100, help="simultaneous connections")
-    s.add_argument("--max-speed", type=float, default=100_000.0, help="highest speed a client can ask for (a public server: 200)")
+    s.add_argument("--max-speed", type=float, default=60.0, help="highest speed a client can ask for (the dashboard offers 1-60; a public server: 60 or less)")
     s.add_argument("--warmup-h", type=float, default=0.0, metavar="H",
                    help="simulated hours to run ahead at startup: the ML detectors are ready (they need 3 h) and the charts start full "
                         "(~1 min of real time per 4 h). The port is open meanwhile: clients get a `warming` state with progress")

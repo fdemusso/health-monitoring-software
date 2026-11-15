@@ -65,6 +65,7 @@ class ProcedureRunner:
         self.profile_roles = dict(profile_roles or {})  # crew profile -> role (``crew_response.roles``)
         self.succession = list(succession)  # who steps in when nobody with the role can
         self._runs: dict[str, _Run] = {}
+        self._ran: set[str] = set()  # runs already started for an emergency still open: a finished checklist is not started again
         self._acks: list[tuple[str, str, str | None, str | None]] = []
         self._last: dict[tuple[str, str], float] = {}  # (entity, metric) -> last SENSED value
 
@@ -88,6 +89,7 @@ class ProcedureRunner:
              npcs: Mapping[str, NPCState], roles: Mapping[str, str]) -> tuple[tuple[ProcedureState, ...], list[MonitorEvent], list[Action]]:
         events: list[MonitorEvent] = []
         actions: list[Action] = []
+        emergencies = list(emergencies)
         for o in observations:
             self._last[(o.entity_id, o.metric)] = o.value
 
@@ -95,7 +97,7 @@ class ProcedureRunner:
             if em.state == "confirmed":
                 proc = self._choose(em)
                 key = f"{proc.id}:{em.id}" if proc else None
-                if proc and key not in self._runs:
+                if proc and key not in self._runs and key not in self._ran:
                     self._start(t, key, proc, em, events)
             for run in self._runs.values():
                 if run.em.id == em.id:
@@ -113,6 +115,8 @@ class ProcedureRunner:
                 self._advance(t, run, npcs, roles, events, actions)
             elif run.t_end is not None and t - run.t_end > KEEP_S:
                 del self._runs[run.id]
+        live = {em.id for em in emergencies}
+        self._ran = {k for k in self._ran if k.split(":", 1)[1] in live}
         return self.states(), events, actions
 
     def states(self) -> tuple[ProcedureState, ...]:
@@ -137,6 +141,7 @@ class ProcedureRunner:
         for s in proc.steps:
             run.steps[s.id] = ProcedureStepState(id=s.id, kind=s.do, text=_fill(s.text, em))
         self._runs[key] = run
+        self._ran.add(key)
         events.append(MonitorEvent(t_s=t, kind="procedure_started", emergency_id=em.id,
                                    message=f"procedure: {_fill(proc.title, em)}"))
         self._activate(t, run, proc.steps[0].id, events)

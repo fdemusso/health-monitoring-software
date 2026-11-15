@@ -129,3 +129,13 @@ def test_the_procedure_that_names_the_cause_wins_and_the_run_is_deterministic(st
         eng.declare_emergency("medical", "hab", by="cmd")
         return [(e.t_s, e.kind, e.by) for r in eng.run(60) for e in r.tick.monitor_events]
     assert log() == log() != []
+
+
+def test_a_finished_checklist_is_not_started_again_while_the_emergency_stays_open(station, monkeypatch):
+    monkeypatch.setattr("ares3.core.procedures.KEEP_S", 1.0)  # the finished run leaves the tick almost at once
+    eng = _engine(station, [_step("s1", "instruction", text="Reach {subject}", duration_s=2)])
+    eng.declare_emergency("medical", "hab", by="cmd")
+    log = []
+    for res in eng.run(55):  # a declared alarm lasts 60 s: the emergency is still open all along
+        log += res.tick.monitor_events
+    assert [e.kind for e in log].count("procedure_started") == 1

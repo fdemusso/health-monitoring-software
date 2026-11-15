@@ -34,7 +34,8 @@ export function HoneycombNav() {
   const pending = usePendingActions()
   const tick = useTick()
   // No active alarms: the Alarms cell is dimmed, like a switched-off light.
-  const noAlerts = !!tick && alertRows(tick).length === 0
+  const alertCount = tick ? alertRows(tick).length : 0
+  const noAlerts = !!tick && alertCount === 0
   // Protocols are for an emergency: with none open the cell is dimmed too (the protocol appears by itself when one opens).
   const noEmergency = !!tick && !emergencies.some((e) => e.state !== 'cleared')
   const off = (id: CellId) => (id === 'alerts' && noAlerts) || (id === 'protocols' && noEmergency)
@@ -98,7 +99,13 @@ export function HoneycombNav() {
               <Icon size={28 * sc} strokeWidth={1.5} />
               <span className="text-xs font-medium">{c.label}</span>
             </Hex>
-            {c.id === 'alerts' && critical && <span className="anim-ping absolute right-[22px] top-[18px] size-2.5 rounded-full bg-status-danger" />}
+            {/* the same signals as the closed trigger, on the cell that answers them */}
+            {c.id === 'alerts' && alertCount > 0 && (
+              <span className={cn('absolute right-[18px] top-[14px] grid h-5 min-w-5 place-items-center rounded-full px-1 text-xs font-medium text-signal-on', critical ? 'anim-ping bg-status-danger' : 'bg-status-warning')}>{alertCount}</span>
+            )}
+            {c.id === 'protocols' && pending.length > 0 && (
+              <span className="absolute right-[18px] top-[14px] grid h-5 min-w-5 place-items-center rounded-full bg-signal px-1 text-xs font-medium text-signal-on" aria-label={`${pending.length} actions awaiting confirmation`}>{pending.length}</span>
+            )}
           </button>
         )
       })}

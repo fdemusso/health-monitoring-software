@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge'
 import { crewIdentity } from '@/domain/crewConfig'
-import { emergencyTitle } from '@/domain/emergencyText'
+import { seenLines } from '@/domain/emergencyText'
 import { moduleName } from '@/domain/names'
 import { chooseProcedure, fillText, isMedical, procedureOf } from '@/domain/procedures'
 import { fmt0, fmt1, fmtClock } from '@/domain/units'
@@ -142,8 +142,8 @@ function Header({ emergency, title }: { emergency: Emergency; title: string }) {
         <StatusBadge status={ALERT_TONE[emergency.alert_class]}>{emergency.alert_class}</StatusBadge>
       </div>
       <p className="mt-0.5 text-xs text-muted-foreground">{emergency.subject ? `${crewIdentity(emergency.subject).first} · ` : ''}{moduleName(emergency.module_id)}</p>
-      {emergency.evidence.length > 0 && (
-        <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">{emergency.evidence.map((e) => <li key={e}>{e}</li>)}</ul>
+      {seenLines(emergency, 4).length > 0 && (
+        <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">{seenLines(emergency, 4).map((e) => <li key={e}>{e}</li>)}</ul>
       )}
     </div>
   )
@@ -171,7 +171,7 @@ export function EmergencyProtocol({ tick, emergency, compact }: { tick: Simulati
   if (proc) return <LiveProcedure tick={tick} proc={proc} emergency={emergency} compact={compact} />
   const spec = chooseProcedure(catalog, emergency)
   if (!spec) {
-    return <p className="text-sm text-muted-foreground">No procedure is defined for “{emergencyTitle(emergency)}”. Follow the ISS checklists and contact Earth.</p>
+    return <p className="text-sm text-muted-foreground">No crew checklist for this alert: the station's automatic response handles it (confirm the actions above, if any) and the crew acts as shown below.</p>
   }
   return <PreviewProcedure spec={spec} emergency={emergency} note={emergency.state === 'suspected' ? 'Proposed: the monitor is still verifying this emergency. The checklist starts by itself when it is confirmed.' : 'Proposed protocol: it starts when the monitor opens the response.'} />
 }

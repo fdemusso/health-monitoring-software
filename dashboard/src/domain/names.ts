@@ -5,7 +5,7 @@ const MODULE_NAME: Record<string, string> = {
   NOD1: 'Unity', USL: 'Destiny Lab', NOD2: 'Harmony', NOD3: 'Tranquility', COL: 'Columbus Lab', JPM: 'Kibo Lab', CUP: 'Cupola',
   AL: 'Airlock', SM: 'Service Module', PRK: 'Transfer Chamber',
   CQ1: 'Crew Quarters 1', CQ2: 'Crew Quarters 2', CQ3: 'Crew Quarters 3', CQ4: 'Crew Quarters 4',
-  LIFEBOAT: 'Lifeboat', EVA: 'Spacewalk',
+  LIFEBOAT: 'Lifeboat', EVA: 'Spacewalk', STATION: 'Whole station',
 }
 export const moduleName = (id: string) => MODULE_NAME[id.toUpperCase()] ?? id.toUpperCase()
 

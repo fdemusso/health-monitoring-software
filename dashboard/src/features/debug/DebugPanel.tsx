@@ -1,111 +1,122 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/sheet'
-import { StatusBadge } from '@/components/ui/status-badge'
-import { ToggleGroup, ToggleGroupMulti } from '@/components/ui/toggle-group'
+import { ToggleGroup } from '@/components/ui/toggle-group'
+import { crewIdentity } from '@/domain/crewConfig'
+import { moduleName } from '@/domain/names'
 import type { EmergencyKind } from '@/telemetry'
-import { useBackendStatus, useCommands, useModuleList, useTick } from '@/telemetry/useTelemetry'
-import { INJECT_PRESETS, eventName } from './injectPresets'
+import { useBackendStatus, useCommands, useCrewList, useModuleList, useTick } from '@/telemetry/useTelemetry'
+import { CREW_SCENARIOS, STATION_SCENARIOS, eventName, type Scenario } from './injectPresets'
 
-const SPEEDS = [1, 10, 60, 600, 3600]
-const SPEED_OPTIONS = SPEEDS.map((s) => ({ value: String(s), label: `×${s}` }))
-const KINDS: EmergencyKind[] = ['depressurization', 'fire', 'toxic', 'equipment', 'medical']
-// slider 0..1 -> speed 1..100000 (log scale)
-const toSpeed = (x: number) => Math.round(10 ** (x * 5))
-const fromSpeed = (s: number) => Math.log10(Math.max(1, s)) / 5
+/** The dashboard offers 1x to 60x: above that the engine cannot keep up (the server refuses more, see `ares3 serve --max-speed`). */
+const SPEEDS = [1, 10, 30, 60]
+const SPEED_OPTIONS = SPEEDS.map((s) => ({ value: String(s), label: `${s}×` }))
+const ALARMS: { kind: EmergencyKind; label: string }[] = [
+  { kind: 'fire', label: 'Fire' }, { kind: 'depressurization', label: 'Air leak' }, { kind: 'toxic', label: 'Toxic air' },
+  { kind: 'equipment', label: 'Equipment' }, { kind: 'medical', label: 'Medical' },
+]
+/** The lifeboat and the spacewalk volume are not places where things break by themselves. */
+const NOT_A_PLACE = new Set(['LIFEBOAT', 'EVA'])
 
 const debugEnabled = () => import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')
+const clock = (s: number) => `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="mb-5"><h3 className="mb-2 text-sm text-status-warning-foreground">{title}</h3>{children}</section>
+function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <section className="mb-6">
+      <h3 className="text-sm font-medium text-status-warning-foreground">{title}</h3>
+      {hint && <p className="mb-2 text-xs text-muted-foreground">{hint}</p>}
+      <div className={hint ? '' : 'mt-2'}>{children}</div>
+    </section>
+  )
 }
 
+const SELECT = 'h-11 w-full rounded-control border border-input bg-card px-2 text-sm'
+
+/** One tap, one situation: the title and what the app will show. */
+function ScenarioButton({ s, onPick }: { s: Scenario; onPick: () => void }) {
+  return (
+    <button type="button" onClick={onPick} className="min-h-14 rounded-control border border-input px-3 py-2 text-left outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-muted-strong">
+      <span className="block text-sm font-medium">{s.label}</span>
+      <span className="block text-xs text-muted-foreground">{s.hint}</span>
+    </button>
+  )
+}
+
+/**
+ * Cheat menu: for whoever tries the platform, to create a situation and watch the app react. It never blocks the page behind it.
+ * Dev builds, or `?debug` in the address.
+ */
 export function DebugPanel() {
   const [open, setOpen] = useState(false)
   const cmd = useCommands()
   const st = useBackendStatus()
   const tick = useTick()
-  const modules = useModuleList()
-  const [kind, setKind] = useState<EmergencyKind>('fire')
-  const [mod, setMod] = useState('hab')
-  // While the slider is dragged it follows the pointer; otherwise it mirrors the backend speed (so the ×N buttons move it).
-  const [drag, setDrag] = useState<number | null>(null)
-  const [picked, setPicked] = useState<string[]>([])
-  const [stopping, setStopping] = useState<string[]>([])
+  const crew = useCrewList()
+  const places = useModuleList().filter((m) => !NOT_A_PLACE.has(m.id.toUpperCase()))
+  const [place, setPlace] = useState('USL')
+  const [person, setPerson] = useState('')
   if (!debugEnabled()) return null
 
-  const presets = INJECT_PRESETS.map((p) => ({ value: p.label, label: p.label }))
-  const faults = (tick?.active_faults ?? []).map((f) => ({ value: f, label: eventName(f) }))
-  const inject = () => {
-    for (const p of INJECT_PRESETS) if (picked.includes(p.label)) cmd.inject(p.make())
-    setPicked([])
-  }
-  const stop = () => {
-    for (const f of stopping) cmd.stopEvent(f)
-    setStopping([])
-  }
+  const where = places.some((m) => m.id === place) ? place : places[0]?.id ?? ''
+  const who = crew.some((n) => n.id === person) ? person : crew[0]?.id ?? ''
+  const start = (s: Scenario) => cmd.inject(s.make(s.target === 'crew' ? who : where))
+  const faults = tick?.active_faults ?? []
 
   return (
     <>
       <button type="button" onClick={() => setOpen(true)} className="fixed bottom-3.5 right-3.5 z-30 rounded-control border border-dashed border-status-warning px-2.5 py-1.5 text-xs font-medium text-status-warning-foreground opacity-60 outline-none hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
-        ⌥ Debug
+        ⌥ Scenarios
       </button>
-      <Sheet open={open} onClose={() => setOpen(false)} title="Debug" width={360} className="text-sm">
-        <p className="mb-4 rounded-lg bg-status-warning-soft p-2 text-xs text-status-warning-foreground">Development and demo only. Not present in the operational build.</p>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Scenario menu" width={380} modeless className="text-sm">
+        {!st.connected && <p className="mb-4 rounded-lg bg-status-danger-soft p-2 text-status-danger-foreground">Not connected to the simulation.</p>}
+        {st.commandError && <p className="mb-4 rounded-lg bg-status-danger-soft p-2 text-status-danger-foreground">{st.commandError}</p>}
 
-        <Section title="Connection">
-          <div className="mb-1.5 flex items-center gap-2">
-            <StatusBadge status={st.connected ? 'ok' : 'crit'}>{st.connected ? 'Connected' : 'Disconnected'}</StatusBadge>
-            <span className="truncate text-xs text-muted-foreground">{st.url}</span>
-          </div>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
-            <dt className="text-muted-foreground">Scenario</dt><dd className="truncate">{st.scenario ?? '—'}</dd>
-            <dt className="text-muted-foreground">Speed</dt><dd>×{st.speed}{st.paused ? ' (paused)' : ''}</dd>
-            <dt className="text-muted-foreground">Tick</dt><dd className="tabular-nums">{tick?.tick ?? '—'} · {tick ? Math.round(tick.t_sim_s) : '—'} s</dd>
-          </dl>
-        </Section>
-
-        <Section title="Simulation control">
-          <div className="mb-2 flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => (st.paused ? cmd.resume() : cmd.pause())}>{st.paused ? 'Resume' : 'Pause'}</Button>
-            <Button variant="outline" className="flex-1" onClick={() => cmd.reset()}>Reset</Button>
-          </div>
+        <Section title="Time" hint={tick ? `Simulated time ${clock(tick.t_sim_s)} · runs ${st.speed}× faster than real time${st.paused ? ' · paused' : ''}` : undefined}>
           <ToggleGroup joined className="w-full [&>button]:flex-1 [&>button]:px-0" value={String(st.speed)} onChange={(v) => cmd.setSpeed(Number(v))} options={SPEED_OPTIONS} />
-          <input type="range" min={0} max={1} step={0.01} value={drag ?? fromSpeed(st.speed || 60)} className="mt-2 w-full accent-primary" aria-label="Speed"
-            onChange={(e) => { const x = Number(e.target.value); setDrag(x); cmd.setSpeed(toSpeed(x)) }}
-            onPointerUp={() => setDrag(null)} onKeyUp={() => setDrag(null)} onBlur={() => setDrag(null)} />
-          <p className="text-xs text-muted-foreground">Simulated seconds per real second · ×{st.speed}</p>
-        </Section>
-
-        <Section title="Inject events">
-          <ToggleGroupMulti value={picked} onChange={setPicked} options={presets} />
-          <Button className="mt-2 w-full" variant="outline" disabled={picked.length === 0} onClick={inject}>
-            {picked.length > 1 ? `Inject ${picked.length} events` : 'Inject event'}
-          </Button>
-        </Section>
-
-        <Section title="Active events">
-          {faults.length ? (
-            <>
-              <ToggleGroupMulti value={stopping} onChange={setStopping} options={faults} />
-              <Button className="mt-2 w-full" variant="outline" disabled={stopping.length === 0} onClick={stop}>
-                {stopping.length > 1 ? `Stop ${stopping.length} events` : 'Stop event'}
-              </Button>
-            </>
-          ) : <span className="text-xs text-muted-foreground">None</span>}
-        </Section>
-
-        <Section title="Declare emergency">
-          <ToggleGroup className="mb-2" value={kind} onChange={setKind} options={KINDS.map((k) => ({ value: k, label: k }))} />
-          <div className="flex gap-2">
-            <select value={mod} onChange={(e) => setMod(e.target.value)} aria-label="Module" className="h-8 min-w-0 flex-1 rounded-control border border-input bg-card px-2 text-sm">
-              {(modules.length ? modules.map((m) => m.id) : ['hab']).map((m) => <option key={m}>{m}</option>)}
-            </select>
-            <Button variant="outline" onClick={() => cmd.declare(kind, mod)}>Declare</Button>
+          <div className="mt-2 flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => (st.paused ? cmd.resume() : cmd.pause())}>{st.paused ? 'Resume' : 'Pause'}</Button>
+            <Button variant="outline" className="flex-1" onClick={() => cmd.reset()}>Start over</Button>
           </div>
         </Section>
 
-        {st.commandError && <p className="rounded-lg bg-status-danger-soft p-2 text-status-danger-foreground">Error: {st.commandError}</p>}
+        <Section title="Station" hint="Pick a place, then tap what happens there.">
+          <select value={where} onChange={(e) => setPlace(e.target.value)} aria-label="Place" className={`${SELECT} mb-2`}>
+            {places.map((m) => <option key={m.id} value={m.id}>{moduleName(m.id)}</option>)}
+          </select>
+          <div className="grid grid-cols-2 gap-2">
+            {STATION_SCENARIOS.map((s) => <ScenarioButton key={s.key} s={s} onPick={() => start(s)} />)}
+          </div>
+        </Section>
+
+        <Section title="Crew" hint="Pick a person, then tap what happens to them.">
+          <select value={who} onChange={(e) => setPerson(e.target.value)} aria-label="Person" className={`${SELECT} mb-2`}>
+            {crew.map((n) => <option key={n.id} value={n.id}>{crewIdentity(n.id).person} · {crewIdentity(n.id).name}</option>)}
+          </select>
+          <div className="grid grid-cols-2 gap-2">
+            {CREW_SCENARIOS.map((s) => <ScenarioButton key={s.key} s={s} onPick={() => start(s)} />)}
+          </div>
+        </Section>
+
+        <Section title="Happening now">
+          {faults.length ? (
+            <ul className="space-y-1">
+              {faults.map((f) => (
+                <li key={f} className="flex items-center justify-between gap-2 rounded-control bg-muted/50 py-1 pl-3 pr-1">
+                  <span className="min-w-0 truncate">{eventName(f)}</span>
+                  <Button variant="ghost" size="sm" onClick={() => cmd.stopEvent(f)}>Stop</Button>
+                </li>
+              ))}
+            </ul>
+          ) : <span className="text-xs text-muted-foreground">Nothing. The station is nominal.</span>}
+        </Section>
+
+        <Section title="Sound the alarm" hint="Only the alarm, without a real fault: to see how the crew responds.">
+          <div className="flex flex-wrap gap-1">
+            {ALARMS.map((a) => <Button key={a.kind} variant="outline" onClick={() => cmd.declare(a.kind, where)}>{a.label}</Button>)}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">In: {where ? moduleName(where) : '—'}</p>
+        </Section>
       </Sheet>
     </>
   )

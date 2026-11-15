@@ -212,14 +212,14 @@ class Responder:
                 self._outcome[aid] = "dropped"
                 events.append(MonitorEvent(t_s=t, kind="action_expired_discarded", emergency_id=em.id, action_id=aid,
                                            message=f"emergency over, dropped: {self._describe(pa.action)}"))
-        for module in self._unpowered.pop(em.id, []):  # restoring power is a crew decision: propose it, never do it
+        for module in self._unpowered.pop(em.id, []):  # restoring power is proposed to the crew; if nobody answers in time it is done (a module left dark would never come back)
             self._n += 1
             spec = ActionSpec(do="power", target=module, command="on", level="confirm", confirm_timeout_s=600.0,
-                              on_timeout="discard", reason="the emergency is over: restore the power of the module")
+                              on_timeout="execute", reason="the emergency is over: restore the power of the module")
             action = Action(id=f"a{self._n}", emergency_id=em.id, kind="power", target=module, command="on", level="confirm",
                             reason=spec.reason)
             self._pending[action.id] = (PendingAction(action=action, t_proposed_s=t, deadline_s=t + spec.confirm_timeout_s,
-                                                      on_timeout="discard"), spec)
+                                                      on_timeout="execute"), spec)
             events.append(MonitorEvent(t_s=t, kind="action_proposed", emergency_id=em.id, action_id=action.id,
                                        message=f"proposed: {self._describe(action)} (confirm within 600 s)"))
         for sensor in self._substituted.pop(em.id, []):  # the control loops read their own sensor again

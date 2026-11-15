@@ -28,22 +28,3 @@ export function ToggleGroup<T extends string>({ value, onChange, options, classN
     </ToggleGroupPrimitive.Root>
   )
 }
-
-/** Multi-select button group (shadcn ToggleGroup type="multiple"): outlined items, ink fill when selected. */
-export function ToggleGroupMulti<T extends string>({ value, onChange, options, className, itemClassName }: {
-  value: T[]; onChange: (v: T[]) => void; options: ToggleOption<T>[]; className?: string; itemClassName?: string
-}) {
-  return (
-    <ToggleGroupPrimitive.Root type="multiple" value={value} onValueChange={(v) => onChange(v as T[])} className={cn('flex flex-wrap gap-1', className)}>
-      {options.map((o) => (
-        <ToggleGroupPrimitive.Item
-          key={o.value}
-          value={o.value}
-          className={cn(ITEM, 'rounded-control border border-input text-foreground hover:bg-muted data-[state=on]:border-transparent data-[state=on]:bg-primary data-[state=on]:text-primary-foreground', itemClassName)}
-        >
-          {o.label}
-        </ToggleGroupPrimitive.Item>
-      ))}
-    </ToggleGroupPrimitive.Root>
-  )
-}

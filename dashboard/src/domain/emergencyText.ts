@@ -2,24 +2,31 @@ import type { Emergency, ModuleState, MonitorEvent, NPCState, SimulationTick } f
 import { VITAL } from './vitalKeys'
 import { fmt0, fmt1, ppco2Mmhg, pio2Mmhg } from './units'
 import { moduleName } from './names'
+import { anomalyTitle, causeText, humanEvidence } from './anomalyText'
 
 // PLACEHOLDER texts: awaiting review by the team.
 import { crewIdentity } from './crewConfig'
 
-const CAUSE: Record<string, string> = { co_poisoning: 'Carbon monoxide poisoning', hypoxia: 'Low blood oxygen' }
+const CAUSE: Record<string, string> = { co_poisoning: 'Carbon monoxide poisoning', hypoxia: 'Low blood oxygen', crew_baseline: 'Vital signs unusual for this person' }
+const medicalCause = (c: string | null) => (c ? CAUSE[c] ?? causeText(c) ?? c : null)
 
 export function emergencyTitle(e: Emergency): string {
   const m = moduleName(e.module_id)
+  const cause = causeText(e.cause)
   switch (e.kind) {
     case 'depressurization': return `Air leaking from ${m}`
     case 'fire': return `Fire in ${m}`
     case 'toxic': return `Toxic air in ${m}`
-    case 'equipment': return `Equipment failure in ${m}`
-    case 'medical': return e.subject ? `${crewIdentity(e.subject).first}: ${e.cause ? (CAUSE[e.cause] ?? e.cause).toLowerCase() : 'medical emergency'}` : e.cause ? (CAUSE[e.cause] ?? e.cause) : 'Medical emergency'
+    case 'equipment': return cause ?? `Equipment failure in ${m}`
+    case 'sensor_fault': return cause ?? `A sensor in ${m} gives odd readings`
+    case 'anomaly': return anomalyTitle(e.detail)
+    case 'medical': { const c = medicalCause(e.cause); return e.subject ? `${crewIdentity(e.subject).first}: ${c ? c.toLowerCase() : 'medical emergency'}` : c ?? 'Medical emergency' }
     default: return `Anomaly in ${m}`
   }
 }
 
+/** What the monitor saw, in plain words, for kinds that have no headline numbers (equipment, sensors, anomalies). */
+export const seenLines = (e: Emergency, max = 3): string[] => e.evidence.map(humanEvidence).filter((l) => l !== emergencyTitle(e)).slice(0, max)
 
 const RESPONSE_PHASE: Record<string, string> = {
   warn: 'Alerted', gather: 'Gathering', work: 'Working', assist: 'Assisting a crewmate',
@@ -57,8 +64,6 @@ export function keyNumbers(e: Emergency, tick: SimulationTick): KeyNumber[] {
     out.push({ label: `${who}: heart rate`, value: fmt0(subject?.vitals[VITAL.hr]), unit: 'bpm' })
     if (e.cause === 'co_poisoning') out.push({ label: `Carbon monoxide, ${m}`, value: fmt0(mod?.co_ppm), unit: 'ppm' })
     else out.push({ label: `Carbon dioxide, ${m}`, value: mod ? fmt1(ppco2Mmhg(mod)) : '—', unit: 'mmHg' })
-  } else {
-    out.push({ label: moduleName(e.module_id), value: e.detail || '—', unit: '' })
   }
   return out
 }

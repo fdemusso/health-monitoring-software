@@ -18,7 +18,7 @@ Dependencies point down: `app` -> `features` -> `components` / `domain` / `lib` 
 | Procedures (the protocol of an emergency, live checklist, library) | `features/crew/ProcedureView.tsx`, `ProtocolsDialog.tsx`, `domain/procedures.ts` |
 | Module map dialog | `features/modules/ModulesDialog.tsx` |
 | Event history sheet | `features/log/EventLogSheet.tsx` |
-| Debug sheet (dev, or `?debug`) | `features/debug/` |
+| Scenario menu / cheat menu (dev, or `?debug`): speed 1-60x, station and crew events, alarms | `features/debug/` |
 | Buttons, dialog, sheet, badges (shadcn on Radix) | `components/ui/` |
 | Small shared pieces: chips, status dot, sparkline, brackets | `components/` |
 | The 3D-ish body hologram | `components/BodyHologram/` |
