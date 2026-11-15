@@ -37,3 +37,10 @@ simulatore, quindi le metriche dei report (falsi allarmi, ritardi) sono **tempi 
 prestazioni di volo. Il tempo è compresso di 30x (`TIME_COMPRESSION` in `tools/build_station.py`): "24 h" simulate sono circa un
 mese di deriva reale. I punteggi medici e le procedure sono ricostruiti da fonti pubbliche e vanno rivisti da Luca.
 `joblib` esegue codice al caricamento: si caricano solo i modelli prodotti da noi (`models/`).
+
+## Fonti delle procedure mediche (R20-R26)
+
+Aggiunte con `docs/procedure-mediche.md`, dove stanno titolo, ente, anno e URL di ciascuna: `[R20]` NASA OCHMO-TB-004 (CO2),
+`[R21]` NASA/TP-2010-216126 (CO2 in volo), `[R22]` linea guida SVT ACC/AHA/HRS 2015 (terrestre), `[R23]` linea guida FA
+ACC/AHA/ACCP/HRS 2023 (terrestre, URL da verificare), `[R24]` NHS disidratazione, `[R25]` NHS colpo di calore, `[R26]` NASA HRP, rapporto
+Behavioral Medicine 2025.

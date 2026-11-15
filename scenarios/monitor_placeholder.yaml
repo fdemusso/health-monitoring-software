@@ -263,7 +263,7 @@ playbooks:
 # Crew procedures (the checklist for the PEOPLE; the playbooks above are the safing of the machine). Chosen by (emergency, cause,
 # severity): the one that names the cause wins. Steps: instruction (closed by the UI, or by the NPC of the role after duration_s),
 # check (automatic, on SENSED values), question (yes -> on_pass, no -> on_fail), escalate (ends as `escalated`), action (a playbook step).
-# Content rebuilt from public sources (plan D3, [R7] [R8] [R12]-[R17]): ESTIMATE, to be reviewed by the bioengineer. Only items of the
+# Content rebuilt from public sources (plan D3, [R7] [R8] [R12]-[R17], [R20]-[R26] in docs/procedure-mediche.md): ESTIMATE, to be reviewed by the bioengineer. Only items of the
 # ISS medical kit are named, NEVER doses ("as per the flight surgeon / the medical checklist"). A treatment does not change the
 # simulated physiology (Luca's model is out of scope): the checks are written on what the simulator can produce (clean air, a removed source).
 procedures:
@@ -271,7 +271,7 @@ procedures:
     emergency: medical
     cause: hypoxia
     title: "Hypoxia: SpO2 below 90 % ({subject})"
-    steps:
+    steps: &hypoxia_steps
       - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; check consciousness, breathing and the oxygen partial pressure of {module}"}
       - {id: s2, do: instruction, role: medical, duration_s: 30, text: "If the air of {module} is poor, move {subject} to the nearest module with normal air"}
       - {id: s3, do: instruction, role: medical, duration_s: 30, text: "Give oxygen with the Variable Oxygen System, target SpO2 94-98 %"}
@@ -281,7 +281,7 @@ procedures:
     emergency: medical
     cause: co_poisoning
     title: "Carbon monoxide: COHb raised ({subject})"
-    steps:
+    steps: &co_steps
       - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Take {subject} out of {module} and away from the source of CO"}
       - {id: s2, do: instruction, role: medical, duration_s: 20, text: "100 % oxygen at once with the Variable Oxygen System and a non-rebreather mask"}
       - {id: s3, do: question, role: medical, duration_s: 15, auto_answer: "no", text: "Is there still carbon monoxide in {module}?", on_pass: s4, on_fail: s5}
@@ -305,6 +305,123 @@ procedures:
       - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; check consciousness, breathing, pulse and temperature"}
       - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Follow the medical checklist for the symptoms; keep {subject} at rest"}
       - {id: s3, do: escalate, text: "Report to the flight surgeon with the readings of the wearable"}
+  # ---- one procedure per cause that the medical detectors and the diagnoser can name (docs/procedure-mediche.md has the sources and the
+  # open questions for the bioengineer). `cause` is matched EXACTLY, so the joint causes (person + environment) carry a copy of the steps.
+  - id: med_hypoxia_crew
+    emergency: medical
+    cause: hypoxia_crew
+    title: "Low oxygen in the air: {subject} is exposed ({module})"
+    steps: *hypoxia_steps
+  - id: med_co_crew
+    emergency: medical
+    cause: co_exposure_crew
+    title: "Carbon monoxide in the air: {subject} is exposed ({module})"
+    steps: *co_steps
+  - id: med_hypercapnia_crew
+    emergency: medical
+    cause: hypercapnia_crew
+    title: "High CO2 in the air: {subject} is exposed ({module})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; ask about headache, breathlessness, fatigue and dizziness [R20]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Move {subject} to a module with normal air, away from {module}; ESTIMATE"}
+      - {id: s3, do: instruction, role: systems, duration_s: 30, text: "Check the CO2 of {module} on the MCA and the scrubber (CDRA); keep the fans of {module} running so the CO2 does not pool around the person [R20]"}
+      - {id: s4, do: question, role: systems, duration_s: 15, auto_answer: "no", text: "Is the CO2 of {module} still above the limit (3 mmHg, 1 h average [R21])?", on_pass: s5, on_fail: s6}
+      - {id: s5, do: instruction, role: systems, duration_s: 30, text: "Wake the standby scrubber, open the hatches to the neighbouring modules for the IMV exchange; report to the flight surgeon", on_pass: s7}
+      - {id: s6, do: instruction, role: medical, duration_s: 15, text: "The air is back in range: keep {subject} at rest and watch the symptoms"}
+      - {id: s7, do: check, metric: resp_rate, max: 20, within_s: 900, on_pass: done, on_fail: s8}
+      - {id: s8, do: escalate, text: "Breathing rate of {subject} is not back to normal: call the flight surgeon"}
+  - id: med_crew_baseline
+    emergency: medical
+    cause: crew_baseline
+    title: "{subject} is out of their own baseline (cause not named)"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; ask how they feel and about what they did in the last hours (exercise, meal, sleep) [R9]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Measure again at rest: pulse, breathing rate, temperature, SpO2, with the medical kit instruments [R12]"}
+      - {id: s3, do: check, metric: hr, max: 100, within_s: 900, on_pass: done, on_fail: s4}
+      - {id: s4, do: escalate, text: "The readings of {subject} stay off their baseline: report to the flight surgeon with the wearable data"}
+  - id: med_fever
+    emergency: medical
+    cause: fever
+    title: "Raised temperature: suspected fever ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; measure the temperature with the medical kit thermometer and ask about symptoms (cough, sore throat, chills) [R12]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Rest and fluids; medication from the kit only as the flight surgeon says [R12]"}
+      - {id: s3, do: check, metric: core_temp_c, max: 38.0, within_s: 3600, on_pass: done, on_fail: s4}
+      - {id: s4, do: escalate, text: "Temperature not falling: call the flight surgeon"}
+  - id: med_respiratory
+    emergency: medical
+    cause: respiratory_infection
+    title: "Suspected respiratory infection ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; ask about cough, sore throat and breathlessness; give a mask to limit the spread in the cabin; ESTIMATE"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Measure temperature, breathing rate and SpO2 at rest; report to the flight surgeon, who decides the treatment [R12]"}
+      - {id: s3, do: check, metric: spo2, min: 94, within_s: 600, on_pass: s4, on_fail: s5}
+      - {id: s4, do: check, metric: core_temp_c, max: 38.0, within_s: 3600, on_pass: done, on_fail: s5}
+      - {id: s5, do: escalate, text: "SpO2 low or temperature not falling: call the flight surgeon at once; oxygen with the Variable Oxygen System if SpO2 stays low [R13]"}
+  - id: med_dehydration
+    emergency: medical
+    cause: dehydration
+    title: "Signs of dehydration ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; ask about thirst, dizziness and how much they drank [R24]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Oral rehydration with the drinks of the galley; check the water supply and the exercise schedule of {subject} [R24]"}
+      - {id: s3, do: check, metric: hr, max: 100, within_s: 1800, on_pass: done, on_fail: s4}
+      - {id: s4, do: escalate, text: "Heart rate still raised after rehydration: report to the flight surgeon"}
+  - id: med_afib
+    emergency: medical
+    cause: atrial_fibrillation_suspected
+    title: "Irregular fast heart rhythm: suspected atrial fibrillation ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 15, text: "Reach {subject}; rest, sitting or floating still; ask about palpitations, chest pain, dizziness or breathlessness [R16]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Take the pulse by hand and record an ECG with the kit device, if available [R12]"}
+      - {id: s3, do: instruction, role: medical, duration_s: 20, text: "Report at once to the flight surgeon with the ECG: the decision on the treatment is theirs [R16] [R23]"}
+      - {id: s4, do: check, metric: hr, max: 110, within_s: 900, on_pass: done, on_fail: s5}
+      - {id: s5, do: escalate, text: "The rhythm is not settling: the flight surgeon decides; prepare for an urgent return if they say so"}
+  - id: med_svt
+    emergency: medical
+    cause: svt_suspected
+    title: "Very fast regular heart rhythm: suspected supraventricular tachycardia ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 15, text: "Reach {subject}; rest, ask about palpitations, chest pain, dizziness or fainting [R16]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Take the pulse and record an ECG with the kit device, if available [R12]"}
+      - {id: s3, do: instruction, role: medical, duration_s: 20, text: "Report at once to the flight surgeon: manoeuvres and medication only as they say [R16] [R22]"}
+      - {id: s4, do: check, metric: hr, max: 110, within_s: 900, on_pass: done, on_fail: s5}
+      - {id: s5, do: escalate, text: "Heart rate not settling: the flight surgeon decides; keep the defibrillator ready"}
+  - id: med_bradycardia
+    emergency: medical
+    cause: bradycardia
+    title: "Slow heart rate ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; ask about dizziness, fainting, chest pain; note whether they are resting or asleep [R16]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Take the pulse by hand and measure blood pressure if the kit has the device; report to the flight surgeon [R12]"}
+      - {id: s3, do: check, metric: hr, min: 45, within_s: 900, on_pass: done, on_fail: s4}
+      - {id: s4, do: escalate, text: "Heart rate stays low: call the flight surgeon at once"}
+  - id: med_stress
+    emergency: medical
+    cause: acute_stress
+    title: "Acute stress ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: incident_commander, duration_s: 20, text: "Talk to {subject}; take them to a quiet place and reduce the workload for now [R26]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Slow breathing together; check that nothing physical explains it (temperature, SpO2, CO2 of the module); ESTIMATE"}
+      - {id: s3, do: check, metric: hr, max: 100, within_s: 900, on_pass: done, on_fail: s4}
+      - {id: s4, do: escalate, text: "Not settling: report to the flight surgeon and the psychological support team [R26]"}
+  - id: med_motion_sickness
+    emergency: medical
+    cause: space_motion_sickness
+    title: "Space motion sickness ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; keep the head still, a bag at hand, a fixed visual reference [R17]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Medication from the kit only as the flight surgeon or the medical checklist says; report the symptoms [R17] [R12]"}
+  - id: med_exertion
+    emergency: medical
+    cause: abnormal_exertion
+    title: "Heart rate and temperature too high for the exercise ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 15, text: "{subject}: stop the exercise now and rest; ask about chest pain, dizziness, nausea [R15]"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Cool the person (cold pack) and oral fluids; check the temperature of {module} [R15] [R25]"}
+      - {id: s3, do: check, metric: hr, max: 100, within_s: 900, on_pass: s4, on_fail: s5}
+      - {id: s4, do: check, metric: core_temp_c, max: 38.5, within_s: 1800, on_pass: done, on_fail: s5}
+      - {id: s5, do: escalate, text: "Heart rate or temperature not back to rest values: call the flight surgeon"}
   - id: sensor_check
     emergency: sensor_fault
     title: "Sensor not to be trusted: {subject}"
