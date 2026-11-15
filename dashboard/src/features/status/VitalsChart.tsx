@@ -50,7 +50,7 @@ export const VitalsChart = memo(function VitalsChart() {
       {!model ? (
         <div className="grid h-[220px] place-items-center rounded-2xl bg-white/[.03] text-sm text-muted-foreground">In attesa dei dati…</div>
       ) : (
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`${meta.label} dell'equipaggio`}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ maxHeight: 210 }} role="img" aria-label={`${meta.label} dell'equipaggio`}>
           {(() => {
             const yc = model.y(meta.crit)
             const danger = key === 'spo2' ? [yc, H - PADB] : [PADT, yc]

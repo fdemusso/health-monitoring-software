@@ -47,7 +47,7 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
   const emergency = tick.emergencies.find((e) => e.state !== 'cleared' && (e.subject === npc.id || (!e.subject && e.module_id === npc.module_id)))
   return (
     <>
-      <div className="col-span-full">
+      <div>
         <div className="mb-3 flex flex-wrap items-center gap-4">
           <Button variant="outline" size="sm" onClick={onBack}><ArrowLeft size={16} /> Equipaggio</Button>
           <CrewChip id={npc.id} />
@@ -64,7 +64,7 @@ export function CrewDetail({ npc, tick, onBack }: { npc: NPCState; tick: Simulat
             : <Trend title={`ppCO₂ in ${npc.module_id.toUpperCase()}`} value={mod ? fmt1(ppco2Mmhg(mod)) : '—'} unit="mmHg" status={mod ? limitStatus(ENV_METRICS.ppco2, ppco2Mmhg(mod)) : 'ok'} values={ctx} />}
         </div>
       </div>
-      <div className="col-start-2 grid grid-cols-[1fr_290px] gap-[18px] animate-in fade-in zoom-in-95 duration-150">
+      <div className="grid grid-cols-[1fr_290px] gap-[18px] animate-in fade-in zoom-in-95 duration-150">
         <div ref={stageRef} className="relative min-w-0" style={{ height: H }}>
           <HologramFrame npc={npc} tick={tick} width={W} color={id.color} />
           <HologramCallouts npc={npc} anchors={anchors} width={stageW} height={H} />

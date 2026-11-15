@@ -1,21 +1,23 @@
-export const HEX_W = 108, HEX_H = 125 // pointy-top
-export const ORIGIN = { x: 8, y: 8 } // arcs are centred on the screen corner
 export const CLIP = 'polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)'
 
-export type CellId = 'alerts' | 'protocols' | 'history' | 'status' | 'crew' | 'env'
-/** R = radius, deg = angle from the bottom edge. */
-export const CELLS: { id: CellId; label: string; R: number; deg: number }[] = [
-  { id: 'alerts', label: 'Allarmi', R: 295, deg: 79 },
-  { id: 'protocols', label: 'Protocolli', R: 175, deg: 25 },
-  { id: 'history', label: 'Storico', R: 175, deg: 65 },
-  { id: 'status', label: 'Stato', R: 295, deg: 13 },
-  { id: 'crew', label: 'Crew', R: 295, deg: 35 },
-  { id: 'env', label: 'Ambiente', R: 295, deg: 57 },
+/** Closed menu button (pointy-top hexagon) and its centre from the screen corner. */
+export const TRIGGER = { w: 84, h: 97, cx: 62, cy: 62 }
+/** Open menu cells, on one arc centred on the trigger. */
+export const CELL = { w: 88, h: 101 }
+export const ARC = { R: 335, startDeg: 10, stepDeg: 18 }
+
+export type CellId = 'status' | 'crew' | 'alerts' | 'protocols' | 'history'
+/** In arc order, from the bottom. */
+export const CELLS: { id: CellId; label: string }[] = [
+  { id: 'status', label: 'Stato' },
+  { id: 'crew', label: 'Crew' },
+  { id: 'alerts', label: 'Allarmi' },
+  { id: 'protocols', label: 'Protocolli' },
+  { id: 'history', label: 'Storico' },
 ]
 
-export function cellPosition(R: number, deg: number) {
-  const rad = (deg * Math.PI) / 180
-  const cx = ORIGIN.x + R * Math.cos(rad)
-  const cy = ORIGIN.y + R * Math.sin(rad)
-  return { left: cx - HEX_W / 2, bottom: cy - HEX_H / 2 }
+/** Offset of cell `k` from the trigger centre (x right, y up), px. */
+export function cellOffset(k: number) {
+  const rad = ((ARC.startDeg + k * ARC.stepDeg) * Math.PI) / 180
+  return { x: ARC.R * Math.cos(rad), y: ARC.R * Math.sin(rad) }
 }

@@ -13,6 +13,8 @@ export function vitalStatus(key: string, value: number | undefined, activity = '
     case VITAL.coreTemp: return value >= 38.5 ? 'crit' : value >= 37.8 ? 'warn' : 'ok'
     case VITAL.hr:
       if (activity.startsWith('exercise')) return 'ok' // HR ~140 is normal during exercise
+      // ESTIMATE: sleeping HR can sit in the 40s, so the low warning drops to 40 (crit 35) during sleep.
+      if (activity === 'sleep') return value > 130 || value < 35 ? 'crit' : value > 100 || value < 40 ? 'warn' : 'ok'
       return value > 130 || value < 40 ? 'crit' : value > 100 || value < 50 ? 'warn' : 'ok'
     case VITAL.resp: return value >= 28 ? 'crit' : value >= 22 ? 'warn' : 'ok'
     case VITAL.cohb: return value >= 15 ? 'crit' : value >= 5 ? 'warn' : 'ok'

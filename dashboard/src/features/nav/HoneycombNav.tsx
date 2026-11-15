@@ -1,21 +1,42 @@
-import { Activity, Bell, ClipboardList, History, LayoutGrid, Users } from 'lucide-react'
-import type { ComponentType } from 'react'
+import { Activity, Bell, ClipboardList, History, Menu, Users, X } from 'lucide-react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { useUi } from '@/app/ui-context'
 import { CREW_ORDER } from '@/domain/crewConfig'
-import { crewStatus, primaryEmergency, isCriticalConfirmed, RANKED } from '@/domain/status'
+import { crewStatus, isCriticalConfirmed, primaryEmergency, RANKED } from '@/domain/status'
 import { cn } from '@/lib/utils'
-import { useCrewList, useEmergencies } from '@/telemetry/useTelemetry'
-import { CELLS, CLIP, HEX_H, HEX_W, cellPosition, type CellId } from './hexGeometry'
+import { useCrewList, useEmergencies, usePendingActions } from '@/telemetry/useTelemetry'
+import { CELL, CELLS, CLIP, TRIGGER, cellOffset, type CellId } from './hexGeometry'
 
 const ICON: Record<CellId, ComponentType<{ size?: number; strokeWidth?: number }>> = {
-  alerts: Bell, protocols: ClipboardList, history: History, status: Activity, crew: Users, env: LayoutGrid,
+  status: Activity, crew: Users, alerts: Bell, protocols: ClipboardList, history: History,
 }
 
+function Hex({ w, h, on, children, className }: { w: number; h: number; on?: boolean; children: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn('absolute inset-0 block', className)} style={{ width: w, height: h, clipPath: CLIP, background: 'rgb(255 255 255 / .22)' }}>
+      <span className={cn('absolute inset-[1.5px] flex flex-col items-center justify-center gap-1.5', on ? 'bg-[#f2f4f7] text-[#05070a]' : 'bg-[hsl(220_20%_6%)] text-foreground')} style={{ clipPath: CLIP }}>
+        {children}
+      </span>
+    </span>
+  )
+}
+
+/** Corner menu: one hexagon when closed (with emergency indicators); the cells fan out on an arc when open. */
 export function HoneycombNav() {
   const ui = useUi()
+  const [open, setOpen] = useState(false)
   const emergencies = useEmergencies()
+  const pending = usePendingActions()
   const crew = useCrewList()
   const { primary } = primaryEmergency(emergencies)
+  const critical = isCriticalConfirmed(primary)
+
+  useEffect(() => {
+    if (!open) return
+    const h = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [open])
 
   const urgentCrew = () => {
     if (primary?.subject) return primary.subject
@@ -24,43 +45,74 @@ export function HoneycombNav() {
   }
 
   const act = (id: CellId) => {
+    setOpen(false)
     switch (id) {
       case 'status': case 'alerts': ui.setPage(0); break
       case 'crew': ui.closeCrew(); ui.setPage(1); break
       case 'protocols': ui.openCrew(urgentCrew()); break
       case 'history': ui.setLogOpen(true); break
-      case 'env': ui.showToast('Ambiente: in arrivo'); break
     }
   }
-  const active = (id: CellId) => (id === 'status' || id === 'alerts' ? ui.page === 0 && id === 'status' : id === 'crew' ? ui.page === 1 && !ui.selectedCrew : id === 'protocols' ? ui.page === 1 && !!ui.selectedCrew : false)
+  const active = (id: CellId) =>
+    id === 'status' ? ui.page === 0 : id === 'crew' ? ui.page === 1 && !ui.selectedCrew : id === 'protocols' ? ui.page === 1 && !!ui.selectedCrew : false
+  const CurrentIcon = ICON[ui.page === 0 ? 'status' : ui.selectedCrew ? 'protocols' : 'crew']
+
+  const label = `Menu${critical ? ', emergenza critica' : ''}${pending.length ? `, ${pending.length} azioni in attesa` : ''}`
 
   return (
-    <nav aria-label="Navigazione" className="pointer-events-none fixed bottom-0 left-0 z-20 h-[370px] w-[360px]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-      {CELLS.map((c) => {
+    <nav aria-label="Navigazione" className="pointer-events-none fixed inset-0 z-20" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {/* scrim: dims the page while the menu is open; tap outside closes */}
+      <div
+        aria-hidden
+        onClick={() => setOpen(false)}
+        className={cn('absolute inset-0 transition-opacity duration-200', open ? 'pointer-events-auto opacity-100' : 'opacity-0')}
+        style={{ background: 'radial-gradient(circle 680px at 0 100%, rgb(0 0 0 / .94), rgb(0 0 0 / .65) 60%, transparent)' }}
+      />
+      {open && <div aria-hidden className="absolute rounded-full border border-dashed border-holo/25" style={{ left: TRIGGER.cx - 335, bottom: TRIGGER.cy - 335, width: 670, height: 670 }} />}
+
+      {CELLS.map((c, k) => {
         const Icon = ICON[c.id]
-        const on = active(c.id)
-        const pos = cellPosition(c.R, c.deg)
-        const alertDot = c.id === 'alerts' && isCriticalConfirmed(primary)
+        const o = cellOffset(k)
         return (
           <button
             key={c.id}
             type="button"
             aria-label={c.label}
+            tabIndex={open ? 0 : -1}
             onClick={() => act(c.id)}
-            className="pointer-events-auto absolute transition active:scale-[.94]"
-            style={{ width: HEX_W, height: HEX_H, left: pos.left, bottom: pos.bottom, clipPath: CLIP, background: 'rgb(255 255 255 / .2)' }}
+            className={cn('absolute transition-[transform,opacity] duration-200 ease-out active:scale-[.94]', open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0')}
+            style={{
+              width: CELL.w, height: CELL.h,
+              left: TRIGGER.cx + o.x - CELL.w / 2, bottom: TRIGGER.cy + o.y - CELL.h / 2,
+              transform: open ? 'none' : `translate(${-o.x}px, ${o.y}px) scale(.5)`,
+              transitionDelay: open ? `${k * 25}ms` : '0ms',
+            }}
           >
-            <span
-              className={cn('absolute inset-[1.5px] flex flex-col items-center justify-center gap-1.5', on ? 'bg-[#f2f4f7] text-[#05070a]' : 'bg-[hsl(220_20%_6%)] text-foreground')}
-              style={{ clipPath: CLIP }}
-            >
-              <Icon size={32} strokeWidth={1.5} />
-              <span className="text-[11px] font-medium uppercase tracking-wider">{c.label}</span>
-            </span>
-            {alertDot && <span className="anim-ping absolute right-[30px] top-[24px] size-2.5 rounded-full bg-crit" />}
+            <Hex w={CELL.w} h={CELL.h} on={active(c.id)}>
+              <Icon size={28} strokeWidth={1.5} />
+              <span className="text-[10px] font-medium uppercase tracking-[.08em]">{c.label}</span>
+            </Hex>
+            {c.id === 'alerts' && critical && <span className="anim-ping absolute right-[22px] top-[18px] size-2.5 rounded-full bg-crit" />}
           </button>
         )
       })}
+
+      <button
+        type="button"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="pointer-events-auto absolute transition active:scale-[.94]"
+        style={{ width: TRIGGER.w, height: TRIGGER.h, left: TRIGGER.cx - TRIGGER.w / 2, bottom: TRIGGER.cy - TRIGGER.h / 2 }}
+      >
+        <Hex w={TRIGGER.w} h={TRIGGER.h}>{open ? <X size={26} strokeWidth={1.5} /> : <CurrentIcon size={26} strokeWidth={1.5} />}</Hex>
+        {!open && <Menu aria-hidden size={12} className="absolute bottom-[22px] left-1/2 -translate-x-1/2 text-muted-foreground" />}
+        {!open && critical && <span className="anim-ping absolute right-[16px] top-[14px] size-3 rounded-full bg-crit" />}
+        {!open && !critical && primary && <span className="absolute right-[16px] top-[14px] size-3 rounded-full bg-warn" />}
+        {!open && pending.length > 0 && (
+          <span className="absolute right-[6px] top-[38px] grid h-5 min-w-5 place-items-center rounded-full bg-warn px-1 text-[11px] font-bold text-black">{pending.length}</span>
+        )}
+      </button>
     </nav>
   )
 }
