@@ -3,7 +3,7 @@
  * and a client for the commands the backend accepts. Protocol: `src/ares3/serve/session.py` (module docstring).
  */
 import type { VitalsSource } from './contracts';
-import type { EmergencyKind, FaultSpec, SimulationTick } from './types';
+import type { EmergencyKind, FaultSpec, HistorySample, SimulationTick } from './types';
 
 /** What the UI can ask of the running simulation (python: `sdk/control.py::ControlAPI`, plus pacing). */
 export type ControlCommand =
@@ -11,6 +11,7 @@ export type ControlCommand =
   | { cmd: 'stop_event'; args: { fault_id: string } }
   | { cmd: 'approve_action'; args: { action_id: string; by?: string } }
   | { cmd: 'reject_action'; args: { action_id: string; by?: string } }
+  | { cmd: 'ack_step'; args: { procedure_id: string; step_id: string; by?: string; answer?: 'yes' | 'no' } }
   | { cmd: 'declare_emergency'; args: { kind: EmergencyKind; module_id: string; by?: string } }
   | { cmd: 'pause'; args?: Record<string, never> }
   | { cmd: 'resume'; args?: Record<string, never> }
@@ -41,6 +42,7 @@ export interface CommandResult {
 type ServerMessage =
   | ({ type: 'hello' } & BackendHello)
   | ({ type: 'tick'; tick: SimulationTick } & BackendStatus)
+  | { type: 'history'; samples: HistorySample[] }
   | ({ type: 'result'; id: number } & CommandResult);
 
 export interface WebSocketBackendOptions {
@@ -49,6 +51,8 @@ export interface WebSocketBackendOptions {
   /** Milliseconds before reconnecting after the connection drops. Default 2000; 0 disables. */
   reconnectMs?: number;
   onHello?: (hello: BackendHello) => void;
+  /** The last hours of the simulation, sent once right after `hello`: fills the charts at once. */
+  onHistory?: (samples: HistorySample[]) => void;
   onStatus?: (status: BackendStatus) => void;
   /** `true` while the socket is open. */
   onConnection?: (connected: boolean) => void;
@@ -124,6 +128,8 @@ export class WebSocketBackend implements VitalsSource {
       for (const listener of this.listeners) listener(msg.tick);
     } else if (msg.type === 'hello') {
       this.options.onHello?.(msg);
+    } else if (msg.type === 'history') {
+      this.options.onHistory?.(msg.samples);
     } else {
       const resolve = this.waiting.get(msg.id);
       this.waiting.delete(msg.id);

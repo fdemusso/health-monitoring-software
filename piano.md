@@ -4,6 +4,21 @@ Stato: PIANO DECISO (team software), 2026-11-15. Le domande che avremmo fatto a 
 dal codice, dal workbook o da fonti pubbliche; ogni scelta nostra è marcata ESTIMATE ed è reversibile senza toccare il codice
 di Luca né i file generati. Tutto in termini ISS, mai Marte.
 
+## Avanzamento (2026-11-15)
+
+| Fase | Stato | Note |
+|---|---|---|
+| F0 Dati | **fatto, con 3 parti rimaste fuori** | `fault_ranges`, `classes.yaml`, generatore (casuale, combinazioni, eventi medici, `--shard`), corsa gemella, metriche a evento. Mancano: `tools/ml/report.py` (report HTML), le classi offline di ipossia / avvelenamento da CO (restano alle regole SpO2/SpCO) e i gruppi PCA dell'equipaggio |
+| F1 Stati | fatto | `monitor_mode`, `alert_class`, isteresi |
+| F2 Stadio A | fatto | `Variance`, `RedundancyResidual`, `EarlyWarningScore`, una PCA per sottosistema (0 falsi allarmi su 10 giorni di test). Fuori: la soglia dinamica. I portelli non sono nel gruppo: li muove la risposta stessa |
+| F3 Stadio B | fatto, **solo in parte attivo nel monitor** | 140 run; soglia 0,90 e conferma doppia: 1 falso allarme su 10 giorni nominali e 26 guasti su 34 con l'etichetta giusta (offline, un solo seed di test). Nel monitor vivo solo le famiglie fisica / attuatori / medica: le classi di sensore aprivano falsi `sensor_fault` (9 in 5 giorni) e le coprono già le regole |
+| F4 Reazione | fatto | `ProcedureRunner`, azioni `power` e `sensor substitute`, 7 procedure. Fuori: l'azione `crew` (il trasferimento è un passo `instruction`) |
+| F5 Contratto UI | fatto | campi, `ack_step`, ruolo, messaggio `history`, specchio TS |
+| F6 Chiusura | in corso | fonti, `docs/monitor-ui.md`, `docs/deploy.md`, CLAUDE.md fatti; demo registrata no |
+
+Numeri del monitor completo (regole + ML) su giorni nominali interi: 0 allarmi su 4 seed su 5, 1 sospetto sul quinto (soglia della coppia
+ppO2 poi alzata a 0,4). 4,4 ms per tick con l'ML attivo (circa 230x il tempo reale). Tutto in tempo simulato su dati sintetici.
+
 ---
 
 ## 1. Cosa c'è già e cosa manca

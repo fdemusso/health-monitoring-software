@@ -1,0 +1,19 @@
+# Subsystems of the stage-A anomaly detectors (tools/ml/train_anomaly.py). A sensor belongs to a group when its METRIC is listed
+# (any module) or its id matches one of the regular expressions. The result is stored in each model, so the detector in the
+# simulator needs no list of its own. Sensor ids and metrics are those of scenarios/station/sensors.yaml (Mario's workbook).
+# Crew groups (one per astronaut, on the personal baseline) are not here yet: the crew is covered by the rule-based
+# EarlyWarningScore until the vital-sign model is trained.
+atmosphere_pressure:
+  metrics: [P]
+  ids: ["^pca_"]                       # N2 make-up valve and tank (hatch positions are left out: the response itself moves them)
+atmosphere_co2:
+  metrics: [ppCO2]                      # the cabin probes and the MCA channel
+  ids: ["^cdra[AB]_"]                   # CDRA power, bed temperatures, blower, selector valve
+atmosphere_o2:
+  metrics: [ppO2]
+  ids: ["^oga_"]                        # OGA stack voltage and current, O2 flow, H2 fraction
+thermal_humidity:
+  metrics: [T, RH, ppH2O]
+  ids: ["^tcs_", "^ccaa_.*_(cond|liq|T_out)$"]   # cold loop, condensate flow, liquid water, heat exchanger outlet
+ventilation:
+  ids: ["^imv_", "^ccaa_.*_(I|rpm)$"]  # inter-module fans and cabin fans: speed and current

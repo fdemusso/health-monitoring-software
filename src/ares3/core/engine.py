@@ -33,6 +33,7 @@ from .metabolism import build_catalog
 from .monitor import Monitor
 from .npc import NPC
 from .orbit import Orbit, flux_swing_w_m2
+from .procedures import ProcedureRunner
 from .responder import Responder
 from .response import CrewResponse
 from .rng import derive
@@ -70,7 +71,17 @@ class Engine:
             scenario.monitor.playbooks, {a.id for a in scenario.layout.actuators},
             {frozenset((h.a, h.b)) for h in scenario.layout.hatches}, self._guard,
             {m.id for m in scenario.layout.modules},
-            frozenset(frozenset((h.a, h.b)) for h in scenario.layout.hatches if h.closable))
+            frozenset(frozenset((h.a, h.b)) for h in scenario.layout.hatches if h.closable),
+            {s.id for s in scenario.layout.sensors}, scenario.monitor.substitutes)
+        cr0 = scenario.monitor.crew_response
+        self.procedures = ProcedureRunner(scenario.monitor.procedures, self.responder,
+                                          follow=cr0 is not None and cr0.npc_follows_procedures,
+                                          profile_roles=cr0.roles if cr0 else None, succession=cr0.succession if cr0 else ())
+        self._unpowered: set[str] = set()  # modules whose power was cut by a ``power off`` (applied one tick after the command)
+        self._queued_power: list[tuple[str, bool]] = []
+        self._substitute: dict[str, str] = {}  # faulty sensor -> the sensor the control loops read instead
+        self._queued_sub: list[tuple[str, str | None]] = []  # (sensor, replacement or None = restore)
+        self._readings_view: dict[str, Observation] | None = None
         self._queued_fans: list[tuple[str, bool]] = []  # (module, on), applied at the start of the next tick
         self._extinguished_t: dict[str, float] = {}  # module -> when the extinguisher was last discharged
         self._queued_extinguish: list[str] = []  # modules where the crew discharges an extinguisher
@@ -139,7 +150,7 @@ class Engine:
         )
 
     def _snapshot(self, active_faults: tuple[str, ...], alarms=(), emergencies=(), monitor_events=(),
-                  pending_actions=(), monitor_mode="passive") -> SimulationTick:
+                  pending_actions=(), monitor_mode="passive", procedures=(), ml=None) -> SimulationTick:
         return SimulationTick(
             tick=self.clock.tick, t_sim_s=self.clock.t_s, dt_s=self.clock.dt_s, day=self.clock.day,
             time_of_day_h=self.clock.time_of_day_h,
@@ -148,11 +159,14 @@ class Engine:
             hatches=self.world.snapshot_hatches(), station=self._station, actuators=self._act_telemetry,
             active_faults=active_faults, alarms=alarms,
             emergencies=emergencies, pending_actions=pending_actions, monitor_events=monitor_events,
-            monitor_mode=monitor_mode,
+            monitor_mode=monitor_mode, procedures=procedures, ml=ml or {}, powered_off=tuple(sorted(self._unpowered)),
         )
 
     def _ctx(self, tick: SimulationTick, by_target) -> StepContext:
-        return StepContext(tick=tick, env=self.env, _faults=by_target, _readings=self._readings)
+        readings = self._readings
+        if self._substitute:  # control loops read the redundant sensor instead of the faulty one
+            readings = {**readings, **{bad: readings[good] for bad, good in self._substitute.items() if good in readings}}
+        return StepContext(tick=tick, env=self.env, _faults=by_target, _readings=readings)
 
     # ---- runtime events (debug button / UI) ----------------------------------------------------
     def inject(self, fault: FaultSpec, *, now: bool = True) -> FaultSpec:
@@ -176,6 +190,10 @@ class Engine:
     def reject_action(self, action_id: str, by: str | None = None) -> None:
         self.responder.reject(action_id, by)
 
+    def ack_step(self, procedure_id: str, step_id: str, by: str | None = None, answer: str | None = None) -> None:
+        """Close the active step of a crew procedure (anyone can); ``answer`` is yes / no for a question."""
+        self.procedures.ack(procedure_id, step_id, by, answer)
+
     def declare_emergency(self, kind: EmergencyKind, module_id: str, by: str | None = None) -> str:
         """Manual alarm, as a crew member can on the ISS. Held for the classifier's ``clear_s`` unless detectors back it."""
         if module_id not in self.world.modules:
@@ -198,6 +216,17 @@ class Engine:
         for a, b, open_ in self._queued_hatches:  # monitor actions of the previous tick
             w.set_hatch(a, b, open_)
         self._queued_hatches = []
+        for mid, on in self._queued_power:
+            (self._unpowered.add if not on else self._unpowered.discard)(mid)
+            if not on:
+                w.set_fans(mid, False)  # no power, no fans (they stay off after the power is back until the crew restarts them)
+        self._queued_power = []
+        for sensor, good in self._queued_sub:
+            if good is None:
+                self._substitute.pop(sensor, None)
+            else:
+                self._substitute[sensor] = good
+        self._queued_sub = []
         for mid, on in self._queued_fans:
             w.set_fans(mid, on)
         self._queued_fans = []
@@ -218,9 +247,9 @@ class Engine:
         else:
             swing = 0.0
         for m in w.modules.values():
-            if m.spec.base_heat_w or swing:
+            if (m.spec.base_heat_w and m.id not in self._unpowered) or swing:
                 area = m.spec.surface_m2 if m.spec.surface_m2 is not None else 4.6 * m.spec.volume_m3 ** (2.0 / 3.0)
-                w.add_heat(m.id, m.spec.base_heat_w + swing * area)
+                w.add_heat(m.id, (0.0 if m.id in self._unpowered else m.spec.base_heat_w) + swing * area)
 
         for npc in self.npcs.values():  # 2
             npc.override = self._orders.get(npc.id)
@@ -261,7 +290,7 @@ class Engine:
         telemetry: dict[str, dict[str, float]] = {}
         for act in self.actuators:
             faults = by_target.get(act.id, ())
-            if any(f.type == "actuator_offline" for f in faults):
+            if self._actuator_module.get(act.id) in self._unpowered or any(f.type == "actuator_offline" for f in faults):
                 telemetry[act.id] = act.telemetry_offline()
                 if act.id in self._fans:
                     w.hatch_by_id[self._fans[act.id]].fan_flow_m3_s = 0.0
@@ -309,8 +338,10 @@ class Engine:
 
         emergencies, monitor_events = self.monitor.step(self._ctx(tick, by_target), observations)  # 9
         actions, response_events = self.responder.step(t, emergencies)
+        procs, proc_events, proc_actions = self.procedures.step(t, emergencies, observations, tick.npcs, self._crew_roles)
+        actions += proc_actions
         tick = self._snapshot(tuple(f.id for f in active), self.alarms.evaluate(t, tick.modules), emergencies,
-                              (*monitor_events, *response_events), self.responder.pending, self.monitor.mode)
+                              (*monitor_events, *response_events, *proc_events), self.responder.pending, self.monitor.mode, procs, self.monitor.scores)
         if self.crew_response is not None:  # orders take effect on the next tick, like every command
             fires = {m: self._extinguished_t.get(m) for f in active if f.type == "fire" for m in f.targets}
             crew = self.crew_response.step(t, tick, fires)
@@ -351,6 +382,10 @@ class Engine:
                 self._queued_fans.append((a.target, a.command == "on"))
             elif a.kind == "extinguish":
                 self._queued_extinguish.append(a.target)
+            elif a.kind == "power":
+                self._queued_power.append((a.target, a.command == "on"))
+            elif a.kind == "sensor":
+                self._queued_sub.append((a.target, a.value_id if a.command == "substitute" else None))
 
         self._last_tick = tick
         self.clock.advance()
@@ -397,6 +432,8 @@ class Engine:
         k = min(1.0, max(0.0, (m.partial_kpa("o2") - po2_min) / (po2_ref - po2_min)))
         if not m.fans_on:
             k *= float(p.get("no_airflow_factor", 0.15))
+        if mid in self._unpowered and p.get("electrical", True):  # an electrical ignition source loses its supply (ESTIMATE)
+            k *= float(p.get("unpowered_factor", 0.2))
         src = f"fault:{f.id}"
         w.add_heat(mid, heat * k)
         burned = -w.add_moles(mid, "o2", -o2_rate * k * dt, src)
@@ -406,7 +443,12 @@ class Engine:
         self._fire_left_kj[f.id] = left - heat * k * dt / 1000.0 if burned > 0 else left
 
     def _guard(self, a: Action, also_closed: frozenset[frozenset[str]] = frozenset()) -> str | None:
-        """Safety rule of the ISS: never close a hatch that cuts someone off from the return vehicle."""
+        """Safety rules of the ISS: never close a hatch that cuts someone off from the return vehicle, and never cut the
+        power of the return vehicle or of a suit volume (they have their own supply)."""
+        if a.kind == "power" and a.command == "off":
+            m = self.world.modules.get(a.target)
+            own = m is not None and (m.spec.return_vehicle or m.spec.alarm_mode == "occupied")
+            return "the return vehicle and the suit volume have their own power supply" if own else None
         if a.kind != "hatch" or a.command != "close":
             return None
         x, y = a.target.split(":")

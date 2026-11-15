@@ -103,3 +103,120 @@ def test_websocket_end_to_end(station):
             await asyncio.wait([server], timeout=5)
 
     asyncio.run(go())
+
+
+def test_ack_step_closes_a_procedure_step_from_the_ui(station):
+    s = Session(station, paused=True)
+    s.engine.procedures.follow = False  # nobody but the UI closes steps
+    s.handle(_cmd("declare_emergency", kind="medical", module_id="hab"))
+    procedure = None
+    for _ in range(10):
+        s.advance(1)
+        procs = json.loads(s.frame())["tick"]["procedures"]
+        if procs:
+            procedure = procs[0]
+            break
+    assert procedure and procedure["current"] == "s1" and procedure["steps"][0]["status"] == "active"
+    tick = json.loads(s.frame())["tick"]
+    assert tick["monitor_mode"] == "reaction" and tick["ml"] == {} and tick["powered_off"] == []
+    assert s.handle(_cmd("ack_step", procedure_id=procedure["id"], step_id="s1", by="ui-user"))["ok"]
+    s.advance(1)
+    step = json.loads(s.frame())["tick"]["procedures"][0]["steps"][0]
+    assert step["status"] == "done" and step["by"] == "ui-user"
+    assert s.handle(_cmd("ack_step", procedure_id=procedure["id"], step_id="zzz"))["ok"] is False
+
+
+def test_warm_up_fills_the_history_a_new_client_receives(station):
+    s = Session(station, paused=True)
+    assert s.history() is None  # nothing recorded yet: no message
+    progress = []
+    s.warm_up(1200, progress.append)
+    msg = json.loads(s.history())
+    assert msg["type"] == "history" and len(msg["samples"]) == 20  # one per simulated minute
+    first = msg["samples"][0]
+    assert {"t_sim_s", "npcs", "modules"} <= first.keys() and first["npcs"] and first["modules"]
+    assert msg["samples"][1]["t_sim_s"] - first["t_sim_s"] == 60.0
+    assert progress[-1] == 1.0
+    assert json.loads(s.frame())["tick"]["tick"] == 1199 and json.loads(s.frame())["tick"]["monitor_events"] == []  # the hours before are not replayed
+    s.handle(_cmd("reset"))
+    assert s.history() is None  # a reset starts cold
+
+
+def test_history_is_capped_at_six_hours(station):
+    s = Session(station, paused=True)
+    s.advance(7 * 3600)
+    assert len(json.loads(s.history())["samples"]) == 360
+
+
+def test_token_makes_an_operator_and_origins_are_checked(station):
+    pytest.importorskip("websockets")
+    from websockets.asyncio.client import connect
+    from websockets.exceptions import InvalidStatus
+
+    from ares3.serve.server import serve
+
+    async def go():
+        s = Session(station, speed=50.0, max_fps=20.0, max_speed=200.0)
+        ready = asyncio.get_running_loop().create_future()
+        server = asyncio.create_task(serve(s, "127.0.0.1", 0, ready, token="s3cret", origins=["https://ares.example"]))
+        port = await ready
+        try:
+            async def ask(url, cmd, **kw):
+                async with connect(url, **kw) as ws:
+                    hello = json.loads(await ws.recv())
+                    await ws.send(json.dumps(_cmd(cmd, rid=3, **({"speed": 100000} if cmd == "set_speed" else {}))))
+                    while (m := json.loads(await ws.recv()))["type"] != "result":
+                        pass
+                    return hello["role"], m
+
+            ok = {"origin": "https://ares.example"}
+            role, reply = await ask(f"ws://127.0.0.1:{port}/?token=s3cret", "pause", **ok)
+            assert role == "operator" and reply["ok"]
+            role, reply = await ask(f"ws://127.0.0.1:{port}/", "pause", **ok)  # no token: watches only
+            assert role == "viewer" and not reply["ok"] and "read-only" in reply["error"]
+            role, reply = await ask(f"ws://127.0.0.1:{port}/?token=wrong", "pause", **ok)
+            assert role == "viewer" and not reply["ok"]
+            _, reply = await ask(f"ws://127.0.0.1:{port}/?token=s3cret", "set_speed", **ok)  # the server's own ceiling
+            assert not reply["ok"] and "200" in reply["error"]
+            with pytest.raises(InvalidStatus) as err:  # a page of another site
+                await ask(f"ws://127.0.0.1:{port}/?token=s3cret", "pause", origin="https://evil.example")
+            assert err.value.response.status_code == 403
+            role, _ = await ask(f"ws://127.0.0.1:{port}/?token=s3cret", "pause")  # a script sends no Origin
+            assert role == "operator"
+        finally:
+            server.cancel()
+            await asyncio.wait([server], timeout=5)
+
+    asyncio.run(go())
+
+
+def test_a_viewer_may_send_only_the_guest_commands(station):
+    pytest.importorskip("websockets")
+    from websockets.asyncio.client import connect
+
+    from ares3.serve.server import serve
+
+    async def go():
+        s = Session(station, speed=50.0, max_fps=20.0)
+        ready = asyncio.get_running_loop().create_future()
+        server = asyncio.create_task(serve(s, "127.0.0.1", 0, ready, token="s3cret", guest_commands=frozenset({"approve_action"})))
+        port = await ready
+        try:
+            async with connect(f"ws://127.0.0.1:{port}/") as ws:  # a visitor, no token
+                assert json.loads(await ws.recv())["role"] == "viewer"
+
+                async def reply(cmd, **args):
+                    await ws.send(json.dumps(_cmd(cmd, rid=9, **args)))
+                    while (m := json.loads(await ws.recv()))["type"] != "result":
+                        pass
+                    return m
+
+                allowed = await reply("approve_action", action_id="nope")  # reaches the session: its own error, not the read-only one
+                assert "read-only" not in allowed.get("error", "")
+                refused = await reply("pause")
+                assert not refused["ok"] and "'pause' needs the operator token" in refused["error"]
+        finally:
+            server.cancel()
+            await asyncio.wait([server], timeout=5)
+
+    asyncio.run(go())

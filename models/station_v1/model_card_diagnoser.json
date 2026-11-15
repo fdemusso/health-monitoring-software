@@ -1,0 +1,2170 @@
+{
+ "info": {
+  "train_seeds": [
+   1,
+   2,
+   3,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "stride": 5,
+  "visible_k": 3.0,
+  "min_proba": 0.6,
+  "ares3": "0.1.0",
+  "sklearn": "1.9.1",
+  "numpy": "2.4.6",
+  "python": "3.11.15",
+  "trained_at": "2026-11-15",
+  "metrics": {
+   "false_alarms": 17,
+   "nominal_test_days": 9.995833333333334
+  }
+ },
+ "families": {},
+ "faults": {
+  "F-ATT-CCAA-IDROFOBO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 1462,
+    "accuracy": 0.9931600547195623
+   },
+   "first_diagnosis": {
+    "guasto_chx": 124020.0,
+    "deriva_mca": 118260.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.977037037037037
+   },
+   "delay_from_visible_s": {
+    "F-ATT-CCAA-IDROFOBO": -45720.0
+   }
+  },
+  "F-ATT-CCAA-VENTOLA_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2675,
+    "accuracy": 0.9996261682242991
+   },
+   "first_diagnosis": {
+    "degrado_ventola_ccaa": 89160.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9855555555555555
+   },
+   "delay_from_visible_s": {
+    "F-ATT-CCAA-VENTOLA": 1860.0
+   }
+  },
+  "F-ATT-CDRA-ARRESTO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "first_diagnosis": {
+    "arresto_cdra": 47280.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9977777777777778
+   },
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-ARRESTO": 900.0
+   }
+  },
+  "F-ATT-CDRA-DEGRADO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 1428,
+    "accuracy": 0.9964985994397759
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9625925925925926
+   },
+   "first_diagnosis": {
+    "deriva_mca": 118260.0
+   },
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-DEGRADO": null
+   }
+  },
+  "F-ATT-CDRA-RISCALD_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2569,
+    "accuracy": 0.9478396263137407
+   },
+   "first_diagnosis": {
+    "guasto_riscaldatore_cdra": 39240.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9933333333333333
+   },
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-RISCALD": -4020.0
+   }
+  },
+  "F-ATT-CQFAN-FOD_s5_d2_r_f": {
+   "actuator": {
+    "rows": 1534,
+    "accuracy": 0.9954367666232073
+   },
+   "first_diagnosis": {
+    "degrado_ventola_cabina": 150240.0,
+    "bias_sensore_P": 126000.0,
+    "deriva_mca": 118260.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9611111111111111
+   },
+   "delay_from_visible_s": {
+    "F-ATT-CQFAN-FOD": null
+   }
+  },
+  "F-ATT-IMV-ARRESTO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2607,
+    "accuracy": 0.9267357115458381
+   },
+   "first_diagnosis": {
+    "arresto_imv": 46380.0,
+    "bias_sensore_P": 121680.0,
+    "deriva_mca": 118260.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.92
+   },
+   "delay_from_visible_s": {
+    "F-ATT-IMV-ARRESTO": 900.0
+   }
+  },
+  "F-ATT-IMV-FOD+F-ATT-CQFAN-FOD_s1_d2_r_f": {
+   "actuator": {
+    "rows": 2667,
+    "accuracy": 0.5819272590926134
+   },
+   "first_diagnosis": {
+    "degrado_imv": 77820.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9914814814814815
+   },
+   "delay_from_visible_s": {
+    "F-ATT-IMV-FOD": 1620.0,
+    "F-ATT-CQFAN-FOD": null
+   }
+  },
+  "F-ATT-IMV-FOD+F-ATT-CQFAN-FOD_s2_d2_r_f": {
+   "actuator": {
+    "rows": 2147,
+    "accuracy": 0.4783418723800652
+   },
+   "first_diagnosis": {
+    "degrado_imv": 107400.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9781481481481481
+   },
+   "delay_from_visible_s": {
+    "F-ATT-IMV-FOD": 1800.0,
+    "F-ATT-CQFAN-FOD": null
+   }
+  },
+  "F-ATT-IMV-FOD+F-ATT-CQFAN-FOD_s3_d2_r_f": {
+   "actuator": {
+    "rows": 2683,
+    "accuracy": 0.27245620573984347
+   },
+   "first_diagnosis": {
+    "degrado_imv": 52200.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9996296296296296
+   },
+   "delay_from_visible_s": {
+    "F-ATT-IMV-FOD": 2400.0,
+    "F-ATT-CQFAN-FOD": null
+   }
+  },
+  "F-ATT-IMV-FOD+F-ATT-CQFAN-FOD_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2682,
+    "accuracy": 0.30648769574944074
+   },
+   "first_diagnosis": {
+    "degrado_imv": 39960.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.997037037037037
+   },
+   "delay_from_visible_s": {
+    "F-ATT-IMV-FOD": 2460.0,
+    "F-ATT-CQFAN-FOD": null
+   }
+  },
+  "F-ATT-IMV-FOD_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2682,
+    "accuracy": 0.9958985831469053
+   },
+   "first_diagnosis": {
+    "degrado_imv": 39960.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.997037037037037
+   },
+   "delay_from_visible_s": {
+    "F-ATT-IMV-FOD": 2460.0
+   }
+  },
+  "F-ATT-OGA-H2_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.8037037037037037
+   },
+   "first_diagnosis": {
+    "arresto_oga": 51360.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9974074074074074
+   },
+   "delay_from_visible_s": {
+    "F-ATT-OGA-H2": 900.0
+   }
+  },
+  "F-ATT-OGA-STACK_s5_d2_r_f": {
+   "actuator": {
+    "rows": 1179,
+    "accuracy": 0.9694656488549618
+   },
+   "first_diagnosis": {
+    "degrado_oga": 104640.0,
+    "deriva_mca": 118260.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9807407407407407
+   },
+   "delay_from_visible_s": {
+    "F-ATT-OGA-STACK": -58500.0
+   }
+  },
+  "F-ATT-PCA-APERTA_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9948148148148148
+   },
+   "first_diagnosis": {
+    "guasto_pca_aperta": 31920.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9988888888888889
+   },
+   "delay_from_visible_s": {
+    "F-ATT-PCA-APERTA": 1980.0
+   }
+  },
+  "F-ATT-PCA-CHIUSA_s5_d2_r_f": {
+   "actuator": {
+    "rows": 290,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9074074074074074
+   },
+   "first_diagnosis": {
+    "bias_sensore_P": 121680.0,
+    "deriva_mca": 118260.0
+   },
+   "delay_from_visible_s": {
+    "F-ATT-PCA-CHIUSA": null
+   }
+  },
+  "F-ATT-TCS-CIRCUITO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9959259259259259
+   },
+   "first_diagnosis": {
+    "guasto_tcs": 84540.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9840740740740741
+   },
+   "delay_from_visible_s": {
+    "F-ATT-TCS-CIRCUITO": 2460.0
+   }
+  },
+  "F-FIS-INCENDIO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9985185185185185
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "first_diagnosis": {
+    "incendio": 34680.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9981481481481481
+   },
+   "delay_from_visible_s": {
+    "F-FIS-INCENDIO": 60.0
+   }
+  },
+  "F-FIS-PERDITA-PRK+F-ATT-PCA-CHIUSA_s1_d2_r_f": {
+   "actuator": {
+    "rows": 405,
+    "accuracy": 0.45185185185185184
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1432,
+    "accuracy": 0.9965083798882681
+   },
+   "first_diagnosis": {
+    "perdita_prk": 158220.0,
+    "bias_sensore_P": 105480.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9477777777777778
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-PRK": -1260.0,
+    "F-ATT-PCA-CHIUSA": null
+   }
+  },
+  "F-FIS-PERDITA-PRK+F-ATT-PCA-CHIUSA_s2_d2_r_f": {
+   "actuator": {
+    "rows": 505,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 962,
+    "accuracy": 1.0
+   },
+   "first_diagnosis": {
+    "incendio": 128940.0,
+    "perdita_prk": 158280.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9792592592592593
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-PRK": null,
+    "F-ATT-PCA-CHIUSA": null
+   }
+  },
+  "F-FIS-PERDITA-PRK+F-ATT-PCA-CHIUSA_s3_d2_r_f": {
+   "actuator": {
+    "rows": 687,
+    "accuracy": 0.7933042212518195
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1001,
+    "accuracy": 0.996003996003996
+   },
+   "first_diagnosis": {
+    "perdita_prk": 158400.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9225925925925926
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-PRK": -5880.0,
+    "F-ATT-PCA-CHIUSA": null
+   }
+  },
+  "F-FIS-PERDITA-PRK+F-ATT-PCA-CHIUSA_s5_d2_r_f": {
+   "actuator": {
+    "rows": 1128,
+    "accuracy": 0.8572695035460993
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1771,
+    "accuracy": 0.9847543760587238
+   },
+   "first_diagnosis": {
+    "perdita_prk": 158220.0,
+    "deriva_mca": 118080.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9729629629629629
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-PRK": -4920.0,
+    "F-ATT-PCA-CHIUSA": null
+   }
+  },
+  "F-FIS-PERDITA-PRK_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.98
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1771,
+    "accuracy": 0.9847543760587238
+   },
+   "first_diagnosis": {
+    "perdita_prk": 158220.0,
+    "deriva_mca": 118080.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9729629629629629
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-PRK": -4920.0
+   }
+  },
+  "F-FIS-PERDITA-RAPIDA_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9948148148148148
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 855,
+    "accuracy": 0.9988304093567252
+   },
+   "first_diagnosis": {
+    "incendio": 75840.0,
+    "perdita_prk": 69480.0,
+    "depress_rapida": 60660.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9948148148148148
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-RAPIDA": 120.0
+   }
+  },
+  "F-FIS-PORTELLO_s1_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9985185185185185
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 0.9466666666666667
+   },
+   "first_diagnosis": {
+    "fever": 100620.0,
+    "acute_stress": 114000.0,
+    "incendio": 109620.0,
+    "perdita_prk": 105120.0,
+    "depress_rapida": 96780.0
+   },
+   "physical": {
+    "rows": 1488,
+    "accuracy": 0.9596774193548387
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9777777777777777
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PORTELLO": null,
+    "F-FIS-PORTELLO-PERDITA": null
+   }
+  },
+  "F-FIS-PORTELLO_s2_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9992592592592593
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 0.9840740740740741
+   },
+   "first_diagnosis": {
+    "fever": 101160.0,
+    "incendio": 100140.0,
+    "perdita_prk": 95220.0,
+    "depress_rapida": 82140.0
+   },
+   "physical": {
+    "rows": 1245,
+    "accuracy": 0.9518072289156626
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.975925925925926
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PORTELLO": null,
+    "F-FIS-PORTELLO-PERDITA": null
+   }
+  },
+  "F-FIS-PORTELLO_s3_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9988888888888889
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 0.96
+   },
+   "first_diagnosis": {
+    "fever": 101040.0,
+    "acute_stress": 136560.0,
+    "incendio": 96840.0,
+    "perdita_prk": 100920.0,
+    "depress_rapida": 86520.0,
+    "bias_sensore_P": 83820.0
+   },
+   "physical": {
+    "rows": 1318,
+    "accuracy": 0.9544764795144158
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9196296296296296
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PORTELLO": null,
+    "F-FIS-PORTELLO-PERDITA": null
+   }
+  },
+  "F-FIS-PORTELLO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9896296296296296
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 0.9922222222222222
+   },
+   "first_diagnosis": {
+    "acute_stress": 114060.0,
+    "incendio": 75840.0,
+    "perdita_prk": 80400.0,
+    "depress_rapida": 66000.0
+   },
+   "physical": {
+    "rows": 975,
+    "accuracy": 0.9384615384615385
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9951851851851852
+   },
+   "delay_from_visible_s": {
+    "F-FIS-PORTELLO": null,
+    "F-FIS-PORTELLO-PERDITA": null
+   }
+  },
+  "F-SEN-BIAS-P_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1255,
+    "accuracy": 0.4366533864541833
+   },
+   "first_diagnosis": {
+    "bias_sensore_P": 23280.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-BIAS-P": 1380.0
+   }
+  },
+  "F-SEN-BIAS-P_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9744444444444444
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.43444444444444447
+   },
+   "first_diagnosis": {
+    "bias_sensore_P": 121680.0,
+    "deriva_mca": 118260.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-BIAS-P": 50400.0
+   }
+  },
+  "F-SEN-BLOCCO_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1258,
+    "accuracy": 0.9968203497615262
+   },
+   "first_diagnosis": {
+    "sensore_bloccato": 22680.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-BLOCCO": 960.0
+   }
+  },
+  "F-SEN-BLOCCO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9985185185185185
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2698,
+    "accuracy": 0.9988880652335063
+   },
+   "first_diagnosis": {
+    "sensore_bloccato": 33840.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-BLOCCO": 900.0
+   }
+  },
+  "F-SEN-CONDENSA-RH_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 0.9992063492063492
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1253,
+    "accuracy": 0.9688747007182761
+   },
+   "first_diagnosis": {
+    "offset_sensore_RH": 23280.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-CONDENSA-RH": 1260.0
+   }
+  },
+  "F-SEN-CONDENSA-RH_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9737037037037037
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2691,
+    "accuracy": 0.4136008918617614
+   },
+   "first_diagnosis": {
+    "offset_sensore_RH": 64200.0,
+    "bias_sensore_P": 133260.0,
+    "deriva_mca": 118260.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-CONDENSA-RH": 17700.0
+   }
+  },
+  "F-SEN-DERIVA-CO2+F-ATT-CDRA-DEGRADO_s1_d2_r_f": {
+   "actuator": {
+    "rows": 967,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1436,
+    "accuracy": 0.979108635097493
+   },
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null,
+    "F-ATT-CDRA-DEGRADO": null
+   }
+  },
+  "F-SEN-DERIVA-CO2+F-ATT-CDRA-DEGRADO_s2_d2_r_f": {
+   "actuator": {
+    "rows": 213,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 882,
+    "accuracy": 0.9852607709750567
+   },
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null,
+    "F-ATT-CDRA-DEGRADO": null
+   }
+  },
+  "F-SEN-DERIVA-CO2+F-ATT-CDRA-DEGRADO_s3_d2_r_f": {
+   "actuator": {
+    "rows": 757,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1446,
+    "accuracy": 0.8852005532503457
+   },
+   "first_diagnosis": {
+    "bias_sensore_P": 76140.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null,
+    "F-ATT-CDRA-DEGRADO": null
+   }
+  },
+  "F-SEN-DERIVA-CO2+F-ATT-CDRA-DEGRADO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 802,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 830,
+    "accuracy": 0.9855421686746988
+   },
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null,
+    "F-ATT-CDRA-DEGRADO": null
+   }
+  },
+  "F-SEN-DERIVA-CO2_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 180,
+    "accuracy": 1.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null
+   }
+  },
+  "F-SEN-DERIVA-CO2_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9751851851851852
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 830,
+    "accuracy": 0.9855421686746988
+   },
+   "first_diagnosis": {
+    "bias_sensore_P": 121680.0,
+    "deriva_mca": 118260.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null
+   }
+  },
+  "F-SEN-DROPOUT_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1259,
+    "accuracy": 0.9976171564733916
+   },
+   "first_diagnosis": {
+    "dropout_sensore": 22560.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-DROPOUT": 900.0
+   }
+  },
+  "F-SEN-DROPOUT_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9985185185185185
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2699,
+    "accuracy": 0.9981474620229714
+   },
+   "first_diagnosis": {
+    "dropout_sensore": 41760.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-DROPOUT": 840.0
+   }
+  },
+  "F-SEN-INVECCHIA-O2+F-ATT-OGA-STACK_s1_d2_r_f": {
+   "actuator": {
+    "rows": 1734,
+    "accuracy": 0.919838523644752
+   },
+   "first_diagnosis": {
+    "degrado_oga": 163020.0,
+    "deriva_sensore_O2": 45840.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 750,
+    "accuracy": 1.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": -113640.0,
+    "F-ATT-OGA-STACK": 3540.0
+   }
+  },
+  "F-SEN-INVECCHIA-O2+F-ATT-OGA-STACK_s2_d2_r_f": {
+   "actuator": {
+    "rows": 1419,
+    "accuracy": 1.0
+   },
+   "first_diagnosis": {
+    "degrado_oga": 118980.0,
+    "deriva_sensore_O2": 41220.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 345,
+    "accuracy": 1.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": null,
+    "F-ATT-OGA-STACK": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2+F-ATT-OGA-STACK_s3_d2_r_f": {
+   "actuator": {
+    "rows": 1431,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 0.9996296296296296
+   },
+   "sensor": {
+    "rows": 2656,
+    "accuracy": 0.9966114457831325
+   },
+   "first_diagnosis": {
+    "deriva_sensore_O2": 42600.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": 1320.0,
+    "F-ATT-OGA-STACK": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2+F-ATT-OGA-STACK_s5_d2_r_f": {
+   "actuator": {
+    "rows": 684,
+    "accuracy": 0.7646198830409356
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 790,
+    "accuracy": 0.9924050632911392
+   },
+   "first_diagnosis": {
+    "deriva_sensore_O2": 67320.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": -95820.0,
+    "F-ATT-OGA-STACK": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 180,
+    "accuracy": 1.0
+   },
+   "first_diagnosis": {
+    "deriva_sensore_O2": 34020.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9981481481481481
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 790,
+    "accuracy": 0.9924050632911392
+   },
+   "first_diagnosis": {
+    "deriva_sensore_O2": 67500.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": -95640.0
+   }
+  },
+  "F-SEN-MCA-FILAMENTO_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1147,
+    "accuracy": 0.994768962510898
+   },
+   "first_diagnosis": {
+    "deriva_mca": 29460.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-MCA-FILAMENTO": 1080.0
+   }
+  },
+  "F-SEN-MCA-FILAMENTO_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9985185185185185
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2631,
+    "accuracy": 0.9942987457240593
+   },
+   "first_diagnosis": {
+    "deriva_mca": 45480.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-MCA-FILAMENTO": 1500.0
+   }
+  },
+  "F-SEN-MCA-LINEA_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1249,
+    "accuracy": 0.6893514811849479
+   },
+   "first_diagnosis": {
+    "guasto_mca_linea": 44640.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-MCA-LINEA": 22380.0
+   }
+  },
+  "F-SEN-MCA-LINEA_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9881481481481481
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2698,
+    "accuracy": 0.6879169755374351
+   },
+   "delay_from_visible_s": {
+    "F-SEN-MCA-LINEA": null
+   }
+  },
+  "F-SEN-RUMORE_s5_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1259,
+    "accuracy": 0.9984114376489277
+   },
+   "first_diagnosis": {
+    "rumore_sensore": 22680.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-RUMORE": 1020.0
+   }
+  },
+  "F-SEN-RUMORE_s5_d2_r_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9951851851851852
+   },
+   "medical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9855555555555555
+   },
+   "first_diagnosis": {
+    "rumore_sensore": 102360.0
+   },
+   "delay_from_visible_s": {
+    "F-SEN-RUMORE": 900.0
+   }
+  },
+  "med-dehydration_s5_d2_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9766666666666667
+   },
+   "medical": {
+    "rows": 1220,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9492592592592592
+   },
+   "first_diagnosis": {
+    "deriva_mca": 118260.0
+   },
+   "delay_from_visible_s": {
+    "bot_dehydration": null
+   }
+  },
+  "med-fever_s5_d2_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9781481481481481
+   },
+   "medical": {
+    "rows": 1503,
+    "accuracy": 1.0
+   },
+   "first_diagnosis": {
+    "fever": 82080.0,
+    "bias_sensore_P": 126000.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9259259259259259
+   },
+   "delay_from_visible_s": {
+    "cmd_fever": 60.0
+   }
+  },
+  "med-fibrillation_s5_d2_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9755555555555555
+   },
+   "medical": {
+    "rows": 1181,
+    "accuracy": 0.9974597798475868
+   },
+   "first_diagnosis": {
+    "atrial_fibrillation_suspected": 81180.0,
+    "bias_sensore_P": 121680.0,
+    "deriva_mca": 118260.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9074074074074074
+   },
+   "delay_from_visible_s": {
+    "eng_fibrillation": 300.0
+   }
+  },
+  "med-motion_sickness_s5_d2_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.975925925925926
+   },
+   "medical": {
+    "rows": 1427,
+    "accuracy": 0.9649614576033637
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9074074074074074
+   },
+   "first_diagnosis": {
+    "bias_sensore_P": 121680.0,
+    "deriva_mca": 118260.0
+   },
+   "delay_from_visible_s": {
+    "bot_motion_sickness": null
+   }
+  },
+  "med-stress_s5_d2_f": {
+   "actuator": {
+    "rows": 2700,
+    "accuracy": 0.9737037037037037
+   },
+   "medical": {
+    "rows": 801,
+    "accuracy": 0.9875156054931336
+   },
+   "first_diagnosis": {
+    "acute_stress": 53580.0,
+    "bias_sensore_P": 126000.0,
+    "deriva_mca": 118260.0
+   },
+   "physical": {
+    "rows": 2700,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 2700,
+    "accuracy": 0.9159259259259259
+   },
+   "delay_from_visible_s": {
+    "cmd_stress": 360.0
+   }
+  },
+  "nominal_s12_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 0.9603174603174603
+   },
+   "first_diagnosis": {
+    "arresto_oga": 39660.0
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1260,
+    "accuracy": 0.9761904761904762
+   }
+  },
+  "nominal_s13_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 0.9992063492063492
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1260,
+    "accuracy": 0.9436507936507936
+   },
+   "first_diagnosis": {
+    "bias_sensore_P": 83280.0
+   }
+  },
+  "nominal_s14_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 0.9896825396825397
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1260,
+    "accuracy": 0.9015873015873016
+   },
+   "first_diagnosis": {
+    "deriva_sensore_O2": 42360.0
+   }
+  },
+  "nominal_s15_d1_f": {
+   "actuator": {
+    "rows": 1260,
+    "accuracy": 0.9904761904761905
+   },
+   "medical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 1260,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 1260,
+    "accuracy": 0.8753968253968254
+   },
+   "first_diagnosis": {
+    "deriva_sensore_O2": 40020.0
+   }
+  },
+  "nominal_s4_d3_f": {
+   "actuator": {
+    "rows": 4140,
+    "accuracy": 0.9200483091787439
+   },
+   "first_diagnosis": {
+    "arresto_oga": 219960.0,
+    "bias_sensore_P": 121980.0
+   },
+   "medical": {
+    "rows": 4140,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 4140,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 4140,
+    "accuracy": 0.941304347826087
+   }
+  },
+  "nominal_s5_d3_f": {
+   "actuator": {
+    "rows": 4140,
+    "accuracy": 0.9106280193236715
+   },
+   "first_diagnosis": {
+    "arresto_oga": 227400.0,
+    "bias_sensore_P": 121680.0,
+    "deriva_mca": 118260.0
+   },
+   "medical": {
+    "rows": 4140,
+    "accuracy": 1.0
+   },
+   "physical": {
+    "rows": 4140,
+    "accuracy": 1.0
+   },
+   "sensor": {
+    "rows": 4140,
+    "accuracy": 0.9396135265700483
+   }
+  },
+  "F-ATT-CCAA-IDROFOBO_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CCAA-IDROFOBO": null
+   }
+  },
+  "F-ATT-CCAA-IDROFOBO_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CCAA-IDROFOBO": null
+   }
+  },
+  "F-ATT-CCAA-IDROFOBO_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CCAA-IDROFOBO": null
+   }
+  },
+  "F-ATT-CCAA-VENTOLA_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CCAA-VENTOLA": null
+   }
+  },
+  "F-ATT-CCAA-VENTOLA_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CCAA-VENTOLA": null
+   }
+  },
+  "F-ATT-CCAA-VENTOLA_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CCAA-VENTOLA": null
+   }
+  },
+  "F-ATT-CDRA-ARRESTO_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-ARRESTO": null
+   }
+  },
+  "F-ATT-CDRA-ARRESTO_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-ARRESTO": null
+   }
+  },
+  "F-ATT-CDRA-ARRESTO_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-ARRESTO": null
+   }
+  },
+  "F-ATT-CDRA-DEGRADO_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-DEGRADO": null
+   }
+  },
+  "F-ATT-CDRA-DEGRADO_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-DEGRADO": null
+   }
+  },
+  "F-ATT-CDRA-DEGRADO_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-DEGRADO": null
+   }
+  },
+  "F-ATT-CDRA-RISCALD_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-RISCALD": null
+   }
+  },
+  "F-ATT-CDRA-RISCALD_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-RISCALD": null
+   }
+  },
+  "F-ATT-CDRA-RISCALD_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CDRA-RISCALD": null
+   }
+  },
+  "F-ATT-CQFAN-FOD_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CQFAN-FOD": null
+   }
+  },
+  "F-ATT-CQFAN-FOD_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CQFAN-FOD": null
+   }
+  },
+  "F-ATT-CQFAN-FOD_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-CQFAN-FOD": null
+   }
+  },
+  "F-ATT-IMV-ARRESTO_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-IMV-ARRESTO": null
+   }
+  },
+  "F-ATT-IMV-ARRESTO_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-IMV-ARRESTO": null
+   }
+  },
+  "F-ATT-IMV-ARRESTO_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-IMV-ARRESTO": null
+   }
+  },
+  "F-ATT-IMV-FOD_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-IMV-FOD": null
+   }
+  },
+  "F-ATT-IMV-FOD_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-IMV-FOD": null
+   }
+  },
+  "F-ATT-IMV-FOD_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-IMV-FOD": null
+   }
+  },
+  "F-ATT-OGA-H2_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-OGA-H2": null
+   }
+  },
+  "F-ATT-OGA-H2_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-OGA-H2": null
+   }
+  },
+  "F-ATT-OGA-H2_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-OGA-H2": null
+   }
+  },
+  "F-ATT-OGA-STACK_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-OGA-STACK": null
+   }
+  },
+  "F-ATT-OGA-STACK_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-OGA-STACK": null
+   }
+  },
+  "F-ATT-OGA-STACK_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-OGA-STACK": null
+   }
+  },
+  "F-ATT-PCA-APERTA_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-PCA-APERTA": null
+   }
+  },
+  "F-ATT-PCA-APERTA_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-PCA-APERTA": null
+   }
+  },
+  "F-ATT-PCA-APERTA_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-PCA-APERTA": null
+   }
+  },
+  "F-ATT-PCA-CHIUSA_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-PCA-CHIUSA": null
+   }
+  },
+  "F-ATT-PCA-CHIUSA_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-PCA-CHIUSA": null
+   }
+  },
+  "F-ATT-PCA-CHIUSA_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-PCA-CHIUSA": null
+   }
+  },
+  "F-ATT-TCS-CIRCUITO_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-TCS-CIRCUITO": null
+   }
+  },
+  "F-ATT-TCS-CIRCUITO_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-TCS-CIRCUITO": null
+   }
+  },
+  "F-ATT-TCS-CIRCUITO_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-ATT-TCS-CIRCUITO": null
+   }
+  },
+  "F-FIS-INCENDIO_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-INCENDIO": null
+   }
+  },
+  "F-FIS-INCENDIO_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-INCENDIO": null
+   }
+  },
+  "F-FIS-INCENDIO_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-INCENDIO": null
+   }
+  },
+  "F-FIS-PERDITA-PRK_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-PRK": null
+   }
+  },
+  "F-FIS-PERDITA-PRK_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-PRK": null
+   }
+  },
+  "F-FIS-PERDITA-PRK_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-PRK": null
+   }
+  },
+  "F-FIS-PERDITA-RAPIDA_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-RAPIDA": null
+   }
+  },
+  "F-FIS-PERDITA-RAPIDA_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-RAPIDA": null
+   }
+  },
+  "F-FIS-PERDITA-RAPIDA_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-FIS-PERDITA-RAPIDA": null
+   }
+  },
+  "F-SEN-BIAS-P_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BIAS-P": null
+   }
+  },
+  "F-SEN-BIAS-P_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BIAS-P": null
+   }
+  },
+  "F-SEN-BIAS-P_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BIAS-P": null
+   }
+  },
+  "F-SEN-BIAS-P_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BIAS-P": null
+   }
+  },
+  "F-SEN-BIAS-P_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BIAS-P": null
+   }
+  },
+  "F-SEN-BLOCCO_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BLOCCO": null
+   }
+  },
+  "F-SEN-BLOCCO_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BLOCCO": null
+   }
+  },
+  "F-SEN-BLOCCO_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BLOCCO": null
+   }
+  },
+  "F-SEN-BLOCCO_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BLOCCO": null
+   }
+  },
+  "F-SEN-BLOCCO_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-BLOCCO": null
+   }
+  },
+  "F-SEN-CONDENSA-RH_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-CONDENSA-RH": null
+   }
+  },
+  "F-SEN-CONDENSA-RH_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-CONDENSA-RH": null
+   }
+  },
+  "F-SEN-CONDENSA-RH_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-CONDENSA-RH": null
+   }
+  },
+  "F-SEN-CONDENSA-RH_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-CONDENSA-RH": null
+   }
+  },
+  "F-SEN-CONDENSA-RH_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-CONDENSA-RH": null
+   }
+  },
+  "F-SEN-DERIVA-CO2_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null
+   }
+  },
+  "F-SEN-DERIVA-CO2_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null
+   }
+  },
+  "F-SEN-DERIVA-CO2_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null
+   }
+  },
+  "F-SEN-DERIVA-CO2_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null
+   }
+  },
+  "F-SEN-DERIVA-CO2_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DERIVA-CO2": null
+   }
+  },
+  "F-SEN-DROPOUT_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DROPOUT": null
+   }
+  },
+  "F-SEN-DROPOUT_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DROPOUT": null
+   }
+  },
+  "F-SEN-DROPOUT_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DROPOUT": null
+   }
+  },
+  "F-SEN-DROPOUT_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DROPOUT": null
+   }
+  },
+  "F-SEN-DROPOUT_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-DROPOUT": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": null
+   }
+  },
+  "F-SEN-INVECCHIA-O2_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-INVECCHIA-O2": null
+   }
+  },
+  "F-SEN-MCA-FILAMENTO_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-FILAMENTO": null
+   }
+  },
+  "F-SEN-MCA-FILAMENTO_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-FILAMENTO": null
+   }
+  },
+  "F-SEN-MCA-FILAMENTO_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-FILAMENTO": null
+   }
+  },
+  "F-SEN-MCA-FILAMENTO_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-FILAMENTO": null
+   }
+  },
+  "F-SEN-MCA-FILAMENTO_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-FILAMENTO": null
+   }
+  },
+  "F-SEN-MCA-LINEA_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-LINEA": null
+   }
+  },
+  "F-SEN-MCA-LINEA_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-LINEA": null
+   }
+  },
+  "F-SEN-MCA-LINEA_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-LINEA": null
+   }
+  },
+  "F-SEN-MCA-LINEA_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-LINEA": null
+   }
+  },
+  "F-SEN-MCA-LINEA_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-MCA-LINEA": null
+   }
+  },
+  "F-SEN-RUMORE_s1_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-RUMORE": null
+   }
+  },
+  "F-SEN-RUMORE_s1_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-RUMORE": null
+   }
+  },
+  "F-SEN-RUMORE_s2_d1_f": {
+   "delay_from_visible_s": {
+    "F-SEN-RUMORE": null
+   }
+  },
+  "F-SEN-RUMORE_s2_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-RUMORE": null
+   }
+  },
+  "F-SEN-RUMORE_s3_d2_r_f": {
+   "delay_from_visible_s": {
+    "F-SEN-RUMORE": null
+   }
+  },
+  "med-dehydration_s1_d2_f": {
+   "delay_from_visible_s": {
+    "bot_dehydration": null
+   }
+  },
+  "med-dehydration_s2_d2_f": {
+   "delay_from_visible_s": {
+    "bot_dehydration": null
+   }
+  },
+  "med-dehydration_s3_d2_f": {
+   "delay_from_visible_s": {
+    "bot_dehydration": null
+   }
+  },
+  "med-fever_s1_d2_f": {
+   "delay_from_visible_s": {
+    "cmd_fever": null
+   }
+  },
+  "med-fever_s2_d2_f": {
+   "delay_from_visible_s": {
+    "cmd_fever": null
+   }
+  },
+  "med-fever_s3_d2_f": {
+   "delay_from_visible_s": {
+    "cmd_fever": null
+   }
+  },
+  "med-fibrillation_s1_d2_f": {
+   "delay_from_visible_s": {
+    "eng_fibrillation": null
+   }
+  },
+  "med-fibrillation_s2_d2_f": {
+   "delay_from_visible_s": {
+    "eng_fibrillation": null
+   }
+  },
+  "med-fibrillation_s3_d2_f": {
+   "delay_from_visible_s": {
+    "eng_fibrillation": null
+   }
+  },
+  "med-motion_sickness_s1_d2_f": {
+   "delay_from_visible_s": {
+    "bot_motion_sickness": null
+   }
+  },
+  "med-motion_sickness_s2_d2_f": {
+   "delay_from_visible_s": {
+    "bot_motion_sickness": null
+   }
+  },
+  "med-motion_sickness_s3_d2_f": {
+   "delay_from_visible_s": {
+    "bot_motion_sickness": null
+   }
+  },
+  "med-stress_s1_d2_f": {
+   "delay_from_visible_s": {
+    "cmd_stress": null
+   }
+  },
+  "med-stress_s2_d2_f": {
+   "delay_from_visible_s": {
+    "cmd_stress": null
+   }
+  },
+  "med-stress_s3_d2_f": {
+   "delay_from_visible_s": {
+    "cmd_stress": null
+   }
+  }
+ },
+ "false_alarms": {
+  "nominal_s12_d1_f": 1,
+  "nominal_s13_d1_f": 1,
+  "nominal_s14_d1_f": 2,
+  "nominal_s15_d1_f": 1,
+  "nominal_s4_d3_f": 4,
+  "nominal_s5_d3_f": 8
+ },
+ "false_alarms_total": 17,
+ "nominal_test_days": 9.995833333333334
+}

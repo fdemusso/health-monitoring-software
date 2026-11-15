@@ -21,6 +21,7 @@ from ares3.schemas.monitor import (
     MonitorMode,
     OnTimeout,
     Severity,
+    StepKind,
 )
 
 
@@ -129,6 +130,8 @@ class Signal(_Frozen):
     value: float | None = None  # the quantity that tripped the rule, for the log
     tres_s: float | None = None  # time to reach the minimum safe pressure (depressurization only)
     detail: str = ""
+    cause: str | None = None  # a diagnosing detector: the fault it recognised (a label of the catalog)
+    evidence: tuple[str, ...] = ()  # what makes the detector say so, in words for the crew (stage A / B: the top contributions)
 
 
 class Emergency(_Frozen):
@@ -147,6 +150,7 @@ class Emergency(_Frozen):
     subject: str | None = None  # crew member in trouble (medical emergencies)
     cause: str | None = None  # what the sensors say is wrong, e.g. co_poisoning, hypoxia
     alert_class: AlertClass = "warning"  # colour of the alert, from ``classifier.classes``: the UI has no rules of its own
+    evidence: tuple[str, ...] = ()  # why, for the crew: the sensors / features that explain the detection (ML detectors)
 
 
 class Action(_Frozen):
@@ -158,6 +162,7 @@ class Action(_Frozen):
     target: str
     command: str
     value: float | None = None
+    value_id: str | None = None  # a sensor / module id that goes with the command (``sensor substitute``)
     level: ActionLevel = "auto"
     reversible: bool = True
     reason: str = ""
@@ -183,12 +188,40 @@ class MonitorEvent(_Frozen):
         "action_expired_executed", "action_expired_discarded", "action_blocked",
         "crew_alerted", "crew_gathered", "crew_evacuating", "crew_assisting", "crew_command_passed",
         "crew_stood_down", "crew_repairing", "crew_repaired", "crew_sealed",
-        "mode_changed",
+        "mode_changed", "procedure_started", "step_done", "step_failed", "procedure_done", "procedure_escalated",
     ]
     message: str
     emergency_id: str | None = None
     action_id: str | None = None
     by: str | None = None  # crew member / UI user that approved or rejected; None = the system
+
+
+class ProcedureStepState(_Frozen):
+    id: str
+    kind: StepKind
+    text: str  # already resolved: no ``{subject}`` left
+    status: Literal["pending", "active", "done", "failed", "skipped"] = "pending"
+    by: str | None = None  # who closed it: a crew member / UI user, or None = the system (a check, an automatic action)
+    answer: str | None = None  # a question: yes / no
+    t_start_s: float | None = None
+    t_end_s: float | None = None
+    deadline_s: float | None = None  # a check: when it fails
+
+
+class ProcedureState(_Frozen):
+    """A crew procedure being followed for an emergency. Stays in the tick for a while after it ends, with its outcome."""
+
+    id: str
+    procedure_id: str
+    emergency_id: str
+    title: str
+    subject: str | None = None
+    module_id: str
+    status: Literal["running", "done", "escalated", "closed"] = "running"  # closed: the emergency ended first
+    current: str | None = None  # id of the active step
+    steps: tuple[ProcedureStepState, ...]
+    t_start_s: float
+    t_end_s: float | None = None
 
 
 class SimulationTick(_Frozen):
@@ -204,13 +237,15 @@ class SimulationTick(_Frozen):
     actuators: dict[str, dict[str, float]] = Field(default_factory=dict)  # telemetry channels of each actuator
     active_faults: tuple[str, ...] = ()
     alarms: tuple[AlarmEvent, ...] = ()
-    # TODO(dashboard): `emergencies`, `pending_actions`, `monitor_events` and NPCState `role` / `response_phase` must be mirrored by hand in
-    # dashboard/src/telemetry/types.ts (Python is the source of truth); until then the UI cannot show them.
-    # Same for ModuleState `co_ppm`, `smoke_mg_m3`, `fans_on`, Emergency `subject` / `cause`, and the vital `cohb_pct`.
+    # Mirrored by hand in dashboard/src/telemetry/types.ts (Python is the source of truth): keep both in step. Still missing there:
+    # NPCState `role` / `response_phase`, ModuleState `co_ppm`, `smoke_mg_m3`, `fans_on`, and the vital `cohb_pct`.
     emergencies: tuple[Emergency, ...] = ()
     pending_actions: tuple[PendingAction, ...] = ()
     monitor_events: tuple[MonitorEvent, ...] = ()  # events produced during this tick only
     monitor_mode: MonitorMode = "passive"
+    procedures: tuple[ProcedureState, ...] = ()
+    ml: dict[str, float] = Field(default_factory=dict)  # score of each ML detector, over its limit: >= 1 is an anomaly
+    powered_off: tuple[str, ...] = ()  # modules whose electrical supply the crew / the playbook cut (``power off``)
 
 
 class Observation(_Frozen):

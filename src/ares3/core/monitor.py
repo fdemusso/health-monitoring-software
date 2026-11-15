@@ -51,6 +51,7 @@ class _Track:
     subject: str | None = None
     cause: str | None = None
     cause_rank: int = 10**9  # index of the detector that gave the cause: lower = more specific
+    evidence: tuple[str, ...] = ()
 
 
 class Monitor:
@@ -70,6 +71,7 @@ class Monitor:
         self._tracks: dict[tuple[str, str, str], _Track] = {}
         self._count = 0
         self._declared: list[MonitorEvent] = []  # events of manual alarms, flushed by the next step
+        self.scores: dict[str, float] = {}  # score of each detector that has one (the ML ones), over its limit, after the last step
         self.mode: MonitorMode = "passive"  # state of the whole system after the last step
         self._mode_high_s = 0.0  # last time something asked for the current mode or a higher one
 
@@ -101,10 +103,40 @@ class Monitor:
         for det in self.detectors:
             det.forget(module_id)
 
-    def _timing(self, spec: DetectorSpec) -> tuple[float, float]:
+    def _timing(self, spec: DetectorSpec, signal: Signal | None = None) -> tuple[float, float]:
         c: ClassifierConfig = self.config.classifier
-        return (c.confirm_s if spec.confirm_s is None else spec.confirm_s,
-                c.clear_s if spec.clear_s is None else spec.clear_s)
+        confirm, clear = spec.confirm_s, spec.clear_s
+        cls = self.config.diagnosis.get(signal.cause or "") if spec.emergency == "diagnosis" and signal else None
+        if cls is not None:  # a diagnosed class has its own timing (plan D7)
+            confirm, clear = cls.confirm_s if cls.confirm_s is not None else confirm, cls.clear_s if cls.clear_s is not None else clear
+        return (c.confirm_s if confirm is None else confirm, c.clear_s if clear is None else clear)
+
+    def _merge_leaks(self, ctx: StepContext, signals: list[Signal]) -> list[Signal]:
+        """``group_by: connected``: per detector and per group of modules joined by open hatches, keep the leak signal of the module
+        whose pressure falls fastest (the most negative slope in ``Signal.value``); the others are the same leak seen through the
+        hatches. A module that already has an open emergency of the group keeps it: through open hatches the pressures fall almost
+        alike, so the "fastest" one would otherwise change from tick to tick and every change restarts the confirmation. Only the
+        rate detectors (they carry a TRes) are fused: the pressure floor of a module stays about that module."""
+        parent: dict[str, str] = {}
+
+        def find(x: str) -> str:
+            while parent.setdefault(x, x) != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        for h in ctx.tick.hatches:
+            if h.open:
+                parent[find(h.a)] = find(h.b)
+        leaks = [s for s in signals if s.emergency == "depressurization" and s.tres_s is not None and s.value is not None]
+        tracked = [s for s in leaks if (s.emergency, s.module_id, s.subject or "") in self._tracks]
+        best: dict[tuple[str, str], Signal] = {}
+        for s in (*tracked, *leaks):  # the modules already tracked decide first; a group without one takes the fastest
+            key = (s.detector_id, find(s.module_id))
+            if key not in best or (s.value < best[key].value and (s in tracked) == (best[key] in tracked)):
+                best[key] = s
+        return [s for s in signals if not (s.emergency == "depressurization" and s.tres_s is not None and s.value is not None)
+                or best[(s.detector_id, find(s.module_id))] is s]
 
     def declare(self, kind: str, module_id: str, t: float, by: str | None) -> str:
         """A crew member raises the alarm by hand: confirmed at once, closed after ``clear_s`` unless detectors back it."""
@@ -131,15 +163,22 @@ class Monitor:
         for det in self.detectors:
             spec = self.specs[det.id]
             for s in det.detect(ctx, observations):
-                signals.append(s.model_copy(update={"emergency": spec.emergency, "severity": spec.severity}))
+                if spec.emergency == "diagnosis":  # stage B: the class table says what it is
+                    cls = self.config.diagnosis.get(s.cause or "")
+                    if cls is not None:
+                        signals.append(s.model_copy(update={"emergency": cls.emergency, "severity": cls.severity}))
+                else:
+                    signals.append(s.model_copy(update={"emergency": spec.emergency, "severity": spec.severity}))
 
+        if self.config.classifier.group_by == "connected":
+            signals = self._merge_leaks(ctx, signals)
         events: list[MonitorEvent] = self._declared
         self._declared = []
         seen: set[tuple[str, str, str]] = set()
         for s in signals:
             key = (s.emergency, s.module_id, s.subject or "")
             seen.add(key)
-            confirm_s, clear_s = self._timing(self.specs[s.detector_id])
+            confirm_s, clear_s = self._timing(self.specs[s.detector_id], s)
             tr = self._tracks.get(key)
             if tr is None:
                 self._count += 1
@@ -156,13 +195,16 @@ class Monitor:
             tr.confirm_s, tr.clear_s = min(tr.confirm_s, confirm_s), max(tr.clear_s, clear_s)
             tr.detectors.add(s.detector_id)
             spec = self.specs[s.detector_id]
-            if spec.cause is not None and self._rank[s.detector_id] < tr.cause_rank:
-                tr.cause, tr.cause_rank = spec.cause, self._rank[s.detector_id]
+            cause = spec.cause or s.cause
+            if cause is not None and self._rank[s.detector_id] < tr.cause_rank:
+                tr.cause, tr.cause_rank = cause, self._rank[s.detector_id]
             if _SEVERITY_RANK[s.severity] > _SEVERITY_RANK[tr.severity]:
                 tr.severity = s.severity
             if s.tres_s is not None:
                 tr.tres_s = s.tres_s if tr.tres_s is None else min(tr.tres_s, s.tres_s)
             tr.detail = s.detail
+            if s.evidence:
+                tr.evidence = s.evidence
 
         out: list[Emergency] = []
         for key, tr in list(self._tracks.items()):
@@ -180,8 +222,9 @@ class Monitor:
             out.append(Emergency(id=tr.id, kind=tr.kind, module_id=tr.module_id, severity=tr.severity, state=state,
                                  t_open_s=tr.t_open_s, t_update_s=t, detectors=tuple(sorted(tr.detectors)),
                                  tres_s=tr.tres_s if key in seen else None, detail=tr.detail, subject=tr.subject,
-                                 cause=tr.cause, alert_class=self.config.classifier.alert_class(tr.kind, tr.severity, tr.cause)))
+                                 cause=tr.cause, evidence=tr.evidence, alert_class=self.config.classifier.alert_class(tr.kind, tr.severity, tr.cause)))
             tr.seen_prev = key in seen
             tr.tres_s, tr.detectors = None, set()  # recomputed from the next tick's signals
         self._update_mode(t, [e for e in out if e.state != "cleared"], events)
+        self.scores = {d.id: round(d.last_score, 3) for d in self.detectors if hasattr(d, "last_score")}
         return tuple(out), tuple(events)

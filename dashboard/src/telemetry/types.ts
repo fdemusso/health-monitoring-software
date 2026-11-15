@@ -126,13 +126,28 @@ export interface SimulationTick {
   alarms: AlarmEvent[];
   /** Emergencies the monitor knows, from `suspected` until `cleared`. */
   emergencies: Emergency[];
+  /** State of the whole monitoring system: nothing open / a problem is being recognised / a response is running. */
+  monitor_mode: MonitorMode;
+  /** Crew procedures being followed (and, for a few minutes, the ones just finished). */
+  procedures: ProcedureState[];
+  /** Score of each ML detector over its limit (>= 1 is an anomaly), keyed by detector id. */
+  ml: Record<string, number>;
+  /** Modules whose electrical supply was cut (`power off`). */
+  powered_off: string[];
   /** Steps waiting for a human: anyone may approve or reject. */
   pending_actions: PendingAction[];
   /** Monitor log lines produced since the previous tick the backend sent (frames can skip ticks; none is lost). */
   monitor_events: MonitorEvent[];
 }
 
-export type EmergencyKind = 'depressurization' | 'fire' | 'toxic' | 'equipment' | 'medical';
+/** One point of the history the backend sends to a new client (one per simulated minute, last 6 h): what the charts need. */
+export type HistorySample = Pick<SimulationTick, 't_sim_s' | 'npcs' | 'modules'>;
+
+export type EmergencyKind = 'depressurization' | 'fire' | 'toxic' | 'equipment' | 'medical' | 'sensor_fault' | 'anomaly';
+/** passive: green; alert: yellow; reaction: orange (warning) / red (emergency), see docs/monitor-ui.md. */
+export type MonitorMode = 'passive' | 'alert' | 'reaction';
+/** ISS alert levels: emergency red, warning orange, caution yellow, advisory blue. */
+export type AlertClass = 'emergency' | 'warning' | 'caution' | 'advisory';
 export type EmergencyState = 'suspected' | 'confirmed' | 'cleared';
 
 export interface Emergency {
@@ -151,16 +166,21 @@ export interface Emergency {
   subject: string | null;
   /** What the sensors say is wrong, e.g. `co_poisoning`. */
   cause: string | null;
+  alert_class: AlertClass;
+  /** Why, in words for the crew (ML detectors: the sensors / features that explain the detection). */
+  evidence: string[];
 }
 
 export interface Action {
   id: string;
   emergency_id: string;
-  kind: 'actuator' | 'hatch' | 'announce' | 'ventilation' | 'extinguish';
+  kind: 'actuator' | 'hatch' | 'announce' | 'ventilation' | 'extinguish' | 'power' | 'sensor';
   /** Already resolved: an actuator id, `a:b` for a hatch, a module id. */
   target: string;
   command: string;
   value: number | null;
+  /** A sensor / module id that goes with the command (`sensor substitute`: the sensor read instead). */
+  value_id: string | null;
   level: 'auto' | 'confirm';
   reversible: boolean;
   reason: string;
@@ -174,6 +194,41 @@ export interface PendingAction {
   on_timeout: 'execute' | 'discard';
 }
 
+export type StepKind = 'instruction' | 'action' | 'check' | 'question' | 'escalate';
+
+export interface ProcedureStepState {
+  id: string;
+  kind: StepKind;
+  /** Already resolved: no `{subject}` left. */
+  text: string;
+  status: 'pending' | 'active' | 'done' | 'failed' | 'skipped';
+  /** Who closed it (crew member / UI user); null = the system (a check, an automatic action). */
+  by: string | null;
+  /** A question: `yes` / `no`. */
+  answer: string | null;
+  t_start_s: number | null;
+  t_end_s: number | null;
+  /** A check: when it fails. */
+  deadline_s: number | null;
+}
+
+/** A checklist for the crew of one emergency. Close the active step with the `ack_step` command. */
+export interface ProcedureState {
+  id: string;
+  procedure_id: string;
+  emergency_id: string;
+  title: string;
+  subject: string | null;
+  module_id: string;
+  /** `closed`: the emergency ended first. */
+  status: 'running' | 'done' | 'escalated' | 'closed';
+  /** Id of the active step. */
+  current: string | null;
+  steps: ProcedureStepState[];
+  t_start_s: number;
+  t_end_s: number | null;
+}
+
 export interface MonitorEvent {
   t_s: number;
   kind:
@@ -181,7 +236,8 @@ export interface MonitorEvent {
     | 'action_executed' | 'action_proposed' | 'action_approved' | 'action_rejected'
     | 'action_expired_executed' | 'action_expired_discarded' | 'action_blocked'
     | 'crew_alerted' | 'crew_gathered' | 'crew_evacuating' | 'crew_assisting' | 'crew_command_passed'
-    | 'crew_stood_down' | 'crew_repairing' | 'crew_repaired' | 'crew_sealed';
+    | 'crew_stood_down' | 'crew_repairing' | 'crew_repaired' | 'crew_sealed'
+    | 'mode_changed' | 'procedure_started' | 'step_done' | 'step_failed' | 'procedure_done' | 'procedure_escalated';
   message: string;
   emergency_id: string | null;
   action_id: string | null;

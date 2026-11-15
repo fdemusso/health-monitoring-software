@@ -91,3 +91,13 @@ def test_alert_class_lookup_prefers_the_most_specific_key():
     assert c.alert_class("medical", "warning", "hypoxia") == "caution"
     assert c.alert_class("depressurization", "critical") == "emergency"  # default by severity
     assert c.alert_class("depressurization", "warning") == "warning"
+
+
+def test_group_by_connected_keeps_a_leak_in_the_module_that_falls_fastest(station):
+    assert station.monitor.classifier.group_by == "connected"
+    eng = Engine(station)
+    for _ in eng.run(60):
+        pass
+    eng.inject(_leak().model_copy(update={"targets": ["lab"]}))
+    kinds = {(e.kind, e.module_id) for r in eng.run(150) for e in r.tick.emergencies if e.kind == "depressurization"}
+    assert kinds == {("depressurization", "lab")}  # the open hatches drain the neighbours too, but the leak is in lab

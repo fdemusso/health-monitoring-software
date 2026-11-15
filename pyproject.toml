@@ -13,8 +13,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-xdist>=3.5", "ruff>=0.5", "openpyxl>=3.1"]
+dev = ["pytest>=8", "pytest-xdist>=3.5", "ruff>=0.5", "openpyxl>=3.1", "scikit-learn>=1.5"]
 report = ["matplotlib>=3.8"]
+ml = ["scikit-learn>=1.5"]
 serve = ["websockets>=13"]
 
 [project.scripts]

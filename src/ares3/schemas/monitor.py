@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EmergencyKind = Literal["depressurization", "fire", "toxic", "medical", "equipment", "sensor_fault", "anomaly"]
 EmergencyState = Literal["suspected", "confirmed", "cleared"]
@@ -24,11 +24,14 @@ AlertClass = Literal["emergency", "warning", "caution", "advisory"]
 # the three states of the monitoring system: nothing open / a problem is being recognised / a response is running
 MonitorMode = Literal["passive", "alert", "reaction"]
 CrewRole = Literal["incident_commander", "systems", "medical", "sensing"]
-ActionKind = Literal["actuator", "hatch", "announce", "ventilation", "extinguish"]
+# ``power`` cuts / restores the electrical supply of a module (the ISS answers smoke by removing power from the racks [R3]);
+# ``sensor`` makes the control loops read a redundant sensor instead of a faulty one ("substitute")
+ActionKind = Literal["actuator", "hatch", "announce", "ventilation", "extinguish", "power", "sensor"]
 ActionLevel = Literal["auto", "confirm"]
 OnTimeout = Literal["execute", "discard"]
 
 MODULE_TEMPLATE = "{module}"  # in a playbook target: the module where the emergency is
+SUBJECT_TEMPLATE = "{subject}"  # ... the subject of the emergency: a crew member, or the faulty sensor of a sensor_fault
 
 
 class ClassifierConfig(BaseModel):
@@ -45,6 +48,10 @@ class ClassifierConfig(BaseModel):
     # alert class per emergency, keyed ``kind:severity:cause``, ``kind:severity`` or ``kind`` (most specific wins); what is
     # not listed is ``emergency`` when critical and ``warning`` otherwise
     classes: dict[str, AlertClass] = {}
+    # ``connected``: a leak drains every module its open hatches connect, so the rate detectors fire in all of them; the signals
+    # of one detector in one such group are fused into ONE, in the module whose pressure falls fastest (the sheet 06 hint for the
+    # rapid leak). After an isolation the sides are separate groups and the side that keeps falling is the one with the hole.
+    group_by: Literal["module", "connected"] = "module"
 
     def alert_class(self, kind: str, severity: str, cause: str | None = None) -> AlertClass:
         keys = ([f"{kind}:{severity}:{cause}"] if cause else []) + [f"{kind}:{severity}", kind]
@@ -54,6 +61,19 @@ class ClassifierConfig(BaseModel):
         return "emergency" if severity == "critical" else "warning"
 
 
+class DiagnosisClass(BaseModel):
+    """What a diagnosed class (a label of the fault catalog) becomes in the monitor: a ``diagnosis`` detector (stage B) says WHICH
+    fault it sees in ``Signal.cause``; this table, in the YAML and not in the code, gives the kind and severity of the emergency
+    it opens and how long it must hold (``None``: the classifier's own timing)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    emergency: EmergencyKind
+    severity: Severity = "warning"
+    confirm_s: float | None = Field(default=None, ge=0)
+    clear_s: float | None = Field(default=None, ge=0)
+
+
 class DetectorSpec(BaseModel):
     """One detector: a class ``package.module:Class`` (importable, like sensors) watching ``metric`` on ``targets``."""
 
@@ -61,7 +81,9 @@ class DetectorSpec(BaseModel):
 
     id: str
     kind: str
-    emergency: EmergencyKind  # what a firing of this detector is evidence of
+    # what a firing of this detector is evidence of; ``diagnosis``: the detector names the fault (``Signal.cause``) and the
+    # ``diagnosis`` table of the config says what it opens (stage B of the ML monitor)
+    emergency: EmergencyKind | Literal["diagnosis"]
     severity: Severity = "critical"
     targets: list[str] = ["all_modules"]  # module ids, or ``all_modules``; NPC detectors: crew ids or ``all_npcs``
     metric: str | None = None  # e.g. "P"; some detectors (crosscheck, NPC health) do not use it
@@ -80,9 +102,13 @@ class ActionSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     do: ActionKind
-    target: str
-    command: str  # actuator: on/off/set, hatch: open/close, announce: free label (e.g. "evacuate")
+    target: str  # ``power``: a module id; ``sensor``: the faulty sensor id (``{subject}`` in a sensor_fault playbook)
+    command: str  # actuator: on/off/set, hatch: open/close, power: on/off, sensor: substitute, announce: free label
     value: float | None = None
+    value_id: str | None = None  # ``sensor substitute``: the sensor to read instead; ``auto`` = the first of ``substitutes.yaml``
+    # the step applies only to emergencies in these modules / not in these (a vital module is cut off only after a confirmation)
+    in_modules: list[str] | None = None
+    except_modules: list[str] = []
     level: ActionLevel = "auto"
     confirm_timeout_s: float = Field(default=30.0, gt=0)
     on_timeout: OnTimeout = "discard"
@@ -100,6 +126,62 @@ class Playbook(BaseModel):
     emergency: EmergencyKind
     severity: Severity | None = None
     actions: list[ActionSpec]
+
+
+StepKind = Literal["instruction", "action", "check", "question", "escalate"]
+
+
+class ProcedureStep(BaseModel):
+    """One step of a crew procedure. ``{subject}`` and ``{module}`` in the text stand for the crew member in trouble and the
+    module of the emergency. ``on_pass`` / ``on_fail`` (a step id, or ``done``) branch after a ``check`` and a ``question``
+    (yes -> ``on_pass``, no -> ``on_fail``); without them the next step of the list follows."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    do: StepKind
+    text: str = ""
+    # instruction / question: who does it (an NPC with this role, when nobody from the UI has), and how long it takes them
+    role: CrewRole | None = None
+    duration_s: float = Field(default=30.0, ge=0)
+    action: ActionSpec | None = None  # do = action: a normal playbook step, with its level, timeout and safety guard
+    # do = check: a SENSED metric of the subject (or of the module) must get into [min, max] within ``within_s``
+    metric: str | None = None
+    min: float | None = None
+    max: float | None = None
+    within_s: float = Field(default=300.0, gt=0)
+    auto_answer: Literal["yes", "no"] = "no"  # do = question: what an NPC answers when nobody from the UI does
+    on_pass: str | None = None
+    on_fail: str | None = None
+
+
+class Procedure(BaseModel):
+    """The checklist for the PEOPLE of one kind of emergency (the playbook is the safing of the machine). Chosen by (kind,
+    ``cause``, ``severity``): the one that names the cause wins over the generic one. ESTIMATE until the team reviews them."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    emergency: EmergencyKind
+    cause: str | None = None
+    severity: Severity | None = None
+    title: str
+    steps: list[ProcedureStep] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _steps_are_wired(self):
+        ids = [s.id for s in self.steps]
+        if len(set(ids)) != len(ids):
+            raise ValueError(f"procedure {self.id}: duplicate step ids")
+        for s in self.steps:
+            for ref in (s.on_pass, s.on_fail):
+                if ref is not None and ref != "done" and ref not in ids:
+                    raise ValueError(f"procedure {self.id}, step {s.id}: no step {ref!r}")
+            if s.do == "action" and s.action is None:
+                raise ValueError(f"procedure {self.id}, step {s.id}: an action step needs `action`")
+            if s.do == "check" and (s.metric is None or (s.min is None and s.max is None)):
+                raise ValueError(f"procedure {self.id}, step {s.id}: a check needs `metric` and `min` and/or `max`")
+        return self
 
 
 class CrewResponseConfig(BaseModel):
@@ -133,6 +215,9 @@ class CrewResponseConfig(BaseModel):
     # ``approve_delay_s``; when false only the UI does, and life-saving steps run on their timeout
     npc_approves_actions: bool = False
     approve_delay_s: float = Field(default=5.0, ge=0)
+    # the NPC with the step's role closes the ``instruction`` / ``question`` steps of a procedure after its ``duration_s`` when
+    # nobody from the UI has: runs without a UI stay complete (and the decisions of the crew end up in the log)
+    npc_follows_procedures: bool = True
 
 
 class MonitorConfig(BaseModel):
@@ -141,5 +226,10 @@ class MonitorConfig(BaseModel):
     classifier: ClassifierConfig = ClassifierConfig()
     detectors: list[DetectorSpec] = []
     playbooks: list[Playbook] = []
+    procedures: list[Procedure] = []
     crew_response: CrewResponseConfig | None = None  # None: the NPCs ignore emergencies (schedule only)
-    # reserved: an ML detector is just one more entry in ``detectors``
+    # faulty sensor -> the redundant sensors that see the same air, best first (``sensor substitute`` with ``value_id: auto``).
+    # Generated for the station from the redundancy groups of the workbook (tools/build_station.py). An ML detector is just one
+    # more entry in ``detectors``.
+    substitutes: dict[str, list[str]] = {}
+    diagnosis: dict[str, DiagnosisClass] = {}  # label of the fault catalog -> emergency (see ``DiagnosisClass``)

@@ -10,6 +10,7 @@ classifier:
   confirm_s: 5
   clear_s: 60
   mode_hold_s: 60
+  group_by: connected   # one leak = one emergency, in the module that falls fastest (the open hatches drain the neighbours too)
   classes:
     equipment: caution
     anomaly: caution
@@ -78,6 +79,41 @@ detectors:
     severity: warning
     metric: ppCO2
     params: {max: 3.0, window_s: 3600}
+  # Sensor health (the fault catalog's "sensore bloccato / rumore" and "sensori ridondanti che non concordano", sheet 06).
+  # Variance compares each sensor with ITS OWN usual noise (no unit): stuck = no noise at all, noisy = 3x its usual level.
+  # RedundancyResidual compares the redundant sensors of one module: what counts is how far their difference MOVES from the
+  # offset they had when the baseline was learned (every unit has its own fixed error). max_change is in the unit of the metric:
+  # about 3x the noise of the window mean plus the lag differences of two units (ESTIMATES, checked on nominal days with
+  # tools/ml/check_monitor.py). Both are `warning` -> class `caution` (the data may be wrong, nothing is isolated).
+  - {id: stuck_T, kind: "ares3.plugins.monitor.detectors:Variance", emergency: sensor_fault, severity: warning, metric: T, confirm_s: 600, clear_s: 1800}
+  - {id: stuck_RH, kind: "ares3.plugins.monitor.detectors:Variance", emergency: sensor_fault, severity: warning, metric: RH, confirm_s: 600, clear_s: 1800}
+  - {id: stuck_P, kind: "ares3.plugins.monitor.detectors:Variance", emergency: sensor_fault, severity: warning, metric: P, confirm_s: 600, clear_s: 1800}
+  - {id: stuck_ppO2, kind: "ares3.plugins.monitor.detectors:Variance", emergency: sensor_fault, severity: warning, metric: ppO2, confirm_s: 600, clear_s: 1800}
+  - {id: stuck_ppCO2, kind: "ares3.plugins.monitor.detectors:Variance", emergency: sensor_fault, severity: warning, metric: ppCO2, confirm_s: 600, clear_s: 1800}
+  - {id: resid_P, kind: "ares3.plugins.monitor.detectors:RedundancyResidual", emergency: sensor_fault, severity: warning, metric: P,
+     params: {max_change: 0.15}, confirm_s: 600, clear_s: 1800}
+  - {id: resid_T, kind: "ares3.plugins.monitor.detectors:RedundancyResidual", emergency: sensor_fault, severity: warning, metric: T,
+     params: {max_change: 0.3}, confirm_s: 600, clear_s: 1800}
+  - {id: resid_RH, kind: "ares3.plugins.monitor.detectors:RedundancyResidual", emergency: sensor_fault, severity: warning, metric: RH,
+     params: {max_change: 2.0}, confirm_s: 600, clear_s: 1800}
+  - id: resid_ppO2
+    kind: "ares3.plugins.monitor.detectors:RedundancyResidual"
+    emergency: sensor_fault
+    severity: warning
+    metric: ppO2
+    targets: [all_modules]   # SWAP-RESID
+    params: {max_change: 0.6}   # above the step of a calibration (the cell drifts -24 %/yr and is reset every 30 d: up to 0.42 kPa, a healthy event); 0.15-0.4 gave false alarms on nominal days
+    confirm_s: 600
+    clear_s: 1800
+  - id: resid_ppCO2
+    kind: "ares3.plugins.monitor.detectors:RedundancyResidual"
+    emergency: sensor_fault
+    severity: warning
+    metric: ppCO2
+    targets: [all_modules]   # SWAP-RESID
+    params: {max_change: 0.06}
+    confirm_s: 600
+    clear_s: 1800
   # Fire (ISS: smoke detectors + combustion-product analyser). Thresholds are ESTIMATES until Mario fixes the sensors.
   - id: smoke
     kind: "ares3.plugins.monitor.detectors:Threshold"
@@ -140,6 +176,28 @@ detectors:
     confirm_s: 3
     clear_s: 300
 
+  # Early warning score (NEWS2-like [R8], on the 5-minute mean of the wearables): 5 or more, or one vital at 3 points, is a warning;
+  # 7 or more is critical. HR and breathing are not scored during exercise. ESTIMATE, to confirm with the bioengineer. Listed last:
+  # the specific causes above (SpCO, SpO2, ...) win when they fire too.
+  - id: news_warning
+    kind: "ares3.plugins.monitor.detectors:EarlyWarningScore"
+    emergency: medical
+    severity: warning
+    targets: [all_npcs]
+    params: {min_score: 5}
+    confirm_s: 300
+    clear_s: 600
+  - id: news_critical
+    kind: "ares3.plugins.monitor.detectors:EarlyWarningScore"
+    emergency: medical
+    severity: critical
+    targets: [all_npcs]
+    params: {min_score: 7, single_3: false}
+    confirm_s: 60
+    clear_s: 600
+
+  # @ML-DETECTORS (the station adds the trained stage A / B detectors here, LAST: a rule that names a cause wins over a diagnosis: tools/build_station.py)
+
 # NPC reaction: ISS Warn -> Gather -> Work. Roles/succession by crew PROFILE. Timings are ESTIMATES.
 crew_response:
   roles: {commander: incident_commander, engineer: systems, medic: medical, botanist: sensing}
@@ -185,10 +243,83 @@ playbooks:
       - {do: ventilation, target: "{module}", command: "off", level: auto, reason: no airflow to the fire (no convection in microgravity)}
       - {do: actuator, target: "o2gen_{module}", command: "off", level: auto, reason: stop oxygen generation}
       - {do: actuator, target: "press_{module}", command: "off", level: auto, reason: stop gas introduction}
+      # ISS automatic response to smoke [R3]: the racks of the module lose their power (the electrical ignition source goes; the
+      # fire weakens to ~20 %, fault param `unpowered_factor`). The crew decides when to restore it: after the emergency it is only proposed.
+      - {do: power, target: "{module}", command: "off", level: auto, reason: remove the power of the burning module}  # SWAP-POWER
       - {do: announce, target: crew, command: fire, level: auto}
       - {do: extinguish, target: "{module}", command: discharge, level: confirm, confirm_timeout_s: 60, on_timeout: execute,
          reversible: false, reason: the crew locates the source and discharges the extinguisher}
+  # a sensor that no longer tells the truth (stuck, noisy, or the culprit of a redundancy mismatch): the crew is told and the control
+  # loops can read its redundant sensor instead (`substitutes`, generated for the station). Nothing is forced: confirm, then drop.
+  - emergency: sensor_fault
+    actions:
+      - {do: sensor, target: "{subject}", command: substitute, value_id: auto, level: confirm, confirm_timeout_s: 600, on_timeout: discard,
+         reason: "do not trust the sensor: the control loops read its redundant sensor instead"}
   # a crew member in trouble: the medic goes to them (crew_response); the cause is in the emergency
   - emergency: medical
     actions:
       - {do: announce, target: crew, command: medical_alert, level: auto}
+
+# Crew procedures (the checklist for the PEOPLE; the playbooks above are the safing of the machine). Chosen by (emergency, cause,
+# severity): the one that names the cause wins. Steps: instruction (closed by the UI, or by the NPC of the role after duration_s),
+# check (automatic, on SENSED values), question (yes -> on_pass, no -> on_fail), escalate (ends as `escalated`), action (a playbook step).
+# Content rebuilt from public sources (plan D3, [R7] [R8] [R12]-[R17]): ESTIMATE, to be reviewed by the bioengineer. Only items of the
+# ISS medical kit are named, NEVER doses ("as per the flight surgeon / the medical checklist"). A treatment does not change the
+# simulated physiology (Luca's model is out of scope): the checks are written on what the simulator can produce (clean air, a removed source).
+procedures:
+  - id: med_hypoxia
+    emergency: medical
+    cause: hypoxia
+    title: "Hypoxia: SpO2 below 90 % ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; check consciousness, breathing and the oxygen partial pressure of {module}"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "If the air of {module} is poor, move {subject} to the nearest module with normal air"}
+      - {id: s3, do: instruction, role: medical, duration_s: 30, text: "Give oxygen with the Variable Oxygen System, target SpO2 94-98 %"}
+      - {id: s4, do: check, metric: spo2, min: 94, within_s: 300, on_pass: done, on_fail: s5}
+      - {id: s5, do: escalate, text: "SpO2 is not improving: call the flight surgeon and prepare the evacuation to the lifeboat"}
+  - id: med_co
+    emergency: medical
+    cause: co_poisoning
+    title: "Carbon monoxide: COHb raised ({subject})"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Take {subject} out of {module} and away from the source of CO"}
+      - {id: s2, do: instruction, role: medical, duration_s: 20, text: "100 % oxygen at once with the Variable Oxygen System and a non-rebreather mask"}
+      - {id: s3, do: question, role: medical, duration_s: 15, auto_answer: "no", text: "Is there still carbon monoxide in {module}?", on_pass: s4, on_fail: s5}
+      - {id: s4, do: instruction, role: systems, duration_s: 20, text: "Ventilation off and isolate {module}, measure with the detector tubes before anyone goes back in", on_pass: s5}
+      - {id: s5, do: check, metric: cohb_pct, max: 15, within_s: 900, on_pass: done, on_fail: s6}
+      - {id: s6, do: escalate, text: "COHb not falling or above 15 %: call the flight surgeon, consider the evacuation"}
+  - id: med_heat
+    emergency: medical
+    cause: fever_or_heat
+    title: "High core temperature ({subject})"
+    steps:
+      - {id: s1, do: question, role: medical, duration_s: 15, auto_answer: "no", text: "Was {subject} exercising, or is {module} hot?", on_pass: s2, on_fail: s3}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Heat stroke: stop the exercise, cool actively (cold pack), oral fluids. No antipyretics", on_pass: s4}
+      - {id: s3, do: instruction, role: medical, duration_s: 30, text: "Fever: rest and fluids; an antipyretic only if the flight surgeon says so"}
+      - {id: s4, do: check, metric: core_temp_c, max: 38.5, within_s: 3600, on_pass: done, on_fail: s5}
+      - {id: s5, do: escalate, text: "Temperature not falling: call the flight surgeon"}
+  - id: med_generic
+    emergency: medical
+    title: "{subject} is unwell (cause not known)"
+    steps:
+      - {id: s1, do: instruction, role: medical, duration_s: 20, text: "Reach {subject}; check consciousness, breathing, pulse and temperature"}
+      - {id: s2, do: instruction, role: medical, duration_s: 30, text: "Follow the medical checklist for the symptoms; keep {subject} at rest"}
+      - {id: s3, do: escalate, text: "Report to the flight surgeon with the readings of the wearable"}
+  - id: sensor_check
+    emergency: sensor_fault
+    title: "Sensor not to be trusted: {subject}"
+    steps:
+      - {id: s1, do: instruction, role: systems, duration_s: 30, text: "Do not trust {subject}: compare it with its redundant sensor and with the MCA"}
+      - {id: s2, do: instruction, role: systems, duration_s: 60, text: "Recalibrate or replace the sensor; the readings of the others stay valid"}
+  - id: anomaly_check
+    emergency: anomaly
+    title: "Unexplained anomaly in {module}"
+    steps:
+      - {id: s1, do: instruction, role: systems, duration_s: 30, text: "Look at the readings named in the evidence and compare the redundant sensors of {module}"}
+      - {id: s2, do: instruction, role: systems, duration_s: 60, text: "Inspect the subsystem for a visible cause (fan, filter, condensate, valve)"}
+  - id: toxic_response
+    emergency: toxic
+    title: "Toxic atmosphere in {module}"
+    steps:
+      - {id: s1, do: instruction, duration_s: 10, text: "Masks on; leave {module} for a clean module and close the hatch behind you (as the crew did in the January 2015 ammonia alarm [R7])"}
+      - {id: s2, do: instruction, role: systems, duration_s: 60, text: "Measure with the detector tubes before anyone goes back in"}

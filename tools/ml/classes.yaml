@@ -1,0 +1,48 @@
+# The ONE place that maps a dataset label (anomaly_type of the fault catalog and of Luca's medical events) to what the monitor does
+# with it (plan D1): the family of the classifier that learns it, the kind and severity of the emergency it opens, and the sentence for
+# the crew. Labels keep the names they have; if one is renamed, change only its key here.
+#   family:    physical | actuator | sensor | medical   (one classifier per family, so two faults of different families at the same time
+#              are both recognised; two of the SAME family give only the stronger one)
+#   emergency: depressurization | fire | toxic | equipment | sensor_fault | medical   (the kind of emergency that opens)
+#   severity:  warning | critical      alert_class: caution | warning | emergency | advisory   (what the crew sees)
+#   confirm_s: seconds of continuous diagnosis before the emergency is confirmed (plan D7: sensor 900, actuator and slow leaks 1800, medical 300)
+# ESTIMATE: the mapping is ours; Mario's sheet 06 gives the expected alarm of each fault, Luca's the medical ones.
+
+# ---- physical faults (loss of cabin air, fire, a hatch that does not move)
+perdita_prk:      {family: physical, emergency: depressurization, severity: warning,  alert_class: warning,   confirm_s: 1800, phrase: "Slow loss of air in the transfer tunnel PrK"}
+depress_rapida:   {family: physical, emergency: depressurization, severity: critical, alert_class: emergency, confirm_s: 30,   phrase: "Rapid depressurization of a module"}
+portello_bloccato: {family: physical, emergency: equipment,       severity: warning,  alert_class: warning,   confirm_s: 300,  phrase: "A hatch does not move: the isolation of the module is blocked"}
+incendio:         {family: physical, emergency: fire,             severity: critical, alert_class: emergency, confirm_s: 5,    phrase: "Fire: smoke, carbon monoxide and a local rise of temperature"}
+
+# ---- actuators (a machine that works worse or stops)
+degrado_cdra:     {family: actuator, emergency: equipment, severity: warning, alert_class: caution, confirm_s: 1800, phrase: "The CO2 scrubber (CDRA) removes less CO2 than it should"}
+arresto_cdra:     {family: actuator, emergency: equipment, severity: warning, alert_class: warning, confirm_s: 900,  phrase: "The CO2 scrubber (CDRA) has stopped"}
+guasto_riscaldatore_cdra: {family: actuator, emergency: equipment, severity: warning, alert_class: caution, confirm_s: 1800, phrase: "A heater of the CDRA bed has failed"}
+degrado_oga:      {family: actuator, emergency: equipment, severity: warning, alert_class: caution, confirm_s: 1800, phrase: "The oxygen generator (OGA) produces less oxygen than it should"}
+arresto_oga:      {family: actuator, emergency: equipment, severity: warning, alert_class: warning, confirm_s: 900,  phrase: "The oxygen generator (OGA) has stopped"}
+guasto_chx:       {family: actuator, emergency: equipment, severity: warning, alert_class: caution, confirm_s: 1800, phrase: "A cabin air heat exchanger (CCAA) is losing its condensing capacity"}
+degrado_ventola_ccaa: {family: actuator, emergency: equipment, severity: warning, alert_class: caution, confirm_s: 1800, phrase: "A cabin air fan (CCAA) is slowing down"}
+degrado_imv:      {family: actuator, emergency: equipment, severity: warning, alert_class: caution, confirm_s: 1800, phrase: "An inter-module fan (IMV) is moving less air"}
+arresto_imv:      {family: actuator, emergency: equipment, severity: warning, alert_class: warning, confirm_s: 900,  phrase: "An inter-module fan (IMV) has stopped"}
+degrado_ventola_cabina: {family: actuator, emergency: equipment, severity: warning, alert_class: caution, confirm_s: 1800, phrase: "A crew quarters fan is slowing down: CO2 builds up while the crew sleeps"}
+guasto_pca_chiusa: {family: actuator, emergency: equipment, severity: warning, alert_class: warning, confirm_s: 900, phrase: "The pressure control assembly (PCA) does not open: no make-up gas"}
+guasto_pca_aperta: {family: actuator, emergency: equipment, severity: warning, alert_class: warning, confirm_s: 900, phrase: "The pressure control assembly (PCA) is stuck open"}
+guasto_tcs:       {family: actuator, emergency: equipment, severity: warning, alert_class: caution, confirm_s: 1800, phrase: "The thermal control loop (TCS) removes less heat"}
+
+# ---- sensors (the measurement is wrong, the air is not)
+bias_sensore_P:   {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "A pressure sensor reads a constant offset (it could look like a leak)"}
+deriva_sensore_CO2: {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "A CO2 sensor is drifting"}
+deriva_sensore_O2: {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "An O2 sensor is drifting (ageing cell)"}
+sensore_bloccato: {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "A sensor is stuck on one value"}
+dropout_sensore:  {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "A sensor loses samples"}
+rumore_sensore:   {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "A sensor is much noisier than usual"}
+offset_sensore_RH: {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "A humidity sensor has an offset (condensation)"}
+guasto_mca_linea: {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "The MCA sample line no longer reaches some modules"}
+deriva_mca:       {family: sensor, emergency: sensor_fault, severity: warning, alert_class: caution, confirm_s: 900, phrase: "The MCA (reference mass spectrometer) is drifting: all its channels"}
+
+# ---- crew (Luca's events; hypoxia and carbon monoxide poisoning stay with the rule detectors on SpO2 / SpCO, which carry their cause)
+fever:            {family: medical, emergency: medical, severity: warning,  alert_class: warning,  confirm_s: 300, phrase: "Raised core temperature (fever or heat)"}
+dehydration:      {family: medical, emergency: medical, severity: warning,  alert_class: warning,  confirm_s: 300, phrase: "Signs of dehydration: heart rate and temperature up, HRV down"}
+atrial_fibrillation_suspected: {family: medical, emergency: medical, severity: critical, alert_class: emergency, confirm_s: 120, phrase: "Irregular fast heart rhythm (suspected atrial fibrillation)"}
+acute_stress:     {family: medical, emergency: medical, severity: warning,  alert_class: caution,  confirm_s: 300, phrase: "Acute stress: heart and breathing rate up, HRV down"}
+space_motion_sickness: {family: medical, emergency: medical, severity: warning, alert_class: advisory, confirm_s: 300, phrase: "Space motion sickness"}

@@ -43,6 +43,29 @@ meant to be edited by Mario or Luca.
 Every physical constant needs a source tag (`[S1]..[S20]`, see `docs/reference/ambientmonitor/verifica-dati.md`) or the
 word ESTIMATE.
 
+## Monitoring: three states, ML recognition, crew procedures
+
+The station has a monitoring system that is ISS-like (never Mars): detectors -> classifier -> playbooks (the safing of the machine) and
+**procedures** (the checklist for the crew). The whole system is always in one of three modes, `passive` / `alert` / `reaction`
+(`tick.monitor_mode`), and every emergency has the ISS alert class the UI colours by (`alert_class`). The rule detectors stay the safety
+net; two ML stages sit next to them (`src/ares3/plugins/monitor/ml/`, plan and decisions in `piano.md`):
+
+* **Stage A** - "is something abnormal?": one PCA per subsystem, trained on nominal days only, so it also sees faults nobody has catalogued.
+* **Stage B** - "which fault, where, how sure, why?": one classifier per family of faults (physical / actuator / sensor / medical),
+  trained on the 26-fault catalog of Mario's workbook with parameters drawn from its ranges, plus Luca's medical events on the station crew.
+
+```
+uv run python tools/ml/make_dataset.py --nominal --randomize --medical --combos --seeds 1-3,5 --days 2 --features --out output/ml/feat
+uv run python tools/ml/train_anomaly.py        # -> models/station_v1/detector_*.joblib
+uv run python tools/ml/train_diagnoser.py      # -> models/station_v1/diagnoser.joblib
+uv run python tools/ml/check_monitor.py --nominal --seeds 5 --days 1    # the real monitor on whole runs: false alarms, delays
+```
+
+Both stages read the SENSED values only, through the same feature extractor online and offline. Everything the ML measures is
+simulation time on synthetic data (the noise of many sensors is an ESTIMATE): not flight performance. The UI contract (what to draw, the
+`ack_step` command) is `docs/monitor-ui.md`; sources are `docs/reference/monitoring-ml-sources.md`. `joblib` runs code when it
+loads a file: load only the models of `models/`.
+
 ## Dashboard (`dashboard/`)
 React + Vite, independent of the Python engine (`cd dashboard && pnpm install && pnpm dev`). Contains the
 `<BodyHologram />` component (organs coloured and pulsing from vital signs). `dashboard/src/telemetry/` holds the

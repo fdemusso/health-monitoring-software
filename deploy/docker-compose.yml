@@ -1,0 +1,41 @@
+# Backend + Cloudflare Tunnel. From the repository root:
+#   cp deploy/.env.example deploy/.env      # then fill the two secrets
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+# Nothing publishes a port: the only way in is the tunnel (docs/deploy.md).
+services:
+  ares3:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: ares3-serve
+    restart: unless-stopped
+    command:
+      - serve
+      - scenarios/station/nominal.yaml
+      - --host=0.0.0.0
+      - --speed=10
+      - --warmup-h=4                 # ~1 min at start: the ML is ready and the charts start full
+      - --allow-origin=${ARES3_ORIGIN:-https://ares.daado.dev}
+      - --max-speed=200              # what a client can ask for (a public server must not run flat out)
+      - --max-clients=50
+      - --guest-commands=${ARES3_GUEST_COMMANDS-approve_action,reject_action,ack_step}   # what a visitor without token may do; empty = watch only
+    environment:
+      ARES3_TOKEN: ${ARES3_TOKEN:?set ARES3_TOKEN in deploy/.env}   # whoever has it can send commands; the others only watch
+    mem_limit: 1g
+    cpus: 1.5
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in deploy/.env}
+    depends_on: [ares3]
+    mem_limit: 256m
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]

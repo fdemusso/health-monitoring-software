@@ -135,8 +135,24 @@ def _drift(r) -> dict:
     return {"drift_abs_per_year": d}
 
 
-def build_sensors(wb) -> tuple[str, str]:
-    out, groups = [], ["id,module,metric,technology,redundancy_group"]
+PORT = re.compile(r"uscita|diffusore", re.I)  # a sensor at the inlet / outlet of an apparatus sees other air: not a substitute
+
+
+def substitutes(meta: list[tuple[str, str, str, str, str]]) -> dict[str, list[str]]:
+    """Faulty sensor -> the redundant sensors that can stand in for it: same redundancy group, same module and metric, and not
+    mounted at an apparatus port (sheet 03, columns group and position). Plan D6."""
+    subs: dict[str, list[str]] = {}
+    for sid, module, metric, group, pos in meta:
+        if not group or PORT.search(pos):
+            continue
+        mates = [m[0] for m in meta if m[0] != sid and m[1:4] == (module, metric, group) and not PORT.search(m[4])]
+        if mates:
+            subs[sid] = mates
+    return subs
+
+
+def build_sensors(wb) -> tuple[str, str, dict[str, list[str]]]:
+    out, groups, meta = [], ["id,module,metric,technology,redundancy_group"], []
     for r in table(wb, "03_SENSORI"):
         if not r.get("Tecnologia"):
             continue  # the explanatory notes under the table
@@ -164,13 +180,14 @@ def build_sensors(wb) -> tuple[str, str]:
         out.append({"id": sid, "kind": kind, "target": f"module:{r['Modulo']}", "metric": metric, "rate_hz": rate,
                     "params": {k: (round(v, 8) if isinstance(v, float) else v) for k, v in p.items()}})
         groups.append(",".join([sid, r["Modulo"], metric, tech, str(r["Gruppo di ridondanza"] or "")]))
+        meta.append((sid, r["Modulo"], metric, str(r["Gruppo di ridondanza"] or ""), str(r["Posizione"] or "")))
     # actuator telemetry (sheet 05) and the electrical bus
     for r in table_tele(wb):
         out.append(r)
     c = ("# Sensors of sheet 03_SENSORI (62 environmental + 8 MCA channels) and the 26 telemetry channels of sheet 05_TELEMETRIA_ATT.\n"
          "# Redundancy groups are in sensor_groups.csv (metadata for the ML). The MCA rotates over 8 modules: one row per sample.\n"
          "# bias_sigma (the fixed error of one unit), calibration_interval_d and the NDIR range extension are ESTIMATES.\n")
-    return dump(None, {"sensors": out}, c), "\n".join(groups) + "\n"
+    return dump(None, {"sensors": out}, c), "\n".join(groups) + "\n", substitutes(meta)
 
 
 # sheet-05 id -> (target, channel or station metric)
@@ -322,6 +339,52 @@ def fault_table() -> dict[str, dict]:
     }
 
 
+def fault_ranges() -> dict[str, list[dict]]:
+    """How each catalog fault may vary (sheet 06, columns "Valore min" / "Valore max"), for the dataset generator: one list of
+    knobs per fault id. A knob draws a value uniformly in [min, max] (times ``factor``, with a random sign when ``sign``) and sets
+    it at ``set`` (a path inside the fault: ``params.<name>``); ``scale`` multiplies the leak rates of the fault instead. The slow
+    processes (a month in the catalog) are compressed by TIME_COMPRESSION like in ``fault_table``. Faults with no range in the
+    sheet (a step to zero: stuck, offline) have no knob. Where the sheet is not in the unit of the engine, ``factor`` converts it
+    and the comment says how (ESTIMATE for the conversions that need a nominal value we do not have)."""
+    k = TIME_COMPRESSION
+    month = 30.0 * DAY / k
+    f = {r["id"]: r for r in _SHEET06}  # filled by outputs()
+
+    def rng(fid):
+        return float(f[fid]["Valore min"]), float(f[fid]["Valore max"])
+
+    def knob(fid, path, factor=1.0, sign=False, fault=None, **extra):
+        lo, hi = rng(fid)
+        return {"fault": fault or fid, "set": path, "min": lo, "max": hi, "factor": factor, "sign": sign, **extra}
+
+    return {
+        "F-FIS-PERDITA-PRK": [{"fault": "F-FIS-PERDITA-PRK", "scale": True, "min": 1.0, "max": rng("F-FIS-PERDITA-PRK")[1] / rng("F-FIS-PERDITA-PRK")[0],
+                               "note": "multiplier of the leak steps (0.45 .. 1.7 kg of air/day)"}],
+        "F-FIS-PERDITA-RAPIDA": [knob("F-FIS-PERDITA-RAPIDA", "params.kpa_min")],
+        "F-FIS-INCENDIO": [knob("F-FIS-INCENDIO", "params.heat_w")],
+        "F-SEN-BIAS-P": [knob("F-SEN-BIAS-P", "params.offset", sign=True)],
+        "F-SEN-DERIVA-CO2": [knob("F-SEN-DERIVA-CO2", "params.rate_per_s", factor=-1.0 / month, sign=True)],
+        "F-SEN-INVECCHIA-O2": [knob("F-SEN-INVECCHIA-O2", "params.rel_rate_per_s", factor=1.0 / 100.0 / month)],  # min/max are -5 .. -2 % of the reading per month
+        "F-SEN-DROPOUT": [knob("F-SEN-DROPOUT", "params.probability")],
+        "F-SEN-RUMORE": [knob("F-SEN-RUMORE", "params.factor")],
+        "F-SEN-CONDENSA-RH": [knob("F-SEN-CONDENSA-RH", "params.offset")],
+        "F-SEN-MCA-LINEA": [{"fault": "F-SEN-MCA-LINEA", "choose": "params.entities", "from": ["NOD1", "USL", "NOD2", "NOD3", "COL", "JPM", "AL", "CUP"],
+                             "min": rng("F-SEN-MCA-LINEA")[0], "max": rng("F-SEN-MCA-LINEA")[1], "note": "how many modules the sample line no longer reaches"}],
+        "F-SEN-MCA-FILAMENTO": [knob("F-SEN-MCA-FILAMENTO", "params.rel_rate_per_s", factor=-1.0 / 100.0 / month)],
+        "F-ATT-CDRA-DEGRADO": [knob("F-ATT-CDRA-DEGRADO", "params.fraction")],
+        "F-ATT-OGA-STACK": [knob("F-ATT-OGA-STACK", "params.fraction")],
+        # the sheet gives 0.2 .. 0.6 of the latent capacity left; the catalog file uses 0.03 so that the effect shows: draw from 0.03 up
+        "F-ATT-CCAA-IDROFOBO": [dict(knob("F-ATT-CCAA-IDROFOBO", "params.fraction", fault="F-ATT-CCAA-IDROFOBO"), min=0.03)],
+        "F-ATT-CCAA-VENTOLA": [knob("F-ATT-CCAA-VENTOLA", "params.fraction")],
+        # CFM over the nominal 143 CFM; the sheet says 66 .. 143 but a flow of 143 is no fault at all: draw up to 110 CFM so that every run has an effect
+        "F-ATT-IMV-FOD": [dict(knob("F-ATT-IMV-FOD", "params.fraction", factor=1.0 / 143.0), max=110.0)],
+        "F-ATT-CQFAN-FOD": [knob("F-ATT-CQFAN-FOD", "params.fraction", factor=1.0 / 80.0)],  # CFM over a nominal 80 CFM (ESTIMATE)
+    }
+
+
+_SHEET06: list[dict] = []
+
+
 def event_scenario(fid: str, spec: dict) -> dict:
     return {"name": f"station_{fid}", "seed": 42, "dt_s": 1.0, "duration_days": 3, "start_time_of_day_h": 6.0,
             "environment": "../../environments/iss_station.yaml",
@@ -360,7 +423,55 @@ def build_crew() -> str:
     return HEADER + c + yaml.safe_dump(crew, sort_keys=False, width=140, allow_unicode=True)
 
 
-def build_monitor() -> str:
+def _classes() -> dict:
+    return yaml.safe_load((ROOT / "tools" / "ml" / "classes.yaml").read_text(encoding="utf-8"))
+
+
+def diagnosis_classes() -> str:
+    """What the crew sees (alert class) for each diagnosed fault: ``kind:severity:cause`` lines of ``classifier.classes``."""
+    return "".join(f"    {c['emergency']}:{c['severity']}:{label}: {c['alert_class']}\n" for label, c in _classes().items())
+
+
+# tools/ml/sweep_diagnoser.py on the runs the model never saw: at min_proba 0.6 and the confirm_s of classes.yaml the stage B raised
+# 1.7 false alarms per day; at 0.9 and TWICE the confirmation, 0.1 per day (1 in 10 nominal days) for 26 of 34 faults found, median delay 30 min
+DIAGNOSIS_MIN_PROBA = 0.9
+DIAGNOSIS_CONFIRM_X = 2.0
+# ... but on whole monitor runs (tools/ml/check_monitor.py, nominal seeds 5-9) its SENSOR classes still opened 9 false sensor_fault alarms in
+# 5 days (a thermometer with a noisier unit, a quiet CO2 probe): the rules (`Variance`, `RedundancyResidual`) already cover the sensor
+# faults, so the live monitor listens to the ML only for the other families. The model keeps the sensor classes (model card, research).
+DIAGNOSIS_LIVE_FAMILIES = ("physical", "actuator", "medical")
+
+
+def diagnosis_table() -> str:
+    """The ``diagnosis`` table: label of the catalog -> the emergency it opens and its confirmation time (plan D7)."""
+    table = {label: {"emergency": c["emergency"], "severity": c["severity"], "confirm_s": c["confirm_s"] * DIAGNOSIS_CONFIRM_X,
+                     "clear_s": 2 * c["confirm_s"] * DIAGNOSIS_CONFIRM_X}
+             for label, c in _classes().items() if c["family"] in DIAGNOSIS_LIVE_FAMILIES}
+    return ("\n# Stage B (ML diagnosis): which fault the `ml_diagnosis` detector recognised -> the emergency it opens (kind, severity, how long it must hold).\n"
+            "# Generated from tools/ml/classes.yaml. The alert class (colour) of each is in `classifier.classes`.\n"
+            + yaml.safe_dump({"diagnosis": table}, sort_keys=False, width=140, default_flow_style=None))
+
+
+def ml_detectors() -> str:
+    """The ML detectors of the station, listed LAST so that a rule that names a cause (SpO2 -> hypoxia) wins over them.
+    Stage A: one anomaly detector per subsystem of tools/ml/groups.yaml (tools/ml/train_anomaly.py, models/station_v1/), no playbook:
+    the system goes to ALERT. Stage B: one diagnosis detector (tools/ml/train_diagnoser.py) whose table is `diagnosis`."""
+    groups = yaml.safe_load((ROOT / "tools" / "ml" / "groups.yaml").read_text(encoding="utf-8"))
+    lines = ["  # Stage A (ML, unsupervised, trained on nominal days only): is something abnormal in this subsystem? One PCA per subsystem on",
+             "  # features of the sensed values (plugins/monitor/ml/features.py); the score is T2 / SPE over the limit learned on separate",
+             "  # nominal days. The rules above stay the safety net: a fault here never removes one of them. confirm_s 900: the fast",
+             "  # faults are caught by the rules; this is for what moves slowly. The detail names the sensors that explain the score."]
+    for g in groups:
+        lines.append(f'  - {{id: ml_{g}, kind: "ares3.plugins.monitor.ml.anomaly:AnomalyDetector", emergency: anomaly, severity: warning,\n'
+                     f'     params: {{model: "models/station_v1/detector_{g}.joblib"}}, confirm_s: 900, clear_s: 1800}}')
+    lines += ["  # Stage B (ML, supervised on the labelled fault catalog): WHICH fault, where, how sure and why. One classifier per family",
+              "  # (physical / actuator / sensor / medical); the probability must reach min_proba. What it opens is in the `diagnosis` table below.",
+              '  - {id: ml_diagnosis, kind: "ares3.plugins.monitor.ml.diagnoser:DiagnosisDetector", emergency: diagnosis,',
+              f'     params: {{model: "models/station_v1/diagnoser.joblib", min_proba: {DIAGNOSIS_MIN_PROBA}}}}}']
+    return "\n".join(lines) + "\n"
+
+
+def build_monitor(subs: dict[str, list[str]]) -> str:
     text = (ROOT / "scenarios" / "monitor_placeholder.yaml").read_text(encoding="utf-8")
     pressure_targets = ["NOD1", "USL", "NOD2", "NOD3", "COL", "JPM", "CUP", "AL", "SM", "PRK", "lifeboat"]
     swaps = [
@@ -373,22 +484,39 @@ def build_monitor() -> str:
         ("    metric: ppCO2\n    params: {max: 3.0, window_s: 3600}",
          f"    metric: ppCO2\n    targets: [{', '.join(pressure_targets)}]   # not the cabins: no station alarm for them (alarm_mode never)\n"
          "    params: {max: 3.0, window_s: 3600}"),
+        ('      - {do: power, target: "{module}", command: "off", level: auto, reason: remove the power of the burning module}  # SWAP-POWER\n',
+         '      # D5 of the plan: the vital modules (USL: CDRA-A, PCA; NOD3: CDRA-B, OGA, TCS) are cut only after a confirmation that\n'
+         '      # shows the consequences; with one scrubber the ppCO2 rises ~1 mmHg per 6-8 h, a fire is measured in minutes: on timeout GO.\n'
+         '      - {do: power, target: "{module}", command: "off", level: auto, except_modules: [USL, NOD3], reason: remove the power of the burning module}\n'
+         '      - {do: power, target: "{module}", command: "off", level: confirm, in_modules: [USL, NOD3], confirm_timeout_s: 60, on_timeout: execute,\n'
+         '         reversible: false, reason: "remove the power of the burning module: its scrubber / oxygen unit stops, the standby unit takes over"}\n'),
+        ("targets: [all_modules]   # SWAP-RESID",
+         f"targets: [{', '.join(m for m in pressure_targets if m != 'NOD3')}]   # not NOD3: its sensor _b sits at the CDRA-B outlet, other air"),
+        ("  # @ML-DETECTORS (the station adds the trained stage A / B detectors here, LAST: a rule that names a cause wins over a diagnosis: tools/build_station.py)\n", ml_detectors()),
+        ("    sensor_fault: caution\n", "    sensor_fault: caution\n" + diagnosis_classes()),
         ("# PLACEHOLDER - awaiting the team (and Mario for the final sensor set).", "# Monitoring of the ISS station (derived from monitor_placeholder.yaml by tools/build_station.py)."),
     ]
     for a, b in swaps:
         assert a in text, a
         text = text.replace(a, b)
-    return HEADER + "# On the station a module is isolated by closing ALL its hatches (`isolate:<module>`), never the vehicle's; gas introduction is the PCA / OGA.\n" + text
+    tail = ("\n# Redundant sensors (plan D6): a faulty sensor -> the ones that see the same air (sheet 03: same redundancy group, module and metric,\n"
+            "# not at an apparatus port). `sensor substitute` makes the control loops read the first of them.\n"
+            + yaml.safe_dump({"substitutes": subs}, sort_keys=False, width=140, default_flow_style=None)
+            + diagnosis_table())
+    return HEADER + "# On the station a module is isolated by closing ALL its hatches (`isolate:<module>`), never the vehicle's; gas introduction is the PCA / OGA.\n" + text + tail
 
 
 def outputs(wb) -> dict[Path, str]:
     files: dict[Path, str] = {OUT / "modules.yaml": build_modules(wb)}
-    sensors, groups = build_sensors(wb)
+    sensors, groups, subs = build_sensors(wb)
     files[OUT / "sensors.yaml"] = sensors
     files[OUT / "sensor_groups.csv"] = groups
     files[OUT / "actuators.yaml"] = build_actuators(wb)
     files[OUT / "crew.yaml"] = build_crew()
-    files[OUT / "monitor.yaml"] = build_monitor()
+    files[OUT / "monitor.yaml"] = build_monitor(subs)
+    _SHEET06[:] = [r for r in table(wb, "06_GUASTI") if r.get("id")]
+    files[OUT / "fault_ranges.yaml"] = dump(None, fault_ranges(), "# Ranges of the catalog faults for the dataset generator (tools/ml/make_dataset.py): see fault_ranges() in tools/build_station.py.\n"
+                                          "# A knob draws a value in [min, max] x factor (random sign when `sign`) and sets it at `set`.\n")
     for fid, spec in fault_table().items():
         files[OUT / "faults" / f"{fid}.yaml"] = HEADER + yaml.safe_dump({"faults": spec["faults"]}, sort_keys=False)
         files[OUT / "events" / f"{fid}.yaml"] = HEADER + yaml.safe_dump(event_scenario(fid, spec), sort_keys=False)

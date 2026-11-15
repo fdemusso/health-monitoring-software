@@ -33,3 +33,8 @@ class ControlAPI(Protocol):
     def declare_emergency(self, kind: EmergencyKind, module_id: str, by: str | None = None) -> str:
         """Manual alarm, as a crew member can on the ISS. Returns the emergency id."""
         ...
+
+    def ack_step(self, procedure_id: str, step_id: str, by: str | None = None, answer: str | None = None) -> None:
+        """Close the active step of a crew procedure (``tick.procedures``): "done" for an instruction, ``answer`` yes / no for a
+        question. Anyone can; checks and actions close by themselves."""
+        ...

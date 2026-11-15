@@ -8,7 +8,7 @@ from ares3.sdk.types import Action
 
 def test_scenarios_load_the_monitor_config(station):
     mon = station.monitor
-    assert {d.emergency for d in mon.detectors} == {"depressurization", "equipment", "fire", "medical"}
+    assert {d.emergency for d in mon.detectors} == {"depressurization", "equipment", "fire", "medical", "sensor_fault"}
     depress = next(p for p in mon.playbooks if p.emergency == "depressurization" and p.severity == "critical")
     assert [a.level for a in depress.actions] == ["auto", "auto", "auto", "auto", "confirm"]  # safing first, isolation last
     leak = next(p for p in mon.playbooks if p.emergency == "depressurization" and p.severity == "warning")
