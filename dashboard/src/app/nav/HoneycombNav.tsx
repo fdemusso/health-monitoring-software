@@ -35,6 +35,9 @@ export function HoneycombNav() {
   const tick = useTick()
   // No active alarms: the Alarms cell is dimmed, like a switched-off light.
   const noAlerts = !!tick && alertRows(tick).length === 0
+  // Protocols are for an emergency: with none open the cell is dimmed too (the protocol appears by itself when one opens).
+  const noEmergency = !!tick && !emergencies.some((e) => e.state !== 'cleared')
+  const off = (id: CellId) => (id === 'alerts' && noAlerts) || (id === 'protocols' && noEmergency)
   const { primary } = primaryEmergency(emergencies)
   const critical = isCriticalConfirmed(primary)
 
@@ -74,7 +77,7 @@ export function HoneycombNav() {
         const Icon = ICON[c.id]
         const o0 = cellOffset(k)
         const o = { x: o0.x * sc, y: o0.y * sc }
-        const disabled = c.id === 'alerts' && noAlerts
+        const disabled = off(c.id)
         return (
           <button
             key={c.id}
@@ -91,7 +94,7 @@ export function HoneycombNav() {
               transitionDelay: open ? `${k * 25}ms` : '0ms',
             }}
           >
-            <Hex w={CELL.w} h={CELL.h} on={active(c.id)} className={c.id === 'alerts' && noAlerts ? 'opacity-35' : undefined}>
+            <Hex w={CELL.w} h={CELL.h} on={active(c.id)} className={disabled ? 'opacity-35' : undefined}>
               <Icon size={28 * sc} strokeWidth={1.5} />
               <span className="text-xs font-medium">{c.label}</span>
             </Hex>
