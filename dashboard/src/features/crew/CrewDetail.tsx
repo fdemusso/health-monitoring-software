@@ -11,6 +11,7 @@ import type { NPCState, SimulationTick } from '@/telemetry'
 import type { CrewSample } from '@/telemetry/store'
 import { useCrewHistory } from '@/telemetry/useTelemetry'
 import { HologramFrame } from './HologramFrame'
+import { EcgStrip } from './EcgStrip'
 import { ResponsePanel } from './ResponsePanel'
 
 /** The last hour of a quantity (one sample per 10 s) for a sparkline. */
@@ -40,8 +41,11 @@ function ReadingsCard({ npc, hist }: { npc: NPCState; hist?: CrewSample[] }) {
   const af = (v.rhythm ?? 0) >= 0.5
   return (
     <div className="grid min-w-0 grid-cols-2 gap-x-6 gap-y-4 rounded-lg border border-border bg-card p-4">
+      <div className="col-span-2">
+        <div className="mb-1 flex items-baseline justify-between"><h3 className="lbl">ECG · lead II, simulated</h3><span className={`num text-2xl ${vitalStatus('hr', v.hr, npc.activity) !== 'ok' ? statusText[vitalStatus('hr', v.hr, npc.activity)] : ''}`}>{fmt0(v.hr)}<span className="ml-1 font-sans text-xs font-normal text-muted-foreground">bpm</span></span></div>
+        <EcgStrip npc={npc} />
+      </div>
       <Group title="Heart and lungs">
-        <Row label="Heart rate" value={fmt0(v.hr)} unit="bpm" status={vitalStatus('hr', v.hr, npc.activity)} values={series(hist, 'hr')} />
         <Row label="Blood oxygen" value={fmt0(v.spo2)} unit="%" status={vitalStatus('spo2', v.spo2)} values={series(hist, 'spo2')} />
         <Row label="Breathing rate" value={fmt0(v.resp_rate)} unit="/min" status={vitalStatus('resp_rate', v.resp_rate)} values={series(hist, 'resp')} />
         <Row label="Rhythm" value={af ? 'Irregular' : 'Regular'} status={af ? 'crit' : 'ok'} />
